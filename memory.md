@@ -132,9 +132,26 @@ When Indian citizens report financial cyber-fraud via Helpline **1930** or **NCR
 
 | Date | What Was Done |
 |---|---|
-| 2026-08-28 | Project initiated. Architecture, tech stack, and 5-milestone roadmap defined. All planning docs created in `SIHPROJECT2`. |
-| 2026-08-28 | **Architecture upgraded** from plain XGBoost → Hybrid GraphSAGE + XGBoost (Approach 2). All 5 planning docs updated. React Flow chosen for graph viz. Mule-Hunt and gen-fraud-graph repos identified as reference implementations. |
+| 2026-08-28 | **Project Initiated & Architecture Upgraded:** Defined 5-phase SIH roadmap. Upgraded architecture to Hybrid GraphSAGE (PyTorch Geometric) + XGBoost predictor. |
+| 2026-08-28 | **Phase 1 Complete (84/84 tests):** Implemented `generate_data.py` (Pan-India national dataset generator with 65+ cities, 16 major banks, 9 fraud modalities). |
+| 2026-08-28 | **Phase 2a Complete (47/47 tests):** Implemented `graph_engine.py` (NetworkX BFS & anomaly detection) and `gnn_model.py` / `train_gnn.py` (GraphSAGE 2-layer, 99.96% F1, 1.000 AUC). Implemented `embed.py` generating 20,468 64-dim embeddings in 1.2s. |
+| 2026-08-28 | **Phase 2b Complete (53/53 tests):** Implemented `feature_builder.py` (O(1) indexed 72-dim hybrid vectors), `xgb_model.py` (MuleXGBPredictor), and `train_xgb.py` (91.48% Top-3 ATM accuracy, 0.08 min MAE, 18.5ms latency). |
+| 2026-08-28 | **Pan-India Scale & GitHub Push:** Scaled dataset to 2,500 complaints, 22,864 multi-hop transactions, 1,000 ATMs across 65+ cities, and 20,468 account nodes. All 184 tests pass in 12.55s. Generated ML Architecture and Performance Matrix visual infographics, embedded in `README.md`, and pushed to `https://github.com/hotshot0104/SIH2026`. |
 
 ---
 
-*Last updated: 2026-08-28*
+## 🎯 Next Session Starting Point: **Phase 3 — FastAPI Real-Time Backend**
+
+1. Create `backend/` package (`backend/main.py`, `backend/routers/`, `backend/schemas/`).
+2. Build REST Endpoints:
+   - `POST /api/v1/complaint/ingest` — Ingest 1930 incident tickets.
+   - `GET /api/v1/graph/{complaint_id}` — Return multi-hop graph nodes, edges, anomalies, and terminal accounts.
+   - `GET /api/v1/predict/cashout/{complaint_id}` — Run GNN embedding + XGBoost inference (Top-3 ATM ranking + countdown timer).
+   - `POST /api/v1/bank/micro-freeze` — Simulated NPCI / Banking freeze action.
+3. Implement WebSocket live alert channel (`/ws/alerts`) for real-time countdown pushes and law enforcement dispatch.
+4. Write `tests/test_phase3.py` and verify with pytest.
+
+---
+
+*Last updated: 2026-08-28 (Phase 1, 2a, 2b fully complete | 184/184 tests passed | Pushed to GitHub)*
+
