@@ -95,7 +95,13 @@ MuleShield AI is validated against an extensive automated test suite (**184/184 
 | **Single-Sample Inference Latency** | $< 200\text{ ms}$ | **$18.52\text{ ms}$** mean ($21.14\text{ ms}$ max) | ✅ PASS |
 | **Automated Test Coverage** | $100\%$ | **184 / 184 Passed** across 3 Test Suites | ✅ PASS |
 
+<div align="center">
+  <img src="docs/models_performance_matrix.jpg" alt="MuleShield AI Models Performance & Evaluation Matrix" width="100%" />
+  <p><em>Figure 2: MuleShield AI Multi-Model Evaluation Dashboard — Performance metrics across GraphSAGE Node Classifier, XGBoost ATM Geolocation Predictor, Time Regressor, and System Latency Benchmarks.</em></p>
+</div>
+
 ---
+
 
 ## 📁 Repository Structure
 
