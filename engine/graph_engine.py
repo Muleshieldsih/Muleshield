@@ -55,95 +55,88 @@ class MuleGraph:
         transactions_path: Path = DATA_DIR / "transactions.csv",
         node_features_path: Path = DATA_DIR / "node_features.csv",
     ) -> "MuleGraph":
-        """
-        Load graph from Phase 1 CSV files.
-
-        Args:
-            transactions_path: Path to transactions.csv
-            node_features_path: Path to node_features.csv
-
-        Returns:
-            self (for chaining)
-        """
-        txn_df = pd.read_csv(transactions_path, parse_dates=["timestamp"])
+        """Load graph from Phase 1 CSV files (fast batch insertion)."""
+        txn_df = pd.read_csv(transactions_path)
         node_df = pd.read_csv(node_features_path)
-
-        # Add node attributes from node_features.csv
-        for _, row in node_df.iterrows():
-            self.G.add_node(
-                row["account_id"],
-                bank_name=row["bank_name"],
-                city=row["city"],
-                lat=float(row["lat"]),
-                long=float(row["long"]),
-                total_received=float(row["total_received"]),
-                total_sent=float(row["total_sent"]),
-                txn_count_24h=int(row["txn_count_24h"]),
-                avg_txn_amount=float(row["avg_txn_amount"]),
-                is_mule_label=int(row["is_mule_label"]),
-                hop_depth=int(row["hop_depth"]),
-            )
-
-        # Add edges from transactions.csv
-        for _, row in txn_df.iterrows():
-            self.G.add_edge(
-                row["src_account"],
-                row["dst_account"],
-                txn_id=row["txn_id"],
-                complaint_id=row["complaint_id"],
-                amount=float(row["amount"]),
-                timestamp=row["timestamp"],
-                hop_depth=int(row["hop_depth"]),
-                is_terminal=int(row["is_terminal"]),
-                bank_name=row["bank_name"],
-                city=row["city"],
-                lat=float(row["lat"]),
-                long=float(row["long"]),
-            )
-
-        self._loaded = True
-        return self
+        return self.load_from_dataframes(txn_df, node_df)
 
     def load_from_dataframes(
         self,
         transactions_df: pd.DataFrame,
         node_features_df: pd.DataFrame,
     ) -> "MuleGraph":
-        """Load graph directly from DataFrames (used in tests / API)."""
+        """Load graph directly from DataFrames using fast batch insertion."""
         txn_df = transactions_df.copy()
         if not pd.api.types.is_datetime64_any_dtype(txn_df["timestamp"]):
             txn_df["timestamp"] = pd.to_datetime(txn_df["timestamp"])
 
-        for _, row in node_features_df.iterrows():
-            self.G.add_node(
-                row["account_id"],
-                bank_name=row.get("bank_name", ""),
-                city=row.get("city", ""),
-                lat=float(row.get("lat", 0.0)),
-                long=float(row.get("long", 0.0)),
-                total_received=float(row.get("total_received", 0.0)),
-                total_sent=float(row.get("total_sent", 0.0)),
-                txn_count_24h=int(row.get("txn_count_24h", 0)),
-                avg_txn_amount=float(row.get("avg_txn_amount", 0.0)),
-                is_mule_label=int(row.get("is_mule_label", 0)),
-                hop_depth=int(row.get("hop_depth", 0)),
+        # Batch Add Nodes
+        node_nodes = [
+            (
+                acc,
+                {
+                    "bank_name": bank,
+                    "city": city,
+                    "lat": float(lat),
+                    "long": float(lon),
+                    "total_received": float(rec),
+                    "total_sent": float(sent),
+                    "txn_count_24h": int(cnt),
+                    "avg_txn_amount": float(avg),
+                    "is_mule_label": int(lbl),
+                    "hop_depth": int(hop),
+                }
             )
+            for acc, bank, city, lat, lon, rec, sent, cnt, avg, lbl, hop in zip(
+                node_features_df["account_id"],
+                node_features_df.get("bank_name", [""] * len(node_features_df)),
+                node_features_df.get("city", [""] * len(node_features_df)),
+                node_features_df.get("lat", [0.0] * len(node_features_df)),
+                node_features_df.get("long", [0.0] * len(node_features_df)),
+                node_features_df.get("total_received", [0.0] * len(node_features_df)),
+                node_features_df.get("total_sent", [0.0] * len(node_features_df)),
+                node_features_df.get("txn_count_24h", [0] * len(node_features_df)),
+                node_features_df.get("avg_txn_amount", [0.0] * len(node_features_df)),
+                node_features_df.get("is_mule_label", [0] * len(node_features_df)),
+                node_features_df.get("hop_depth", [0] * len(node_features_df)),
+            )
+        ]
+        self.G.add_nodes_from(node_nodes)
 
-        for _, row in txn_df.iterrows():
-            self.G.add_edge(
-                row["src_account"],
-                row["dst_account"],
-                txn_id=row["txn_id"],
-                complaint_id=row["complaint_id"],
-                amount=float(row["amount"]),
-                timestamp=row["timestamp"],
-                hop_depth=int(row["hop_depth"]),
-                is_terminal=int(row["is_terminal"]),
-                bank_name=row.get("bank_name", ""),
-                city=row.get("city", ""),
-                lat=float(row.get("lat", 0.0)),
-                long=float(row.get("long", 0.0)),
+        # Batch Add Edges
+        edge_edges = [
+            (
+                src,
+                dst,
+                {
+                    "txn_id": tid,
+                    "complaint_id": cid,
+                    "amount": float(amt),
+                    "timestamp": ts,
+                    "hop_depth": int(hop),
+                    "is_terminal": int(term),
+                    "bank_name": bank,
+                    "city": city,
+                    "lat": float(lat),
+                    "long": float(lon),
+                }
             )
+            for src, dst, tid, cid, amt, ts, hop, term, bank, city, lat, lon in zip(
+                txn_df["src_account"],
+                txn_df["dst_account"],
+                txn_df["txn_id"],
+                txn_df["complaint_id"],
+                txn_df["amount"],
+                txn_df["timestamp"],
+                txn_df["hop_depth"],
+                txn_df["is_terminal"],
+                txn_df.get("bank_name", [""] * len(txn_df)),
+                txn_df.get("city", [""] * len(txn_df)),
+                txn_df.get("lat", [0.0] * len(txn_df)),
+                txn_df.get("long", [0.0] * len(txn_df)),
+            )
+        ]
+        self.G.add_edges_from(edge_edges)
 
         self._loaded = True
         return self

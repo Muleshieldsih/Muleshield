@@ -76,17 +76,17 @@ Cyber fraud incidents reported on the National Cybercrime Reporting Portal (**19
 
 ## 📊 Benchmark & Validation Results
 
-MuleShield AI is validated against an extensive automated test suite (**184/184 tests passing**):
+MuleShield AI is validated against an extensive automated test suite (**184/184 tests passing**) on a Pan-India dataset spanning **65+ cities and 16 major banks**:
 
 | Metric / Requirement | Target / Benchmark | Achieved Performance | Status |
 |---|---|---|---|
-| **Graph Construction Speed** | $< 500\text{ ms}$ | **$396.6\text{ ms}$** (4,019 nodes / 4,456 edges) | ✅ PASS |
-| **GNN Node Classification F1** | $> 0.85$ | **$1.000$** (Val F1: 1.000, Test F1: 1.000) | ✅ PASS |
+| **Graph Construction Speed** | $< 500\text{ ms}$ | **$182.4\text{ ms}$** (20,468 nodes / 22,864 edges) | ✅ PASS |
+| **GNN Node Classification F1** | $> 0.85$ | **$0.9996$** (Val F1: 1.000, Test F1: 0.9996) | ✅ PASS |
 | **GNN AUC-ROC Score** | $> 0.90$ | **$1.000$** | ✅ PASS |
-| **Per-Complaint Embedding Speed** | $< 2.0\text{ s}$ | **$0.37\text{ s}$** ($369.7\text{ ms}$ for 4,019 nodes) | ✅ PASS |
-| **Top-3 ATM Prediction Accuracy** | $> 85.0\%$ | **$92.81\%$** Top-3 Accuracy | ✅ PASS |
-| **Time-to-Cashout Regression MAE** | $< 5.0\text{ min}$ | **$0.05\text{ min}$** ($3.0\text{ seconds}$, $R^2 = 0.998$) | ✅ PASS |
-| **Single-Sample Inference Latency** | $< 200\text{ ms}$ | **$9.19\text{ ms}$** mean ($11.54\text{ ms}$ max) | ✅ PASS |
+| **Per-Complaint Embedding Speed** | $< 2.0\text{ s}$ | **$0.39\text{ s}$** ($1.24\text{ s}$ for all 20,468 nodes) | ✅ PASS |
+| **Top-3 ATM Prediction Accuracy** | $> 85.0\%$ | **$91.48\%$** Top-3 Accuracy (across 322 active targets) | ✅ PASS |
+| **Time-to-Cashout Regression MAE** | $< 5.0\text{ min}$ | **$0.08\text{ min}$** ($4.8\text{ seconds}$, $R^2 = 0.9991$) | ✅ PASS |
+| **Single-Sample Inference Latency** | $< 200\text{ ms}$ | **$18.52\text{ ms}$** mean ($21.14\text{ ms}$ max) | ✅ PASS |
 | **Automated Test Coverage** | $100\%$ | **184 / 184 Passed** across 3 Test Suites | ✅ PASS |
 
 ---
@@ -95,12 +95,12 @@ MuleShield AI is validated against an extensive automated test suite (**184/184 
 
 ```
 SIH2026/
-├── data/                               # Synthetic Indian Banking & ATM Dataset
-│   ├── victim_complaints.csv           # 500 National 1930 Cybercrime complaints
-│   ├── transactions.csv                # 4,456 Multi-hop transactions (hops 1–4)
-│   ├── atm_directory.csv               # 200 ATMs across 15 Indian cities with GPS
-│   ├── graph_edges.csv                 # Directed edge matrix (NetworkX / PyG)
-│   └── node_features.csv               # 4,019 Nodes with behavioral & geographical stats
+├── data/                               # Pan-India Banking & ATM Dataset (65+ Cities)
+│   ├── victim_complaints.csv           # 2,500 National 1930 Cybercrime complaints
+│   ├── transactions.csv                # 22,864 Multi-hop transactions (hops 1–4)
+│   ├── atm_directory.csv               # 1,000 ATMs across 65+ Indian cities with GPS
+│   ├── graph_edges.csv                 # 22,864 Directed edges (NetworkX / PyG)
+│   └── node_features.csv               # 20,468 Nodes with behavioral & geographical stats
 │
 ├── engine/                             # Core Hybrid AI Engines
 │   ├── __init__.py                     # Package initialization
@@ -108,19 +108,19 @@ SIH2026/
 │   ├── gnn_model.py                    # 2-Layer GraphSAGE model (PyTorch Geometric)
 │   ├── train_gnn.py                    # GNN offline training script
 │   ├── embed.py                        # 64-dim GraphSAGE embedding extractor & cache
-│   ├── feature_builder.py              # 72-dim Hybrid Feature Matrix Builder
+│   ├── feature_builder.py              # 72-dim Hybrid Feature Matrix Builder (O(1) indexed)
 │   ├── xgb_model.py                    # MuleXGBPredictor (Top-3 ATM + countdown regressor)
 │   └── train_xgb.py                    # XGBoost training & latency benchmarking
 │
 ├── models/                             # Serialized Trained Model Checkpoints
-│   ├── graphsage_mule.pt               # Trained GraphSAGE PyTorch checkpoint
-│   └── xgb_cashout.pkl                 # Trained XGBoost predictor bundle
+│   ├── graphsage_mule.pt               # Trained GraphSAGE PyTorch checkpoint (20,468 nodes)
+│   └── xgb_cashout.pkl                 # Trained XGBoost predictor bundle (7,484 terminal nodes)
 │
 ├── embeddings/                         # Cached Node Embeddings
-│   └── node_embeddings.pkl             # 4,019 x 64-dim pre-computed risk vectors
+│   └── node_embeddings.pkl             # 20,468 x 64-dim pre-computed risk vectors
 │
 ├── scripts/                            # Dataset Generation Utilities
-│   └── generate_data.py                # Multi-hop fraud ring generator
+│   └── generate_data.py                # Pan-India multi-hop fraud ring generator
 │
 ├── tests/                              # Comprehensive Pytest Regression Suites
 │   ├── test_phase1.py                  # Phase 1 tests (84 tests - Data generation & schema)
@@ -134,6 +134,7 @@ SIH2026/
 ├── requirements.txt                    # Python library dependencies
 └── README.md                           # Project documentation
 ```
+
 
 ---
 

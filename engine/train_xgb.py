@@ -250,9 +250,9 @@ def benchmark_inference(predictor: MuleXGBPredictor, X_test: np.ndarray, n_runs:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MuleShield AI -- Train XGBoost")
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--n-estimators", type=int, default=300)
-    parser.add_argument("--max-depth", type=int, default=6)
-    parser.add_argument("--lr", type=float, default=0.05)
+    parser.add_argument("--n-estimators", type=int, default=100)
+    parser.add_argument("--max-depth", type=int, default=5)
+    parser.add_argument("--lr", type=float, default=0.08)
     args = parser.parse_args()
 
     print("=" * 60)
@@ -265,6 +265,7 @@ if __name__ == "__main__":
         max_depth=args.max_depth,
         learning_rate=args.lr,
     )
+
 
     # Inference speed check
     print("\n[BENCHMARK] Measuring inference latency...")
