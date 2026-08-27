@@ -1,0 +1,201 @@
+atm_id,bank_name,address,city,district,state,lat,long,opening_time,closing_time,cashout_risk_score,historical_fraud_count
+ATM-388AB0D9,South Indian Bank,"H.No. 03, Parikh Road, Bathinda-156676",Hyderabad,Hyderabad,Telangana,17.347594,78.482109,00:00,21:00,0.376,80
+ATM-FEC28DBC,IDBI Bank,"75, Loke Circle, Khandwa 692845",Delhi,Central Delhi,Delhi,28.572686,77.252068,07:00,23:59,0.596,75
+ATM-18EBACF2,Canara Bank,"H.No. 44, Sandhu Chowk, Raiganj 705964",Chennai,Chennai,Tamil Nadu,13.07684,80.221415,08:00,23:59,0.335,76
+ATM-077E3847,Axis Bank,"65/820, Sarma Street, Cuttack 355690",Noida,Gautam Buddh Nagar,Uttar Pradesh,28.506438,77.452028,07:00,22:00,0.403,54
+ATM-D16E26DD,South Indian Bank,"H.No. 57, Devan Zila, Sikar-431027",Kolkata,Kolkata,West Bengal,22.614168,88.36259,00:00,22:00,0.68,66
+ATM-51A37229,Union Bank of India,"H.No. 47, Mangal Ganj, Kollam-217271",Hyderabad,Hyderabad,Telangana,17.394135,78.367277,06:00,23:59,0.196,17
+ATM-4262C9EB,UCO Bank,"18/844, Ghosh Street, Danapur 132370",Patna,Patna,Bihar,25.506559,85.229254,07:00,22:00,0.652,63
+ATM-F3B5FABF,YES Bank,"82, Chadha, Tirupati 786691",Kolkata,Kolkata,West Bengal,22.679245,88.414284,00:00,22:00,0.438,1
+ATM-3D8FFD0F,Federal Bank,"17/785, Gopal Street, Bhiwani-182422",Noida,Gautam Buddh Nagar,Uttar Pradesh,28.611062,77.360218,08:00,21:00,0.899,1
+ATM-B9A2E63E,State Bank of India,"H.No. 84, Krishna Zila, Suryapet 249818",Delhi,Central Delhi,Delhi,28.497776,77.230596,00:00,22:00,0.433,26
+ATM-FD60C866,Union Bank of India,"995, Barman, Jodhpur-943969",Kolkata,Kolkata,West Bengal,22.691028,88.298395,06:00,21:00,0.365,39
+ATM-FDB77FDB,IDBI Bank,"84/473, Mishra Marg, Srinagar 276773",Chennai,Chennai,Tamil Nadu,13.024067,80.363821,06:00,21:00,0.552,81
+ATM-01B27664,State Bank of India,"H.No. 55, De Marg, Kottayam 537147",Kolkata,Kolkata,West Bengal,22.600811,88.257044,07:00,21:00,0.164,48
+ATM-39D694CD,Kotak Mahindra Bank,"H.No. 046, Sahota, Kozhikode-953278",Noida,Gautam Buddh Nagar,Uttar Pradesh,28.541899,77.294636,00:00,22:00,0.521,37
+ATM-2A47EE62,ICICI Bank,"H.No. 70, Ramaswamy Zila, New Delhi-950047",Chandigarh,Chandigarh,Chandigarh,30.776623,76.816535,06:00,22:00,0.493,80
+ATM-CBD52A87,HDFC Bank,"01/62, Pau Road, Ambarnath-609835",Noida,Gautam Buddh Nagar,Uttar Pradesh,28.423767,77.499917,06:00,22:00,0.794,76
+ATM-085C2812,Punjab National Bank,"87, Mammen Circle, Warangal 655852",Bhopal,Bhopal,Madhya Pradesh,23.326924,77.433633,07:00,23:59,0.2,105
+ATM-6B8DF47D,ICICI Bank,"00/02, Som Path, Jalgaon-595269",Bengaluru,Bengaluru Urban,Karnataka,12.989091,77.627424,00:00,21:00,0.543,87
+ATM-6EDEA48D,Axis Bank,"88/79, Soman Road, Arrah 169409",Patna,Patna,Bihar,25.667505,85.069195,08:00,21:00,0.725,53
+ATM-35BCE3D9,Kotak Mahindra Bank,"99/309, Garde Chowk, Siliguri-091307",Hyderabad,Hyderabad,Telangana,17.480293,78.361369,06:00,21:00,0.48,67
+ATM-42E361F7,UCO Bank,"636, Sinha Circle, Durgapur 857865",Bengaluru,Bengaluru Urban,Karnataka,13.078701,77.685824,07:00,23:59,0.637,82
+ATM-CA000578,Axis Bank,"58/54, Sule, Shahjahanpur-843443",Ahmedabad,Ahmedabad,Gujarat,23.052742,72.699447,08:00,22:00,0.43,37
+ATM-C39F9F59,IndusInd Bank,"58, Mani Road, Chapra-652404",Lucknow,Lucknow,Uttar Pradesh,26.88791,80.816834,06:00,22:00,0.16,30
+ATM-AC0EAA96,ICICI Bank,"47, Jaggi Ganj, Kishanganj 219933",Lucknow,Lucknow,Uttar Pradesh,26.915951,80.990662,08:00,21:00,0.48,1
+ATM-488D3E18,ICICI Bank,"30/165, Chaudhry Chowk, Kolkata 677345",Hyderabad,Hyderabad,Telangana,17.453138,78.417066,00:00,22:00,0.2,15
+ATM-5C7E19DE,Bank of Baroda,"H.No. 938, Gill Nagar, Belgaum 672400",Chandigarh,Chandigarh,Chandigarh,30.681656,76.665845,06:00,23:59,0.295,105
+ATM-58AB6605,Federal Bank,"H.No. 47, Viswanathan Circle, Guntur 431527",Noida,Gautam Buddh Nagar,Uttar Pradesh,28.421359,77.382866,07:00,22:00,0.649,106
+ATM-829C870C,Kotak Mahindra Bank,"H.No. 549, Gill Ganj, Purnia 161227",Hyderabad,Hyderabad,Telangana,17.477491,78.484887,06:00,23:59,0.456,111
+ATM-766E15A9,Axis Bank,"H.No. 463, Loke Chowk, Barasat 453017",Delhi,Central Delhi,Delhi,28.727918,77.217288,08:00,22:00,0.99,102
+ATM-740E7130,Kotak Mahindra Bank,"84, Merchant Zila, Srikakulam 327279",Pune,Pune,Maharashtra,18.394318,73.857641,06:00,23:59,0.551,86
+ATM-C79F4174,Federal Bank,"87/833, Bumb, Dehri 191088",Delhi,Central Delhi,Delhi,28.535309,77.077367,08:00,23:59,0.663,76
+ATM-61739E91,Federal Bank,"587, Jha Zila, Mysore-072867",Jaipur,Jaipur,Rajasthan,26.823143,75.857468,06:00,22:00,0.383,41
+ATM-D4A12BC7,Bank of Baroda,"40/640, Bora Ganj, Bhusawal 180170",Patna,Patna,Bihar,25.696923,85.019801,07:00,21:00,0.954,107
+ATM-773351EF,Canara Bank,"265, Sen Marg, Gandhinagar 825128",Chennai,Chennai,Tamil Nadu,13.203788,80.324217,07:00,22:00,0.157,29
+ATM-9C4683B0,Kotak Mahindra Bank,"30/047, Samra Circle, Berhampur-752431",Bengaluru,Bengaluru Urban,Karnataka,13.043361,77.555531,07:00,21:00,0.532,103
+ATM-E99ADCC2,Federal Bank,"03/31, Bandi Zila, Khora  306738",Kolkata,Kolkata,West Bengal,22.581206,88.494467,08:00,21:00,0.294,107
+ATM-B3492004,UCO Bank,"843, Nagar, Patiala-283644",Ahmedabad,Ahmedabad,Gujarat,23.148754,72.627399,07:00,23:59,0.59,97
+ATM-05871AA8,South Indian Bank,"68/705, Vohra Marg, Erode 246287",Noida,Gautam Buddh Nagar,Uttar Pradesh,28.621699,77.340912,06:00,23:59,0.66,69
+ATM-77341A3E,Federal Bank,"H.No. 27, Sachar Nagar, Proddatur-634351",Bengaluru,Bengaluru Urban,Karnataka,12.856618,77.583775,08:00,22:00,0.272,4
+ATM-78FB4B52,IndusInd Bank,"H.No. 830, Purohit Road, Srinagar-983735",Bengaluru,Bengaluru Urban,Karnataka,12.852758,77.571278,00:00,21:00,0.619,69
+ATM-2A293E08,Axis Bank,"317, Jayaraman Ganj, Mathura 467854",Kolkata,Kolkata,West Bengal,22.636176,88.497005,06:00,22:00,0.616,55
+ATM-29EB0DC0,Bank of Baroda,"77/17, Jani Path, Satara 093204",Lucknow,Lucknow,Uttar Pradesh,26.727925,81.016309,08:00,23:59,0.292,31
+ATM-DC046E5B,South Indian Bank,"353, Korpal Marg, Jamalpur-477725",Jaipur,Jaipur,Rajasthan,26.858128,75.853664,06:00,21:00,0.306,30
+ATM-C14693A6,Federal Bank,"87/280, Bandi Circle, Nashik-623120",Mumbai,Mumbai City,Maharashtra,19.15098,72.898804,07:00,23:59,0.547,35
+ATM-EE0073E6,YES Bank,"H.No. 09, Subramanian, Pune-886008",Bengaluru,Bengaluru Urban,Karnataka,12.958646,77.551087,07:00,21:00,0.29,60
+ATM-EEA20FC5,Federal Bank,"H.No. 862, Char Zila, New Delhi 984546",Kolkata,Kolkata,West Bengal,22.691132,88.401189,00:00,21:00,0.341,25
+ATM-66E49B5D,YES Bank,"79, Kara Ganj, Jodhpur 166687",Gurgaon,Gurugram,Haryana,28.584234,77.160484,06:00,22:00,0.843,11
+ATM-0556BEE7,Canara Bank,"21/765, Chandran, Berhampur 974014",Noida,Gautam Buddh Nagar,Uttar Pradesh,28.58012,77.457876,06:00,21:00,0.634,118
+ATM-2A2F4114,IDBI Bank,"H.No. 03, Dhawan, Solapur 293968",Kolkata,Kolkata,West Bengal,22.683215,88.330882,07:00,22:00,0.661,53
+ATM-F9B7AD42,IDBI Bank,"21/850, Sarkar Zila, Aurangabad 999650",Patna,Patna,Bihar,25.507577,85.243618,08:00,23:59,0.529,26
+ATM-568709E9,IndusInd Bank,"35, Prashad Circle, Gaya 194311",Kolkata,Kolkata,West Bengal,22.530584,88.497299,08:00,21:00,0.382,23
+ATM-89BCC88F,Canara Bank,"26, Patel Path, Mysore 475412",Kolkata,Kolkata,West Bengal,22.463406,88.496569,00:00,21:00,0.214,19
+ATM-0031A9EE,ICICI Bank,"78, Vala Circle, Kota 158199",Lucknow,Lucknow,Uttar Pradesh,26.866135,80.88688,06:00,21:00,0.563,28
+ATM-4AC94C4A,ICICI Bank,"H.No. 466, Kibe Zila, Nadiad 244472",Kolkata,Kolkata,West Bengal,22.641159,88.229029,08:00,23:59,0.663,44
+ATM-78C64B02,Axis Bank,"46, Sule Road, Karimnagar 379937",Jaipur,Jaipur,Rajasthan,26.933958,75.886636,07:00,22:00,0.157,43
+ATM-2BE49230,Bank of Baroda,"H.No. 06, Rai Path, Gandhidham 692459",Pune,Pune,Maharashtra,18.402677,73.867283,06:00,23:59,0.199,33
+ATM-5EC1DAE5,YES Bank,"H.No. 26, Manne Path, Ramgarh-564651",Delhi,Central Delhi,Delhi,28.492594,77.136633,00:00,23:59,0.641,115
+ATM-0DB2D635,South Indian Bank,"80/737, Biswas Road, Panchkula-434266",Gurgaon,Gurugram,Haryana,28.460875,77.007976,07:00,21:00,0.514,1
+ATM-75ABEBA4,Punjab National Bank,"79/68, Sahota Circle, Karimnagar 135290",Chennai,Chennai,Tamil Nadu,13.104206,80.339621,07:00,22:00,0.671,12
+ATM-326D266B,Canara Bank,"10, Kuruvilla Zila, Sasaram-756798",Bhopal,Bhopal,Madhya Pradesh,23.339145,77.43536,06:00,23:59,0.362,24
+ATM-5AB999F6,ICICI Bank,"H.No. 714, Chada Marg, Ajmer-457387",Patna,Patna,Bihar,25.658734,85.101569,06:00,21:00,0.715,52
+ATM-A85286A6,South Indian Bank,"H.No. 775, Mital Zila, Raipur 512382",Kolkata,Kolkata,West Bengal,22.522256,88.30773,07:00,22:00,0.475,49
+ATM-9308D3F5,State Bank of India,"67/36, Grewal Street, Tenali-937966",Jaipur,Jaipur,Rajasthan,26.961071,75.874869,06:00,23:59,0.666,2
+ATM-CC9145D1,UCO Bank,"419, Yadav Zila, Ambarnath 371478",Gurgaon,Gurugram,Haryana,28.554375,77.038593,07:00,22:00,0.506,59
+ATM-AF821669,South Indian Bank,"69/15, Shankar Path, Bihar Sharif 251341",Chandigarh,Chandigarh,Chandigarh,30.777727,76.750463,06:00,23:59,0.147,2
+ATM-71BB4E62,Federal Bank,"28/669, Rajagopal Street, Gaya-828274",Kolkata,Kolkata,West Bengal,22.516793,88.240084,08:00,23:59,0.381,65
+ATM-4BDD6F4A,YES Bank,"H.No. 79, Parmer Nagar, Shivpuri-368876",Delhi,Central Delhi,Delhi,28.542445,77.129942,07:00,21:00,0.934,6
+ATM-35687D20,Union Bank of India,"77/219, Kannan Nagar, Patna-384279",Bhopal,Bhopal,Madhya Pradesh,23.343668,77.489057,07:00,21:00,0.5,10
+ATM-7E95769D,IndusInd Bank,"14/85, Barman Circle, Bongaigaon-613407",Noida,Gautam Buddh Nagar,Uttar Pradesh,28.517421,77.525795,06:00,21:00,0.552,4
+ATM-10D4F5F1,Axis Bank,"H.No. 713, Panchal Ganj, Dehradun 330958",Noida,Gautam Buddh Nagar,Uttar Pradesh,28.416868,77.512824,08:00,23:59,0.459,98
+ATM-15A3DFB2,Canara Bank,"H.No. 44, Loke, Bhavnagar 042232",Hyderabad,Hyderabad,Telangana,17.298223,78.554737,07:00,22:00,0.186,107
+ATM-1533298F,Bank of Baroda,"67/294, Prashad Marg, Aurangabad 684577",Pune,Pune,Maharashtra,18.404824,73.924303,07:00,22:00,0.42,78
+ATM-C6FCA06C,South Indian Bank,"17/518, Kamdar Marg, Rajpur Sonarpur 454589",Chandigarh,Chandigarh,Chandigarh,30.82885,76.746525,07:00,23:59,0.198,97
+ATM-CF602ABB,Federal Bank,"H.No. 00, Sharaf Zila, Amravati-770632",Noida,Gautam Buddh Nagar,Uttar Pradesh,28.571677,77.394095,00:00,23:59,0.716,48
+ATM-2E3ABC40,IDBI Bank,"H.No. 15, Butala Road, Dehradun 643611",Patna,Patna,Bihar,25.571011,85.014292,00:00,23:59,0.796,110
+ATM-88F1AB08,Canara Bank,"12, Kara, Bangalore 516271",Chandigarh,Chandigarh,Chandigarh,30.599821,76.757465,00:00,22:00,0.111,33
+ATM-88E5A696,UCO Bank,"H.No. 115, Mistry Path, Eluru-218909",Jaipur,Jaipur,Rajasthan,26.867941,75.790303,00:00,21:00,0.481,48
+ATM-3C13876F,South Indian Bank,"H.No. 32, Savant Marg, Chandigarh-219656",Bhopal,Bhopal,Madhya Pradesh,23.161007,77.36186,00:00,22:00,0.144,49
+ATM-C283FDA4,IndusInd Bank,"413, Mane Circle, Barasat 898364",Chennai,Chennai,Tamil Nadu,13.095048,80.213373,06:00,23:59,0.692,116
+ATM-61190121,HDFC Bank,"61, Tata Ganj, Dehri 552696",Hyderabad,Hyderabad,Telangana,17.344229,78.588011,07:00,23:59,0.647,114
+ATM-673E50AC,Axis Bank,"10, Bir, Firozabad 006848",Patna,Patna,Bihar,25.600811,85.055179,07:00,23:59,0.56,58
+ATM-FA288D10,HDFC Bank,"61/889, Mall Street, Tirupati-832856",Patna,Patna,Bihar,25.477254,85.252466,06:00,21:00,0.812,66
+ATM-E4B4B5CC,Bank of Baroda,"63/031, D’Alia Marg, Pudukkottai 421020",Delhi,Central Delhi,Delhi,28.524422,77.252574,07:00,21:00,0.415,119
+ATM-80AF3625,IDBI Bank,"H.No. 88, Ganesan Road, Cuttack-105648",Delhi,Central Delhi,Delhi,28.705936,77.191087,07:00,23:59,0.457,119
+ATM-CC9CDDD1,Axis Bank,"91/778, Bhakta Path, Tezpur 524191",Jaipur,Jaipur,Rajasthan,26.831103,75.685154,07:00,22:00,0.558,73
+ATM-036C145D,YES Bank,"H.No. 030, Patla Chowk, Jalgaon-086353",Bengaluru,Bengaluru Urban,Karnataka,12.932906,77.65826,06:00,22:00,0.14,96
+ATM-91F2D9AC,YES Bank,"H.No. 19, Dar Path, Mangalore-806174",Ahmedabad,Ahmedabad,Gujarat,22.935412,72.437829,00:00,22:00,0.57,100
+ATM-B887C1C8,IndusInd Bank,"H.No. 870, Iyer Path, Phusro 937597",Gurgaon,Gurugram,Haryana,28.337219,77.049981,07:00,23:59,1.0,14
+ATM-1D5F3975,Federal Bank,"060, Pal Ganj, Thanjavur-641383",Chennai,Chennai,Tamil Nadu,13.183494,80.28355,06:00,22:00,0.172,77
+ATM-ECC122BD,Canara Bank,"H.No. 241, Kata Nagar, Serampore-191826",Gurgaon,Gurugram,Haryana,28.41468,76.903759,00:00,22:00,0.597,94
+ATM-810CE7C6,Axis Bank,"23, Lal Road, Singrauli 574313",Lucknow,Lucknow,Uttar Pradesh,26.748287,81.013723,06:00,21:00,0.46,37
+ATM-AA0EB80A,Axis Bank,"127, Murthy Chowk, Jamshedpur-374741",Delhi,Central Delhi,Delhi,28.545539,77.334463,07:00,23:59,0.85,94
+ATM-AE7DC03B,YES Bank,"49/035, Chand Street, Raurkela Industrial Township 804420",Gurgaon,Gurugram,Haryana,28.455809,77.053723,06:00,21:00,0.888,29
+ATM-31057DE0,Union Bank of India,"83/17, Dey Zila, Ahmedabad-323651",Pune,Pune,Maharashtra,18.46518,73.926614,06:00,22:00,0.659,82
+ATM-6828A284,Canara Bank,"H.No. 137, Chanda Street, Bhilai 702966",Bengaluru,Bengaluru Urban,Karnataka,12.905895,77.62058,06:00,21:00,0.455,71
+ATM-DD9DAE55,YES Bank,"62, Kala Path, Panipat-720999",Bengaluru,Bengaluru Urban,Karnataka,13.035756,77.464643,00:00,21:00,0.235,52
+ATM-5198BAF0,IndusInd Bank,"68, Bhat Chowk, Parbhani-263838",Pune,Pune,Maharashtra,18.607192,73.799263,06:00,23:59,0.347,75
+ATM-2BEDA28D,IndusInd Bank,"57/875, Thakkar, Munger 205930",Delhi,Central Delhi,Delhi,28.618047,77.293362,00:00,22:00,0.6,119
+ATM-A1BD6F60,IndusInd Bank,"85, Kaul, Salem 348039",Kolkata,Kolkata,West Bengal,22.66853,88.407357,00:00,22:00,0.301,15
+ATM-D10299A7,Union Bank of India,"239, Parmer Path, Nagercoil-937842",Gurgaon,Gurugram,Haryana,28.570664,77.01758,00:00,21:00,0.502,6
+ATM-B9866F6E,Kotak Mahindra Bank,"H.No. 039, Bahri Ganj, Mumbai-932525",Pune,Pune,Maharashtra,18.463357,73.848733,00:00,21:00,0.515,9
+ATM-BDD311B1,Kotak Mahindra Bank,"921, Patla Circle, Dindigul 915452",Noida,Gautam Buddh Nagar,Uttar Pradesh,28.531291,77.323817,00:00,23:59,0.829,90
+ATM-6E09B8CF,Punjab National Bank,"75/289, Kapoor Path, Burhanpur-422096",Bengaluru,Bengaluru Urban,Karnataka,12.943082,77.643141,07:00,21:00,0.402,50
+ATM-67DD5C65,Bank of Baroda,"59/39, Taneja Zila, Bathinda 355215",Jaipur,Jaipur,Rajasthan,27.029544,75.856033,07:00,21:00,0.387,48
+ATM-739456D0,Canara Bank,"H.No. 33, Palla Zila, Moradabad-067626",Hyderabad,Hyderabad,Telangana,17.50544,78.471155,08:00,21:00,0.231,7
+ATM-DE4716B6,YES Bank,"H.No. 86, Srinivas Zila, Ujjain-104054",Pune,Pune,Maharashtra,18.615319,73.93641,06:00,23:59,0.258,71
+ATM-ECA65414,HDFC Bank,"H.No. 26, Borde Street, Sonipat 062962",Kolkata,Kolkata,West Bengal,22.43789,88.346699,06:00,22:00,0.457,107
+ATM-0E938382,Federal Bank,"H.No. 33, Zachariah Marg, Ichalkaranji 310698",Gurgaon,Gurugram,Haryana,28.538018,77.074811,07:00,23:59,0.751,39
+ATM-7E86E438,Axis Bank,"H.No. 506, Menon Zila, Kollam-032417",Ahmedabad,Ahmedabad,Gujarat,22.95414,72.534918,06:00,22:00,0.341,77
+ATM-28134649,YES Bank,"77, Chand Road, Udaipur 652704",Lucknow,Lucknow,Uttar Pradesh,26.800378,81.074382,08:00,22:00,0.324,71
+ATM-6F65E3F4,Punjab National Bank,"H.No. 34, Bhatia, Jalandhar-586938",Kolkata,Kolkata,West Bengal,22.690254,88.287421,08:00,23:59,0.544,51
+ATM-41E51961,Kotak Mahindra Bank,"68/79, Soni Ganj, Vijayawada 089899",Kolkata,Kolkata,West Bengal,22.456248,88.313927,00:00,23:59,0.257,43
+ATM-B56CCD91,Axis Bank,"22, Hans Ganj, Kalyan-Dombivli-163294",Chennai,Chennai,Tamil Nadu,13.051747,80.207898,06:00,21:00,0.466,28
+ATM-42F5D733,State Bank of India,"H.No. 686, Nanda Circle, Saharsa 099861",Mumbai,Mumbai City,Maharashtra,19.199329,72.948747,07:00,23:59,0.615,94
+ATM-D50AED50,IDBI Bank,"999, Cherian Zila, Baranagar-646799",Chandigarh,Chandigarh,Chandigarh,30.827696,76.655553,07:00,23:59,0.492,23
+ATM-DB54E4E8,UCO Bank,"462, Ratti, Tenali-307450",Patna,Patna,Bihar,25.610006,85.128948,00:00,23:59,0.542,10
+ATM-5455A742,Punjab National Bank,"H.No. 47, Kari Zila, Dewas 546913",Ahmedabad,Ahmedabad,Gujarat,23.106197,72.568382,08:00,22:00,0.532,34
+ATM-519DD9E5,IDBI Bank,"78, Bhalla Path, Amritsar-862890",Chennai,Chennai,Tamil Nadu,13.00208,80.370545,08:00,23:59,0.37,35
+ATM-F48A0C5A,YES Bank,"030, Bedi Chowk, Davanagere-578610",Ahmedabad,Ahmedabad,Gujarat,23.144869,72.447035,08:00,21:00,0.69,8
+ATM-5F02332E,UCO Bank,"97, Som Street, Hapur-414060",Pune,Pune,Maharashtra,18.483804,73.93558,07:00,21:00,0.686,61
+ATM-A9985203,Kotak Mahindra Bank,"334, Varghese Marg, Bangalore-229034",Mumbai,Mumbai City,Maharashtra,19.105621,72.767995,06:00,21:00,0.958,32
+ATM-75A1C3DC,State Bank of India,"65, Krishnan Chowk, Kirari Suleman Nagar 896910",Bengaluru,Bengaluru Urban,Karnataka,12.96353,77.705012,00:00,23:59,0.341,66
+ATM-C0E9EEFF,Federal Bank,"H.No. 17, Nayar Zila, Anantapur 443283",Lucknow,Lucknow,Uttar Pradesh,26.717019,81.030081,08:00,22:00,0.523,54
+ATM-487AD4ED,UCO Bank,"52/074, Sahota Road, Munger 993538",Jaipur,Jaipur,Rajasthan,26.852377,75.710159,06:00,23:59,0.384,114
+ATM-FD9B4B73,IndusInd Bank,"42/82, Chatterjee Road, Warangal-825135",Kolkata,Kolkata,West Bengal,22.615907,88.365589,00:00,21:00,0.497,92
+ATM-8EA06294,Canara Bank,"55, Menon Road, Kochi-099917",Chandigarh,Chandigarh,Chandigarh,30.753887,76.671526,08:00,23:59,0.292,29
+ATM-DA2D9AD9,Canara Bank,"68/460, Devan Street, Tiruvottiyur-972521",Mumbai,Mumbai City,Maharashtra,19.024163,72.761523,07:00,22:00,0.419,71
+ATM-93D5411E,South Indian Bank,"25/007, Kadakia Road, Gangtok-712966",Lucknow,Lucknow,Uttar Pradesh,26.824965,81.063239,06:00,22:00,0.166,41
+ATM-95B1B582,YES Bank,"60, Walla Nagar, Dindigul-583003",Chennai,Chennai,Tamil Nadu,13.135197,80.284002,06:00,21:00,0.14,107
+ATM-71AC0E5E,HDFC Bank,"H.No. 21, Thakur Marg, Rourkela-044789",Gurgaon,Gurugram,Haryana,28.553958,77.096368,07:00,21:00,0.774,21
+ATM-7749F3CF,Punjab National Bank,"25/753, Raval Street, Ambattur 230982",Ahmedabad,Ahmedabad,Gujarat,23.14555,72.593697,08:00,23:59,0.475,81
+ATM-3495624A,Union Bank of India,"06/489, Bava Nagar, Jaipur 167618",Pune,Pune,Maharashtra,18.41227,73.909589,07:00,22:00,0.506,24
+ATM-B7641063,Kotak Mahindra Bank,"23/046, Venkatesh Zila, Medininagar 618914",Lucknow,Lucknow,Uttar Pradesh,26.772892,81.001918,08:00,22:00,0.267,26
+ATM-50A28367,HDFC Bank,"39, Lall Ganj, Secunderabad 420873",Kolkata,Kolkata,West Bengal,22.524185,88.381599,00:00,22:00,0.683,105
+ATM-38D0E3CA,HDFC Bank,"001, Tak Zila, Mysore-143744",Hyderabad,Hyderabad,Telangana,17.452939,78.577135,00:00,22:00,0.253,95
+ATM-81E5DA27,Punjab National Bank,"H.No. 204, Munshi Path, Bhiwandi-002255",Delhi,Central Delhi,Delhi,28.480056,77.27558,08:00,22:00,0.563,52
+ATM-FD09A52E,State Bank of India,"15/521, Ratta Marg, Darbhanga-762120",Gurgaon,Gurugram,Haryana,28.388809,77.12429,08:00,22:00,0.474,99
+ATM-4FF4E45E,State Bank of India,"97, Sarma, Phagwara-590277",Chennai,Chennai,Tamil Nadu,13.15533,80.299691,08:00,21:00,0.195,94
+ATM-CBB7AA21,ICICI Bank,"01, Murthy Road, Loni 588916",Gurgaon,Gurugram,Haryana,28.522467,77.027493,07:00,23:59,0.939,58
+ATM-665A8B15,South Indian Bank,"H.No. 62, Bhagat Circle, Sangli-Miraj & Kupwad-721753",Mumbai,Mumbai City,Maharashtra,19.141579,72.812463,08:00,21:00,0.753,105
+ATM-E5EAB1E2,IDBI Bank,"H.No. 838, Rau Marg, Vijayawada 797177",Ahmedabad,Ahmedabad,Gujarat,22.92769,72.669723,08:00,21:00,0.169,24
+ATM-260C97ED,YES Bank,"01, Sachar Marg, Proddatur 199488",Hyderabad,Hyderabad,Telangana,17.360099,78.57427,07:00,22:00,0.293,93
+ATM-CAA55670,Bank of Baroda,"H.No. 50, Sha Ganj, Karaikudi-571130",Kolkata,Kolkata,West Bengal,22.681069,88.353479,06:00,21:00,0.436,61
+ATM-2743D93A,South Indian Bank,"48/851, Gala Nagar, Kolhapur 149331",Noida,Gautam Buddh Nagar,Uttar Pradesh,28.646381,77.482759,06:00,22:00,0.594,82
+ATM-7CF3AEE8,IDBI Bank,"35, Sachdeva Zila, Giridih-779827",Ahmedabad,Ahmedabad,Gujarat,22.902268,72.552525,08:00,23:59,0.584,71
+ATM-D9BC8CD2,Bank of Baroda,"69/78, Ghose Street, Vasai-Virar 995866",Mumbai,Mumbai City,Maharashtra,19.134031,72.743111,08:00,22:00,0.781,118
+ATM-6AE7BFC1,Axis Bank,"54, Deol Chowk, Haridwar-858333",Lucknow,Lucknow,Uttar Pradesh,26.716976,80.827624,07:00,22:00,0.655,101
+ATM-38D552A7,State Bank of India,"22/885, Pandey Zila, Ballia 846081",Delhi,Central Delhi,Delhi,28.558094,77.128183,08:00,22:00,0.46,59
+ATM-A9978982,Bank of Baroda,"003, Dyal Road, Chandrapur 043805",Gurgaon,Gurugram,Haryana,28.454175,77.161644,06:00,22:00,0.663,73
+ATM-0A534485,IDBI Bank,"83/86, Vaidya Ganj, Nashik-665800",Lucknow,Lucknow,Uttar Pradesh,26.897654,80.838791,07:00,23:59,0.358,52
+ATM-64D1D86F,Federal Bank,"73/59, Hegde Circle, Durg 212281",Patna,Patna,Bihar,25.664661,85.050694,06:00,21:00,0.818,92
+ATM-FF1DF689,UCO Bank,"48, De Road, Bhimavaram-057202",Chandigarh,Chandigarh,Chandigarh,30.60452,76.723754,00:00,22:00,0.407,116
+ATM-8B113351,IDBI Bank,"94/798, Bora Path, Hajipur 281826",Hyderabad,Hyderabad,Telangana,17.374691,78.388185,08:00,23:59,0.619,18
+ATM-89631DE9,IDBI Bank,"H.No. 33, Narula Path, Durg-987801",Bengaluru,Bengaluru Urban,Karnataka,12.920792,77.716426,06:00,21:00,0.338,8
+ATM-FA46BFB2,Bank of Baroda,"993, Nagi Nagar, Raipur 484085",Kolkata,Kolkata,West Bengal,22.520973,88.342551,06:00,22:00,0.631,53
+ATM-2CD0A57D,State Bank of India,"H.No. 435, Butala Circle, Rourkela-133613",Bhopal,Bhopal,Madhya Pradesh,23.201186,77.495546,06:00,21:00,0.693,5
+ATM-12D91AC6,IndusInd Bank,"20/750, Borah Zila, Mangalore-819346",Mumbai,Mumbai City,Maharashtra,19.058659,72.74836,00:00,22:00,0.816,90
+ATM-3517BF68,YES Bank,"66/506, Warrior Zila, Tadipatri-901581",Lucknow,Lucknow,Uttar Pradesh,26.806408,80.990287,00:00,23:59,0.211,32
+ATM-B3B8D66B,State Bank of India,"14/76, Balasubramanian Marg, Sangli-Miraj & Kupwad 268424",Lucknow,Lucknow,Uttar Pradesh,26.880168,81.078821,06:00,23:59,0.236,101
+ATM-FD4DD134,YES Bank,"82/10, Ramesh Nagar, Farrukhabad 536822",Jaipur,Jaipur,Rajasthan,26.792244,75.872149,08:00,22:00,0.359,51
+ATM-EBC0040A,Bank of Baroda,"43/12, Bhagat, Jamalpur-414139",Pune,Pune,Maharashtra,18.562558,73.809219,06:00,22:00,0.542,20
+ATM-5914AA4C,IndusInd Bank,"H.No. 23, Mane Zila, Jammu-775949",Jaipur,Jaipur,Rajasthan,26.808054,75.885255,07:00,23:59,0.687,42
+ATM-DFA45E82,Axis Bank,"H.No. 62, Munshi Nagar, Korba-452577",Lucknow,Lucknow,Uttar Pradesh,26.756609,81.072232,00:00,22:00,0.547,70
+ATM-327A036C,IndusInd Bank,"H.No. 78, Gill Zila, Parbhani-834110",Delhi,Central Delhi,Delhi,28.577601,77.314261,00:00,22:00,0.544,57
+ATM-010CAE11,Axis Bank,"30/84, Zacharia Circle, Jalgaon 639427",Gurgaon,Gurugram,Haryana,28.355647,76.993671,08:00,22:00,0.884,45
+ATM-0D8520B2,Bank of Baroda,"H.No. 80, Gandhi Ganj, Amroha 299275",Bhopal,Bhopal,Madhya Pradesh,23.225384,77.387941,00:00,22:00,0.289,1
+ATM-16F431B5,IDBI Bank,"31, Pingle Road, Kalyan-Dombivli 856770",Bengaluru,Bengaluru Urban,Karnataka,13.016355,77.72481,06:00,21:00,0.105,47
+ATM-03BD7453,State Bank of India,"H.No. 844, Ghosh, Burhanpur 918463",Kolkata,Kolkata,West Bengal,22.545162,88.36193,07:00,23:59,0.579,16
+ATM-14AD53F7,YES Bank,"H.No. 77, Ahuja, Gandhidham-318432",Mumbai,Mumbai City,Maharashtra,19.033749,72.924627,08:00,21:00,0.75,22
+ATM-33690DF2,South Indian Bank,"H.No. 91, Sachdeva Ganj, Raipur-773926",Chandigarh,Chandigarh,Chandigarh,30.684101,76.751602,08:00,23:59,0.19,40
+ATM-9B1B282A,Canara Bank,"H.No. 299, Desai Street, Chapra 024286",Delhi,Central Delhi,Delhi,28.488222,77.249042,07:00,23:59,0.601,46
+ATM-6C612E96,HDFC Bank,"H.No. 379, Subramaniam Chowk, Muzaffarnagar 929298",Chennai,Chennai,Tamil Nadu,13.163873,80.392721,08:00,21:00,0.624,46
+ATM-27CCF47D,HDFC Bank,"57/991, Radhakrishnan Ganj, Mira-Bhayandar 038862",Bhopal,Bhopal,Madhya Pradesh,23.282881,77.405741,07:00,23:59,0.413,8
+ATM-D82E73D5,Federal Bank,"99, Wali Nagar, Tiruchirappalli 298068",Gurgaon,Gurugram,Haryana,28.44716,76.944947,07:00,22:00,0.859,67
+ATM-1C0005EF,IndusInd Bank,"H.No. 863, Raj Chowk, Giridih-624731",Delhi,Central Delhi,Delhi,28.659586,77.242625,06:00,23:59,0.696,25
+ATM-74F3B55B,Punjab National Bank,"H.No. 30, Virk Nagar, Saharsa 635651",Hyderabad,Hyderabad,Telangana,17.456161,78.458784,00:00,22:00,0.51,19
+ATM-71C3BE8F,IDBI Bank,"94/486, Pau, Sikar-688725",Patna,Patna,Bihar,25.706517,85.210579,06:00,23:59,0.549,108
+ATM-1B2B7AE3,IndusInd Bank,"H.No. 95, Devi Marg, Berhampur-213865",Patna,Patna,Bihar,25.529697,85.239964,00:00,23:59,0.67,13
+ATM-F2662DC7,Punjab National Bank,"01, Sinha Street, Hubli–Dharwad 435190",Kolkata,Kolkata,West Bengal,22.624218,88.274123,00:00,21:00,0.532,71
+ATM-A15EC713,Union Bank of India,"84/90, Talwar Street, Hyderabad-843098",Pune,Pune,Maharashtra,18.397038,73.948611,07:00,23:59,0.461,57
+ATM-D4753AF1,YES Bank,"05/302, Majumdar Zila, Nagercoil-693801",Patna,Patna,Bihar,25.71529,85.152141,00:00,23:59,0.859,114
+ATM-C8B37DAF,Canara Bank,"89/554, Hayer Ganj, Sambhal 426818",Kolkata,Kolkata,West Bengal,22.467185,88.432569,00:00,21:00,0.461,1
+ATM-D3B6FB17,Union Bank of India,"H.No. 18, Yogi Road, Mango 973577",Bhopal,Bhopal,Madhya Pradesh,23.129661,77.41665,00:00,22:00,0.584,109
+ATM-C95DE231,IndusInd Bank,"H.No. 416, Karpe Ganj, Haridwar 880434",Chandigarh,Chandigarh,Chandigarh,30.86553,76.655562,00:00,23:59,0.172,27
+ATM-38E08A1D,Punjab National Bank,"51/827, Pandya Path, Chapra 237333",Lucknow,Lucknow,Uttar Pradesh,26.938417,80.902934,00:00,21:00,0.12,92
+ATM-D25E9E0A,South Indian Bank,"339, Dugal Path, Jamshedpur 790807",Delhi,Central Delhi,Delhi,28.570414,77.338981,07:00,21:00,0.826,66
+ATM-0B5A9B2D,IDBI Bank,"94, Goswami Chowk, Sikar 920867",Bhopal,Bhopal,Madhya Pradesh,23.302411,77.496481,00:00,21:00,0.455,23
+ATM-4A710C58,HDFC Bank,"27, Vasa Zila, Satna 036915",Patna,Patna,Bihar,25.522725,85.020975,08:00,21:00,0.647,38
+ATM-B08C62EE,Canara Bank,"843, Sinha Road, Ambarnath 763655",Delhi,Central Delhi,Delhi,28.719227,77.333541,07:00,22:00,0.445,57
+ATM-B33A0ADB,Federal Bank,"29, Karnik Street, Gopalpur-866322",Hyderabad,Hyderabad,Telangana,17.459535,78.390534,07:00,21:00,0.169,67
+ATM-29343B17,Federal Bank,"672, Walla Circle, Morbi-489061",Mumbai,Mumbai City,Maharashtra,19.048038,72.785455,07:00,21:00,0.674,65
+ATM-0BE2E0A6,Federal Bank,"471, Natt Chowk, Karimnagar-884506",Kolkata,Kolkata,West Bengal,22.6492,88.29997,07:00,21:00,0.641,9
+ATM-8132FDC4,Federal Bank,"93/998, Mane Street, Anantapur 716947",Gurgaon,Gurugram,Haryana,28.429444,77.124432,06:00,23:59,0.489,10
+ATM-6DCD7B20,IDBI Bank,"56/996, Buch Zila, Tiruvottiyur-554496",Bhopal,Bhopal,Madhya Pradesh,23.194959,77.39442,07:00,22:00,0.35,91
+ATM-3C300107,South Indian Bank,"H.No. 98, Sachdev Chowk, Udaipur 234132",Bhopal,Bhopal,Madhya Pradesh,23.157193,77.390862,00:00,23:59,0.313,2
+ATM-43500CD5,Punjab National Bank,"H.No. 178, Bal Nagar, Loni-149216",Ahmedabad,Ahmedabad,Gujarat,23.055911,72.665823,08:00,22:00,0.282,83
+ATM-62A46FF1,HDFC Bank,"472, Vyas Street, Bhopal 557784",Hyderabad,Hyderabad,Telangana,17.323019,78.362231,07:00,23:59,0.331,101
+ATM-D8C1971F,South Indian Bank,"82/997, Saran, Sri Ganganagar-831745",Gurgaon,Gurugram,Haryana,28.532166,77.120389,06:00,22:00,0.414,114
+ATM-00608237,IDBI Bank,"400, Deshpande Circle, Baranagar-807740",Kolkata,Kolkata,West Bengal,22.685427,88.332967,06:00,22:00,0.156,12
+ATM-10E67294,South Indian Bank,"30/85, Sabharwal Ganj, Tenali-266341",Mumbai,Mumbai City,Maharashtra,19.121811,72.896216,07:00,22:00,0.889,32

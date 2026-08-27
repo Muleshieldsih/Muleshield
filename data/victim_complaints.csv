@@ -1,0 +1,501 @@
+ticket_id,victim_name,victim_bank,victim_account,fraud_type,stolen_amount,complaint_timestamp,city,state
+20aab247-1767-4d22-b25f-ff69332fe3c6,Aryan Maharaj,IndusInd Bank,1409-5506-5012,Job Scam,74071.27,2026-06-09T00:24:30,Noida,Uttar Pradesh
+65d78397-22fa-447f-a6a9-b922cb316305,Udant Dewan,IndusInd Bank,9935-2424-7912,Digital Arrest,19749.62,2026-06-20T07:02:27,Lucknow,Uttar Pradesh
+72522edd-e904-4525-8c91-f641192045c1,Gagan Sami,Axis Bank,1434-4257-9928,Investment Scam,114118.11,2026-07-26T06:39:57,Kolkata,West Bengal
+e9aeb824-4a8c-4373-abe0-f7ad4d3aad44,Ayushman Chander,Punjab National Bank,1106-3615-7924,UPI Fraud,142546.31,2026-06-19T23:17:41,Patna,Bihar
+592ac665-e2a5-4a83-b24b-89eb9690d8ee,Viraj Tiwari,YES Bank,2674-2519-7224,Digital Arrest,182694.79,2026-07-02T11:03:08,Bengaluru,Karnataka
+f44c1994-7846-4569-8c17-a91960888185,Rushil Saini,UCO Bank,1711-8527-9785,Digital Arrest,486692.3,2026-07-05T19:37:35,Pune,Maharashtra
+f2986093-d9fe-4c0a-8425-9ed431807cd6,Saumya Mall,HDFC Bank,5803-6925-4150,Digital Arrest,27683.07,2026-06-21T04:37:08,Kolkata,West Bengal
+4598ea58-71b6-4208-9b6b-174e1a253e80,Nathaniel Sami,YES Bank,2307-4814-2654,Investment Scam,142596.93,2026-07-30T18:49:46,Pune,Maharashtra
+59fe7b55-a566-45a1-b56d-cfedb1108c9b,Arunima Dugal,Federal Bank,3664-7065-6820,Job Scam,336736.71,2026-08-06T04:56:14,Bengaluru,Karnataka
+f5517245-2eec-418a-baa9-0eb31314915a,Gayathri Chaudry,South Indian Bank,2169-3803-9751,Job Scam,85884.23,2026-07-05T21:46:21,Jaipur,Rajasthan
+7f2b1fbe-582e-49be-b4c1-0698b35856c2,Lajita Chatterjee,Punjab National Bank,4598-6313-1916,Job Scam,411792.28,2026-08-16T05:28:12,Chandigarh,Chandigarh
+24c80d86-56e3-4aa2-a701-63a26b25988c,Hemangini Lalla,Bank of Baroda,5386-2084-4456,Romance Scam,438801.98,2026-06-29T14:49:48,Hyderabad,Telangana
+5c9dcb72-c7a1-477c-a6cf-4062ef7522cc,Tripti Yadav,Axis Bank,9179-7482-8517,Job Scam,136115.68,2026-06-23T00:15:40,Jaipur,Rajasthan
+f3a949b3-e24d-41f6-a3b8-f2080b61692c,Kritika Brar,IDBI Bank,9830-5304-8019,Romance Scam,202703.25,2026-06-20T08:37:54,Kolkata,West Bengal
+f3b8c40c-7e53-49ea-a7a7-d8b05169578a,Janaki Handa,ICICI Bank,9085-2489-1771,Digital Arrest,80656.45,2026-06-14T14:21:45,Kolkata,West Bengal
+049cd71d-23aa-40d1-aafe-703d4a117415,Chakradev Kari,YES Bank,7916-2040-7304,Investment Scam,299964.77,2026-07-14T12:12:46,Jaipur,Rajasthan
+eac9ecd1-f78b-4645-a63d-8c61550864a5,Fariq Kaul,Union Bank of India,1188-2876-9797,UPI Fraud,385456.37,2026-07-02T02:14:37,Pune,Maharashtra
+da7f4b4c-2f03-4f07-ab43-3a6b6819430a,Lajita Mall,HDFC Bank,8123-3591-8433,Digital Arrest,477138.88,2026-08-23T02:27:45,Pune,Maharashtra
+b9778d90-61e6-40fe-a434-e7715d577188,Janya Gaba,IDBI Bank,9201-3927-9317,Digital Arrest,435906.69,2026-06-28T01:00:15,Pune,Maharashtra
+13c84566-c9f6-459b-b2bd-d1146b39f1b6,Isha Kadakia,Federal Bank,9317-4258-3504,UPI Fraud,382442.85,2026-07-21T10:25:18,Jaipur,Rajasthan
+4bcdc273-ea0d-4422-a282-8ab23c7db40f,Ekbal Garg,YES Bank,9689-1009-6310,Investment Scam,14640.99,2026-07-04T07:23:02,Chandigarh,Chandigarh
+d64f51bb-59e7-47c9-b2b0-a67e5767e840,Nihal Shere,South Indian Bank,6038-4923-1949,Job Scam,439614.75,2026-06-06T17:05:41,Bhopal,Madhya Pradesh
+016d891c-d86e-42d6-9e59-7035de58e2eb,Anamika Kanda,HDFC Bank,8962-2133-9727,Job Scam,68553.77,2026-07-15T05:03:56,Lucknow,Uttar Pradesh
+f5648e25-e072-482e-9d6d-d20adcb428be,Daksh Karnik,Union Bank of India,5342-9645-7932,Job Scam,464812.18,2026-08-11T09:28:22,Gurgaon,Haryana
+242f3e76-d2ae-40c8-b387-3194438e24e4,Diya Rattan,IDBI Bank,4295-6107-7537,UPI Fraud,221859.54,2026-07-19T07:36:59,Lucknow,Uttar Pradesh
+992fb8c2-f641-4d16-94d9-99568f86dbe4,Dominic Kakar,Kotak Mahindra Bank,5061-4681-2049,UPI Fraud,15411.96,2026-07-22T20:18:29,Noida,Uttar Pradesh
+a1828b98-e119-4261-a9ad-15c05cf4b254,Simon Tata,Axis Bank,4608-1117-2163,Digital Arrest,118326.18,2026-08-25T23:21:32,Ahmedabad,Gujarat
+14b4e845-f86e-49e1-bd64-156f2f0db786,Tara Dhar,State Bank of India,6413-2160-9423,Job Scam,142846.25,2026-07-16T04:40:30,Bhopal,Madhya Pradesh
+f42e8e22-a787-4efd-9850-ea346ffe638c,Liam Koshy,Axis Bank,3167-8744-4981,Investment Scam,404711.01,2026-06-17T13:15:53,Kolkata,West Bengal
+8eb45a6d-4da8-4666-8fcb-110148d0ec83,Priya Rastogi,HDFC Bank,8062-6804-7939,Investment Scam,236177.21,2026-08-08T20:26:50,Noida,Uttar Pradesh
+2e641f28-0b97-4aac-800f-c8fede52edd1,Theodore Devi,State Bank of India,2612-1993-7596,UPI Fraud,401293.29,2026-06-09T16:11:34,Jaipur,Rajasthan
+fd05c6cf-e479-44c1-9f92-72bf5ad10abd,Gavin Batta,Axis Bank,4116-9786-8350,Job Scam,213831.41,2026-06-26T02:38:05,Mumbai,Maharashtra
+3efde4db-9660-4c9a-8917-0fe09a2ddfc6,Michael Dutta,Kotak Mahindra Bank,2235-8260-2604,Digital Arrest,327811.72,2026-07-21T13:14:19,Mumbai,Maharashtra
+41dbe1d1-a5b2-4337-93c8-f76fd8970569,Devansh Rajan,Federal Bank,2528-4872-3724,Investment Scam,245392.36,2026-06-19T19:38:41,Delhi,Delhi
+eac3dee5-3fe9-4c0f-8e60-277311c887d6,Upadhriti Wadhwa,Federal Bank,1960-3697-7209,Digital Arrest,492727.88,2026-06-24T19:32:43,Hyderabad,Telangana
+f080688b-db20-4c6c-ac58-2dc654fd431a,Advay Contractor,South Indian Bank,8454-5673-7930,Romance Scam,332626.3,2026-07-16T07:36:14,Patna,Bihar
+77f439e6-1b94-4bfc-9da4-e575ae50db8d,Harini Choudhury,ICICI Bank,5861-4566-1958,Romance Scam,369189.9,2026-06-04T23:37:08,Mumbai,Maharashtra
+937ac607-42a3-491f-b780-7d1dafe5d98a,Radhika Dugar,IDBI Bank,1936-1821-8811,Romance Scam,460096.63,2026-07-20T15:11:27,Bengaluru,Karnataka
+d5b96a62-592a-4eb7-8997-6ab8ff7736d3,Aarush Lall,ICICI Bank,9320-2312-4044,Digital Arrest,299542.38,2026-08-03T14:56:12,Delhi,Delhi
+e1388a96-e808-4692-bd91-a69f5bdff57d,Yashica Cherian,Federal Bank,7615-2964-5033,Romance Scam,299286.98,2026-07-29T04:50:27,Mumbai,Maharashtra
+768196b6-304f-45a9-8306-6916133b3a6b,Yashica Issac,HDFC Bank,9565-6183-5272,Job Scam,336514.36,2026-06-29T13:40:44,Hyderabad,Telangana
+991a43c8-0c61-4dd3-8d57-ebcc3d5d0a2c,Kashvi Edwin,Axis Bank,7484-3144-5915,Investment Scam,161507.71,2026-08-11T01:32:55,Pune,Maharashtra
+89c205fa-3e32-4330-aa76-d9cf358f017e,Ekiya Suresh,South Indian Bank,1152-8508-2638,Digital Arrest,271129.03,2026-07-18T04:22:27,Noida,Uttar Pradesh
+26019e25-2e85-4517-9eb3-d90c2faadbd6,Isaac Patil,Punjab National Bank,6718-2127-5002,UPI Fraud,146068.76,2026-07-11T14:37:17,Gurgaon,Haryana
+1c5170cd-fa3f-4b76-b9c8-402917ddde13,Wriddhish Bhardwaj,Federal Bank,5956-9666-1128,Romance Scam,153192.48,2026-08-02T11:23:06,Kolkata,West Bengal
+a714dce4-1dc9-429d-8958-c9c1c032ab30,Farhan Chada,HDFC Bank,3200-5333-2891,Digital Arrest,372496.26,2026-06-14T03:47:50,Chandigarh,Chandigarh
+526024a1-3a6b-4484-bed8-3fd06fc601ee,Ekapad Walia,Punjab National Bank,4450-6617-4335,UPI Fraud,255177.48,2026-06-23T10:43:56,Pune,Maharashtra
+e10ef17d-9868-400a-a3b7-2b580764ab11,Kabir Soman,South Indian Bank,1832-2512-7939,UPI Fraud,26822.95,2026-07-01T10:49:14,Chandigarh,Chandigarh
+e7966b38-f9b8-431e-8a04-49ef9563400a,Alka Wable,YES Bank,5291-3647-8239,Romance Scam,354305.39,2026-07-23T12:35:06,Gurgaon,Haryana
+d9edfa23-3268-4685-9584-abea64fca862,Siddharth Zacharia,State Bank of India,2232-3442-9938,Digital Arrest,418124.53,2026-07-25T14:55:23,Noida,Uttar Pradesh
+b4d568ae-2318-4276-8be7-a1dbaf6a6a10,Devika Rastogi,Union Bank of India,8041-3088-1685,UPI Fraud,185502.5,2026-08-15T08:40:36,Gurgaon,Haryana
+639158bb-5f90-4dc0-b3ef-76d222a69e43,Raksha Varughese,Federal Bank,6862-4441-5088,Digital Arrest,180070.92,2026-07-23T10:12:02,Delhi,Delhi
+cfcb42ce-e938-4ed7-8e7a-0f1f4dcaa12d,Jai Kota,South Indian Bank,7658-3532-4878,Job Scam,488221.99,2026-08-16T18:48:45,Bhopal,Madhya Pradesh
+1d6b5800-595b-4ce7-a0ab-c5b32587d0d2,Devansh Nigam,ICICI Bank,7755-1406-3938,UPI Fraud,392281.32,2026-07-09T00:56:19,Chandigarh,Chandigarh
+f456e4c1-a816-450e-94dd-d634dcc7be30,Victor Kannan,YES Bank,5065-5371-3608,Digital Arrest,194358.15,2026-06-02T19:48:44,Jaipur,Rajasthan
+8c3ca97d-e0c8-4b81-8557-c9e7c9e5d379,Ekavir Bhargava,Federal Bank,4644-4269-8541,UPI Fraud,156069.48,2026-08-15T06:52:00,Chennai,Tamil Nadu
+5b0b95ad-cee1-4613-8329-8bce6d6a33f3,Ekansh Balay,Federal Bank,4652-1387-4164,Investment Scam,167489.67,2026-08-21T23:39:57,Mumbai,Maharashtra
+07885aec-11e4-49d1-a6f9-2e78db649c70,Ekavir Varkey,HDFC Bank,5573-6753-9346,Investment Scam,341361.47,2026-08-19T23:27:01,Patna,Bihar
+08fa8b57-3f62-4e78-9268-6a748ad4d435,Arya Sunder,Union Bank of India,1452-2889-5279,Job Scam,292391.92,2026-06-24T20:09:32,Bengaluru,Karnataka
+74058798-3294-4c15-9e97-3c096b3a6306,Kevin Solanki,State Bank of India,8119-6663-6139,Investment Scam,305073.38,2026-07-18T17:16:46,Noida,Uttar Pradesh
+1c1e09f9-4537-4d14-a24c-b98596833934,Urvashi Ray,HDFC Bank,4114-5173-1727,Investment Scam,5837.18,2026-08-27T22:19:26,Hyderabad,Telangana
+c1089085-8378-409f-8878-3899184dbe8f,Girindra Chatterjee,YES Bank,4228-6967-8066,Digital Arrest,474692.87,2026-08-27T11:07:44,Kolkata,West Bengal
+6749c979-699d-48b9-8186-e83553167754,Irya Sampath,Bank of Baroda,6143-3041-5920,Romance Scam,158095.91,2026-07-08T17:12:07,Ahmedabad,Gujarat
+9f5e5166-3c7b-4d41-98f0-d6f4a9660173,Unni Bhagat,Bank of Baroda,5844-3085-4143,Investment Scam,334140.07,2026-07-05T21:03:00,Hyderabad,Telangana
+17565c97-3a84-4fd0-a5cd-a2f221f33e98,Darsh Rau,IndusInd Bank,3851-5930-7653,Romance Scam,417693.96,2026-06-28T13:39:26,Lucknow,Uttar Pradesh
+4c040b37-7be5-4bac-ad11-a7932432604a,Ikbal Kothari,Punjab National Bank,8043-6279-8618,Investment Scam,223869.1,2026-06-19T19:32:16,Mumbai,Maharashtra
+79ac2f6f-6d9f-47af-9ad4-a306da30ca4b,Ranveer Yadav,Union Bank of India,3780-2389-5649,Romance Scam,333607.65,2026-07-29T04:33:35,Chennai,Tamil Nadu
+33e1df40-c7f0-455a-8409-ae67e2774577,Logan Sami,Bank of Baroda,4848-6085-4680,Job Scam,77940.21,2026-06-03T13:15:47,Noida,Uttar Pradesh
+dbd14202-c7a0-4ec3-b3c6-c44a7476e560,Arya Shere,Axis Bank,2193-8461-7790,Romance Scam,101245.44,2026-08-05T16:12:01,Chennai,Tamil Nadu
+081a06a4-d6dc-486d-8a66-5a98e0de73fb,Faqid Savant,Canara Bank,7547-4997-3417,Digital Arrest,446866.61,2026-08-21T14:32:57,Chennai,Tamil Nadu
+b6580d54-ccae-470a-9491-2be386162ab4,Chandresh Zachariah,YES Bank,2746-7965-4585,Job Scam,403034.38,2026-08-05T15:10:10,Chandigarh,Chandigarh
+6aec42ae-fb36-4e7c-8635-3af2fee64e35,Girik Khalsa,Union Bank of India,1822-5082-2988,Investment Scam,71002.86,2026-07-14T04:16:28,Chennai,Tamil Nadu
+5c1b91d3-6b70-4513-af49-d7bedd335aa4,Niharika Sunder,IndusInd Bank,6198-8251-9270,Investment Scam,416131.74,2026-07-22T06:12:42,Kolkata,West Bengal
+e57bef39-4aa3-4b0c-9cc7-553d5279cbea,Tanay Rattan,Kotak Mahindra Bank,3607-8777-8373,UPI Fraud,377129.51,2026-08-19T14:35:59,Chandigarh,Chandigarh
+af162134-d796-4368-a5cd-0ecf92576a65,Nitesh Raghavan,IndusInd Bank,9540-8939-4919,UPI Fraud,222736.93,2026-08-07T08:15:27,Pune,Maharashtra
+420e009e-8579-40ed-8bb7-ef77213eb74a,Madhavi Lanka,Punjab National Bank,5451-6502-6238,Romance Scam,44885.94,2026-06-13T17:02:18,Mumbai,Maharashtra
+e8c53766-2a4b-4f6c-9b46-4cdb5431b46d,Bhavika Sampath,Axis Bank,3503-4505-2052,Investment Scam,206761.69,2026-07-21T17:57:11,Hyderabad,Telangana
+2cbad68f-7a67-461e-bfb1-bc427d182a0a,Mohammed Gupta,Kotak Mahindra Bank,2020-4388-7883,Investment Scam,452895.05,2026-07-25T18:34:52,Hyderabad,Telangana
+ff485811-f6c2-4108-825a-7d5749e17700,Teerth Bhardwaj,IDBI Bank,7232-8814-1096,UPI Fraud,152813.26,2026-07-06T22:18:44,Delhi,Delhi
+99f77796-36d4-4e9a-922c-99ddff522d2e,Dipta Bhandari,Federal Bank,7865-9818-9947,Romance Scam,449416.62,2026-07-16T11:14:04,Chandigarh,Chandigarh
+12d56738-c2dc-4b23-8c5b-efa6eb781fb2,Vansha Thakkar,Axis Bank,8140-8956-1475,Investment Scam,171384.12,2026-08-04T00:05:34,Pune,Maharashtra
+53f7e704-26e6-40f4-bcea-3b321c130618,Dakshesh Trivedi,YES Bank,3704-8657-3091,Romance Scam,269391.2,2026-08-26T02:52:29,Hyderabad,Telangana
+74915159-4860-416f-b505-7ffc1ab6dee3,Quincy Biswas,Canara Bank,1444-2375-8022,Job Scam,434091.42,2026-06-16T17:02:12,Ahmedabad,Gujarat
+7e153fbb-5eac-4f3c-9e04-b11256036993,Wahab Raval,State Bank of India,7211-6363-4467,Investment Scam,166788.67,2026-08-11T23:22:16,Pune,Maharashtra
+fbb75b21-4f16-4393-b273-2661dd26e771,Yatin Baral,South Indian Bank,5558-7906-5133,Digital Arrest,237801.88,2026-08-10T18:55:49,Hyderabad,Telangana
+b89ae70d-ebc9-4b20-931d-f919e4644ae5,Oni Virk,Union Bank of India,6733-4673-2124,Digital Arrest,378345.44,2026-06-23T01:47:21,Delhi,Delhi
+b4fca3e3-e09d-4ab9-8d09-4686d1915bc8,Advika Jayaraman,Axis Bank,1333-3496-4908,Job Scam,239412.73,2026-06-10T04:07:27,Bhopal,Madhya Pradesh
+d4a43226-2378-49a4-9dd3-0c46a9d9bc5d,William Lanka,UCO Bank,8619-5198-7043,Job Scam,304916.88,2026-08-10T16:22:14,Mumbai,Maharashtra
+b8d8a86a-3d1c-41b6-a7a9-3b40dde0f2b1,Karan Mital,IDBI Bank,3683-6096-2771,Romance Scam,17710.82,2026-06-29T08:29:26,Noida,Uttar Pradesh
+111a7208-5cfc-4810-8fd3-ddf4b83dd503,Diya Bora,UCO Bank,7149-7498-4249,Digital Arrest,298088.44,2026-08-18T16:56:58,Jaipur,Rajasthan
+0b4d1b72-5989-40da-a319-108f43e7247b,Tara Chaudhry,IndusInd Bank,2669-5941-2983,Romance Scam,392404.5,2026-07-02T18:37:15,Mumbai,Maharashtra
+9dfe64ad-c535-41a1-98a6-85cdc7e81b3a,Tanay Toor,Union Bank of India,7071-2129-9289,UPI Fraud,11262.81,2026-07-09T20:23:07,Hyderabad,Telangana
+8a189656-c38d-41c5-b9f3-5ee9433603df,Kevin Palla,Federal Bank,2729-8102-6934,Investment Scam,355117.78,2026-07-11T08:20:09,Chennai,Tamil Nadu
+488d1340-ecd2-42d7-a1d6-e55c5e255b2f,Yash Pingle,ICICI Bank,9548-5425-9817,Investment Scam,235112.52,2026-08-18T05:40:42,Lucknow,Uttar Pradesh
+40e47a87-0f52-41c3-b7a3-f90dbb437517,Nakul Sarma,IDBI Bank,5397-6280-5022,Digital Arrest,143069.48,2026-07-12T20:01:20,Ahmedabad,Gujarat
+1e74414f-0879-42f1-86d4-be1f92bde1b3,Abhiram Mistry,Axis Bank,8613-7209-6511,Digital Arrest,249681.72,2026-06-30T14:54:55,Patna,Bihar
+53d1ad82-26ce-45ca-8ed0-c1d5c7a42055,Krish Lalla,ICICI Bank,4475-6813-5232,UPI Fraud,143430.95,2026-07-26T22:43:09,Chennai,Tamil Nadu
+cfd145c6-76e3-4b45-9b0a-79cb971a91bb,Hredhaan Dugal,IDBI Bank,5526-1166-9464,Job Scam,47378.42,2026-08-07T23:28:23,Chandigarh,Chandigarh
+18b3120a-d057-421a-a872-c29f78c63e76,Baghyawati Kade,Canara Bank,4937-8800-9041,Investment Scam,397501.77,2026-06-08T02:24:27,Chennai,Tamil Nadu
+728a28dd-c799-4260-9668-67ed9c027158,Samar Lalla,Punjab National Bank,7625-4986-6016,Romance Scam,187665.12,2026-07-22T19:15:46,Mumbai,Maharashtra
+c0282404-78ba-4e85-ad51-99f1d5b6b5b8,Zayan Behl,Union Bank of India,7971-6419-6764,Investment Scam,139103.63,2026-06-23T11:23:25,Bengaluru,Karnataka
+23829e63-90fd-46e1-baad-37202e0ee9dd,Pallavi Malhotra,Axis Bank,4155-6169-2958,Romance Scam,475684.39,2026-08-05T01:46:30,Noida,Uttar Pradesh
+2bb1030d-5b81-47d8-aeed-2ab5021bbd2c,Aarush Nath,ICICI Bank,4545-8933-5530,Romance Scam,488420.48,2026-07-20T00:04:12,Mumbai,Maharashtra
+9bde5d52-ee06-44e3-b202-63d5daf75228,Adweta Edwin,UCO Bank,2647-4180-5853,Job Scam,183636.13,2026-06-28T09:54:43,Pune,Maharashtra
+3f060e4f-3913-41ff-bc4f-3e896ed853d9,Prisha Andra,State Bank of India,9751-3073-5494,Digital Arrest,487275.99,2026-07-22T18:59:50,Lucknow,Uttar Pradesh
+f515e47e-3936-4722-a804-7063e52fd6ec,Faqid Dixit,Punjab National Bank,3068-9042-2680,Digital Arrest,289161.79,2026-07-14T15:21:05,Lucknow,Uttar Pradesh
+475e5f82-c861-4025-874f-fc5624366c03,Kala Divan,Kotak Mahindra Bank,6582-4020-1841,UPI Fraud,470826.48,2026-07-15T10:46:01,Chennai,Tamil Nadu
+dc47d6a2-bdc5-4af5-8899-5b61e29401bc,Joshua Barman,HDFC Bank,2070-7565-9056,Digital Arrest,290625.47,2026-08-04T17:07:27,Bhopal,Madhya Pradesh
+c7623aca-1e0e-4d35-9d03-385dc691d33b,Janya Baral,State Bank of India,3444-5978-2395,Job Scam,63633.52,2026-08-12T06:51:35,Gurgaon,Haryana
+2c274881-d6c4-47c7-9d74-f77ad8893c8d,Shivansh Krish,Canara Bank,4697-9561-7232,Investment Scam,454709.67,2026-06-27T22:27:37,Ahmedabad,Gujarat
+4a5a9090-5656-47b9-ae20-d1f68b84e5f4,Irya Ray,Federal Bank,8025-6003-1986,Romance Scam,480253.84,2026-06-08T16:48:30,Ahmedabad,Gujarat
+02544344-1314-4782-bc0b-a3bc35f09e73,Warjas Gaba,YES Bank,4457-5335-2330,Job Scam,123733.26,2026-07-22T15:48:45,Mumbai,Maharashtra
+4c31755d-040b-40e2-b0c1-3ee89e71e264,Nitara Bakshi,HDFC Bank,1043-7693-8381,Romance Scam,237606.68,2026-06-02T05:38:01,Gurgaon,Haryana
+86f14385-f384-4662-929c-353f299453d1,Gaurangi Sabharwal,Axis Bank,5632-8438-2166,Job Scam,462335.97,2026-08-14T13:20:59,Pune,Maharashtra
+3ef33c17-7b8f-47c7-9b71-09ac3e14eaf4,Amara Dutta,YES Bank,4241-7965-2880,Romance Scam,116280.68,2026-06-13T12:44:52,Jaipur,Rajasthan
+796866d5-c371-4cba-bbae-0bd8a5d82ebd,Lavanya Barad,South Indian Bank,3330-2169-1977,Job Scam,397351.14,2026-07-26T20:07:50,Pune,Maharashtra
+dd6bbd63-b949-4585-a0e8-d172759c7959,Tristan Iyengar,IDBI Bank,5728-8195-3037,Investment Scam,345895.61,2026-08-06T00:04:30,Bhopal,Madhya Pradesh
+313089c7-2e12-4743-b5b3-d9f186b51a82,Inaya Mody,Canara Bank,9199-9847-9090,Investment Scam,44818.72,2026-06-02T22:27:35,Pune,Maharashtra
+85a752ca-4662-49aa-9929-9addf457e724,Udant Bajwa,South Indian Bank,6280-5102-1423,Digital Arrest,118317.59,2026-08-03T12:48:23,Hyderabad,Telangana
+8742c84c-b560-41e9-ba22-94193fce509f,Mohini Narasimhan,Federal Bank,1339-5415-1659,Job Scam,237897.91,2026-08-01T07:42:16,Bhopal,Madhya Pradesh
+49cd3c11-aaf2-4a20-a5c2-fbe8f1d22521,Ekaraj Mallick,Kotak Mahindra Bank,5557-3973-8141,Investment Scam,484682.34,2026-07-14T16:46:51,Chandigarh,Chandigarh
+d633f26e-d900-4864-9a41-776f88156fe4,Yashodhara Ratta,Bank of Baroda,6460-6260-2713,Job Scam,168252.81,2026-08-05T09:57:15,Hyderabad,Telangana
+f451faa2-fdf4-4a4b-b90d-7ebf282d17b5,Ayaan D’Alia,Kotak Mahindra Bank,7561-1601-8451,Digital Arrest,160685.99,2026-06-30T10:51:36,Pune,Maharashtra
+ec8eda6c-7639-4e3d-af73-373156a4e516,Pranav Lanka,HDFC Bank,7622-9431-1018,Romance Scam,233678.29,2026-06-04T07:52:55,Patna,Bihar
+444ce2d6-16e2-47a4-8453-6f1759334f16,Ikbal Saraf,Axis Bank,6927-9167-8242,Digital Arrest,105761.33,2026-07-22T09:21:07,Kolkata,West Bengal
+e7d5c912-c580-4b74-8375-2941ed563244,Dipta Sarin,ICICI Bank,5719-8178-8941,Digital Arrest,19290.37,2026-07-30T05:38:08,Chandigarh,Chandigarh
+a2213fae-251e-49d0-85e5-4b15e272f437,Lekha Gupta,UCO Bank,4920-3594-6091,Romance Scam,11768.86,2026-07-08T16:15:52,Patna,Bihar
+e1185783-d81e-4a4f-9bca-3fea9861f477,Chaitanya Sarin,HDFC Bank,2858-8560-2924,Job Scam,251695.87,2026-08-07T15:23:03,Mumbai,Maharashtra
+5a4cd9d5-7dda-46fd-b5fe-6ea1b1953afa,Zinal Yohannan,Punjab National Bank,5479-7807-8905,Investment Scam,125646.8,2026-07-22T14:07:05,Kolkata,West Bengal
+2516a1cb-b1b2-4fdb-9fad-dd5a7e8aca87,Januja Sankar,ICICI Bank,4122-9327-3236,Digital Arrest,141742.46,2026-08-14T18:25:31,Hyderabad,Telangana
+aeb2f9d5-6de9-4e2d-8e83-6dfdacfb1693,Ganga Murthy,Federal Bank,6568-9318-5377,Digital Arrest,145005.3,2026-06-28T01:15:46,Hyderabad,Telangana
+dcf059b4-66ae-4020-a684-a78ff59c3dd9,Charita Tripathi,Federal Bank,9022-3434-8316,Romance Scam,244748.99,2026-07-01T08:13:07,Ahmedabad,Gujarat
+c88ce2dc-7093-4191-9d05-f9b0c2e0dba9,Nilima Narain,Union Bank of India,9903-7180-8460,UPI Fraud,435452.83,2026-08-05T18:51:59,Patna,Bihar
+389c4ac8-e04a-429a-bfeb-367d15f7365d,Chakrika Datta,Axis Bank,7274-4826-7730,Digital Arrest,162497.28,2026-07-14T23:41:31,Ahmedabad,Gujarat
+a167ea6b-a869-4fc1-82ac-80bb0ff3f13f,Osha Raghavan,IDBI Bank,7246-7325-3492,Investment Scam,482588.1,2026-06-11T07:45:09,Chandigarh,Chandigarh
+6614349f-b0ab-4b15-badf-e983807fdb55,Charvi Ravi,Union Bank of India,6439-2644-8213,Digital Arrest,265345.79,2026-07-13T10:17:49,Ahmedabad,Gujarat
+19ecc62e-d1b6-4c20-af36-8224115c47c6,Daksha Mangat,State Bank of India,3361-7717-3529,Digital Arrest,237397.85,2026-06-24T19:07:31,Lucknow,Uttar Pradesh
+b8e06c47-ce9c-4cff-bdc3-650955d5de73,Qushi Nagy,Bank of Baroda,7512-2315-6383,Romance Scam,193104.65,2026-06-29T19:27:05,Ahmedabad,Gujarat
+3e17c354-064f-4cc4-a0ec-97132c19ed54,Riya Sathe,IndusInd Bank,8994-9864-1588,Romance Scam,38868.27,2026-07-30T08:17:21,Lucknow,Uttar Pradesh
+e7664c04-2d1c-498b-9020-7726945eeceb,Yasti Solanki,IndusInd Bank,5708-4727-2480,Investment Scam,489277.18,2026-08-11T21:22:02,Chandigarh,Chandigarh
+a5d6c995-fd6b-462d-b270-6eec83061a4f,Frado Mander,IndusInd Bank,2646-8269-3725,UPI Fraud,452194.91,2026-06-03T12:44:39,Lucknow,Uttar Pradesh
+b1db9606-2c20-421c-8e84-c6604c59e2a0,Girik Keer,Bank of Baroda,1919-5806-6873,UPI Fraud,218189.96,2026-06-22T18:35:55,Patna,Bihar
+84b1c154-8aee-4375-934a-33911da4a8e6,Umang Issac,Union Bank of India,3950-3785-3868,Digital Arrest,306698.43,2026-07-06T04:58:13,Hyderabad,Telangana
+82562edd-e0ba-402a-8ee9-357205149c7c,Aryan Batra,UCO Bank,4945-9153-3344,Job Scam,233269.21,2026-06-23T17:23:15,Jaipur,Rajasthan
+9273823b-6ff9-4a3e-bcbd-c4afa7760729,Vaishnavi Bora,Kotak Mahindra Bank,1153-8622-5712,Romance Scam,83197.93,2026-07-11T22:52:56,Pune,Maharashtra
+b9efb0d4-a4f4-4931-90f3-ff78771b814f,Oeshi Hayer,Bank of Baroda,5901-7951-5097,Investment Scam,423425.44,2026-06-18T09:47:12,Ahmedabad,Gujarat
+7c717cd0-dbd9-4eb9-bc29-51ed472dd2ae,Warda Ratta,Canara Bank,8916-2747-4886,Investment Scam,288101.73,2026-07-24T20:59:10,Bhopal,Madhya Pradesh
+eff51edc-1b13-480b-a030-8c3ea18719f7,Manbir Ahluwalia,Punjab National Bank,5837-1359-7484,UPI Fraud,9008.49,2026-08-22T01:19:50,Lucknow,Uttar Pradesh
+39bbd07a-64ed-4ba2-b4ef-d0068e183420,Pavani Kanda,IndusInd Bank,1803-9138-5689,Job Scam,305497.17,2026-07-03T06:32:41,Patna,Bihar
+bdcd6829-de73-4bbc-925f-402ca73d8582,Zarna Shetty,Axis Bank,4115-5106-3240,Digital Arrest,452184.83,2026-07-31T19:39:37,Jaipur,Rajasthan
+1559c280-3778-4bbc-b450-e05be9d1d233,Zaid Dara,State Bank of India,8222-1546-6977,Job Scam,49616.02,2026-06-27T17:14:04,Pune,Maharashtra
+b56e3efd-cca7-4660-b5e4-65174f253fbe,Kiaan Shetty,Bank of Baroda,7807-3877-4289,Job Scam,394323.84,2026-08-23T03:52:43,Lucknow,Uttar Pradesh
+49af9f90-9c7d-4523-8910-429756d2dd3d,Saanvi Thaman,Bank of Baroda,9221-5465-3695,UPI Fraud,457454.23,2026-07-15T20:21:51,Kolkata,West Bengal
+d0fd987e-87fb-418c-804f-d8912a1746dd,Sanaya Dutt,YES Bank,6549-2886-8673,Digital Arrest,74674.72,2026-06-20T23:17:52,Pune,Maharashtra
+199ac960-70e9-41c7-b7ed-63def0824088,Shivani Lad,Federal Bank,7511-6992-2479,Investment Scam,11889.73,2026-07-21T03:52:53,Jaipur,Rajasthan
+775260ed-c830-4263-bb74-066e894d9e4d,Aradhana Verma,HDFC Bank,7038-5295-7242,UPI Fraud,58631.32,2026-06-21T18:25:19,Chennai,Tamil Nadu
+b5c289c2-1aa2-48bd-8f70-65a74c3fdaec,William Maharaj,Kotak Mahindra Bank,6374-4626-2035,Investment Scam,455146.88,2026-06-28T09:43:53,Delhi,Delhi
+85a0c242-06dd-4cc0-90a0-3dd36c8330ac,Faras Mangal,IndusInd Bank,2911-3290-1742,Digital Arrest,155660.47,2026-07-16T21:28:33,Hyderabad,Telangana
+ad91989e-d6fd-4360-a4f2-902ecf9c3bf4,Anita Nayak,HDFC Bank,4846-9807-3222,Investment Scam,229553.66,2026-08-03T03:55:25,Noida,Uttar Pradesh
+b8c7d3b7-0ed7-42b9-9554-5f86e6fae231,Faris Devi,IDBI Bank,9850-7866-3531,Investment Scam,329186.34,2026-08-19T00:13:23,Lucknow,Uttar Pradesh
+2eb6dbed-33e4-4caf-8d5a-1fef02ed8d90,Vihaan Rajagopal,Kotak Mahindra Bank,7686-5583-1536,UPI Fraud,112548.49,2026-07-12T05:47:38,Ahmedabad,Gujarat
+3003b31d-99df-43df-bb13-2d53e3756566,Tanish Bhatt,Axis Bank,6942-2627-7018,Romance Scam,451339.63,2026-07-31T16:07:58,Bhopal,Madhya Pradesh
+a5f0a56f-3d75-4adb-a24d-bf4a5c2c8e29,Nikita Narayanan,Bank of Baroda,7523-5520-4109,Digital Arrest,474760.34,2026-08-18T02:04:54,Delhi,Delhi
+0d7c1b6f-3357-483e-9460-6aa987059634,Ojasvi Bhatia,Kotak Mahindra Bank,4475-1349-1828,UPI Fraud,125566.6,2026-06-11T07:00:05,Noida,Uttar Pradesh
+da62d481-eda2-406c-8f5c-b99e8ff0456f,Osha Ramachandran,YES Bank,4362-2124-4394,Romance Scam,111895.92,2026-08-22T12:06:53,Ahmedabad,Gujarat
+b69868ef-1995-4ecd-8e76-4d82e693c26d,Lajita Sood,Axis Bank,3417-1046-5542,Job Scam,493826.02,2026-07-21T12:22:14,Bengaluru,Karnataka
+12406ae6-e43b-449e-aeb7-30bb4f59e594,Indira Misra,Punjab National Bank,3858-2801-1422,Job Scam,12355.86,2026-08-14T18:22:30,Patna,Bihar
+96d6368b-b206-40c5-be1c-ce023ad0e743,Oni Yohannan,YES Bank,6304-1258-3854,UPI Fraud,30937.51,2026-08-10T01:54:21,Mumbai,Maharashtra
+1e7839a6-333c-44a6-963e-a84c358827f9,Vinaya Kanda,Canara Bank,2862-2041-8802,Investment Scam,390118.43,2026-07-18T21:30:31,Kolkata,West Bengal
+5590142d-e505-41b2-a7b3-3b43da4d6fcb,Rajata Sunder,UCO Bank,8405-9254-4629,Romance Scam,26465.69,2026-08-14T02:37:43,Noida,Uttar Pradesh
+771b8489-ec4b-4e26-9c70-55aa7b503af5,Lopa Nayar,South Indian Bank,9543-5941-8504,Digital Arrest,35108.58,2026-07-15T13:41:10,Bhopal,Madhya Pradesh
+a777bff3-400c-44b2-b09a-bff84193849c,Noah Sibal,Federal Bank,7984-2768-9032,Investment Scam,41377.9,2026-06-06T21:49:58,Hyderabad,Telangana
+400a29f2-5878-4bd0-ba39-1eaed11f36ca,Avi Ramesh,Bank of Baroda,3430-2076-3067,UPI Fraud,314037.16,2026-07-25T21:34:33,Ahmedabad,Gujarat
+6ddcf3e7-1319-4023-ae80-1c52991299f2,Fiyaz Sangha,Union Bank of India,6327-7240-9692,UPI Fraud,229589.13,2026-07-27T20:19:27,Lucknow,Uttar Pradesh
+75335b0e-0c32-464e-be69-50f6624bd79a,Triya Gopal,Canara Bank,2874-4522-8046,Investment Scam,444605.06,2026-07-09T05:49:58,Noida,Uttar Pradesh
+e4403846-e388-4934-8cbe-fcd8afd73691,Abha Raghavan,Bank of Baroda,8430-7532-7815,Digital Arrest,159711.43,2026-06-29T09:48:36,Bhopal,Madhya Pradesh
+c3b172f5-4693-449f-8933-c528f362a2df,Siddharth Sha,IndusInd Bank,7132-3500-8770,Digital Arrest,50156.27,2026-06-07T08:29:27,Pune,Maharashtra
+a49959a5-34e8-4c12-9ee1-a44a8ebb8fae,Geetika Raghavan,HDFC Bank,2582-7105-3131,Romance Scam,34690.58,2026-07-23T14:10:07,Hyderabad,Telangana
+09ee9ee8-61ca-4370-8c28-c34434e60b4f,Oviya Krishnan,Union Bank of India,3002-7730-6793,Investment Scam,434705.61,2026-08-08T01:46:14,Bengaluru,Karnataka
+616c245c-1c96-42fd-8407-d4ab254e5d00,Upma Bahl,State Bank of India,6119-6761-2697,Romance Scam,256169.21,2026-06-14T02:07:29,Pune,Maharashtra
+66a02f3d-2e37-4ce0-a5bf-988c9c6af599,Inaya Kapur,IndusInd Bank,4674-2773-6736,Romance Scam,186942.72,2026-08-12T02:34:38,Chennai,Tamil Nadu
+180656b8-ea60-4b70-963b-04f9099b8d85,Banjeet Balasubramanian,Punjab National Bank,4705-8030-1430,Romance Scam,464896.72,2026-08-18T14:21:40,Ahmedabad,Gujarat
+49739729-3209-45c6-a7e9-91b5f3c3255b,Ryan Bahri,IDBI Bank,1474-3955-5477,UPI Fraud,461161.07,2026-07-03T03:31:16,Pune,Maharashtra
+796ce11e-02c6-431c-8610-21095ac88a8d,William Date,State Bank of India,3347-7566-2140,Job Scam,371779.68,2026-06-02T01:00:49,Gurgaon,Haryana
+0a56d78b-694d-44a4-8d5c-3fa69946ca2f,Ishwar Kamdar,HDFC Bank,9691-4524-7163,Investment Scam,229554.67,2026-06-14T08:22:03,Lucknow,Uttar Pradesh
+6a2d52f3-62e0-4953-afa0-d2beefa09547,Aahana Pillay,Bank of Baroda,6314-2391-1861,Job Scam,82917.9,2026-07-29T01:14:41,Pune,Maharashtra
+286b0955-d260-4053-9923-d40fe015fd75,Ishwar Gade,State Bank of India,2336-5458-8259,Investment Scam,245402.54,2026-07-11T23:36:54,Jaipur,Rajasthan
+1e99bdd9-5190-4807-8c9c-d6e576357371,Hritik Bal,Canara Bank,4531-9394-2864,UPI Fraud,217807.25,2026-06-26T13:35:22,Pune,Maharashtra
+500c63df-c5c0-4923-86c2-f633eeaa5d4b,Keya Ranganathan,IndusInd Bank,8972-9633-6053,Digital Arrest,114156.63,2026-07-27T06:06:21,Jaipur,Rajasthan
+2a23e938-ecc8-44f3-9307-c7e7f861af49,Faqid Kibe,State Bank of India,4349-5938-4460,Job Scam,383259.64,2026-06-27T04:02:17,Delhi,Delhi
+f427be93-3648-47dd-9942-4279d392905f,Charvi Dara,Bank of Baroda,1126-9149-8055,Job Scam,68946.92,2026-07-20T18:35:03,Noida,Uttar Pradesh
+eea525d4-25de-4812-9eef-e43792a7bd9f,Idika Walia,IDBI Bank,9196-6802-2180,Investment Scam,431573.36,2026-06-03T04:08:56,Mumbai,Maharashtra
+ae5ce723-c44b-436c-ade4-8aa834df9f59,Kamala Biswas,Canara Bank,8532-2275-6129,Romance Scam,217495.72,2026-07-08T07:57:04,Delhi,Delhi
+f63848b1-f0f6-4f5b-949a-3e384a7b5191,Advik Salvi,IDBI Bank,7843-5743-2887,Investment Scam,15324.0,2026-06-30T14:20:31,Jaipur,Rajasthan
+d0d00e56-25f9-4497-88c1-60d388636fdb,Hitesh Sant,ICICI Bank,8538-6928-2443,Investment Scam,423019.76,2026-06-22T16:32:45,Patna,Bihar
+2cde2435-8f64-4c3d-bbe2-55cfc3e2f441,Tripti Dua,Canara Bank,7560-9584-2288,Investment Scam,435909.59,2026-08-10T11:25:43,Ahmedabad,Gujarat
+e0fe43fe-1904-449a-acb0-2d536d0ca305,Patrick Vig,Bank of Baroda,6456-3754-2251,Romance Scam,318446.21,2026-07-20T13:58:34,Mumbai,Maharashtra
+7543a940-ca3e-43bb-afa7-397aafe0b97f,Veda Shroff,Union Bank of India,6724-6752-3419,Job Scam,55888.24,2026-06-23T22:01:36,Mumbai,Maharashtra
+0a6bbde2-8464-47de-be67-455511de1ee8,Amrita Naidu,Axis Bank,3504-2234-3902,Investment Scam,234656.77,2026-07-23T19:10:34,Gurgaon,Haryana
+7890f5b2-fba1-4a2b-ab39-08106fd60659,Gabriel Mallick,YES Bank,8354-6295-6179,Job Scam,222682.59,2026-07-14T14:14:34,Ahmedabad,Gujarat
+e7af1b7b-4cfa-47e5-8e50-b07090d5b408,Yagnesh Shetty,Kotak Mahindra Bank,5961-5500-1920,UPI Fraud,256131.76,2026-06-29T04:52:48,Jaipur,Rajasthan
+75b82580-1e5d-40f5-9a87-59b56276ada3,Gayathri Balakrishnan,Kotak Mahindra Bank,1616-1932-7041,UPI Fraud,42981.85,2026-08-21T23:25:33,Chennai,Tamil Nadu
+eada04a6-7813-418c-a12b-2a8d419df28b,Ekta Gopal,Federal Bank,9307-7299-8581,Romance Scam,279386.6,2026-08-14T22:38:48,Noida,Uttar Pradesh
+734ed169-316f-4f5e-b33e-4967d2043ac7,Simon Pant,IDBI Bank,1672-8368-4084,UPI Fraud,304477.89,2026-07-17T17:50:52,Chandigarh,Chandigarh
+3bd79e93-6c28-4665-a20a-d329ad0f01cc,Harini Mammen,ICICI Bank,8381-2695-6626,Digital Arrest,254751.76,2026-06-15T19:40:08,Delhi,Delhi
+af9beba8-1cab-4c9e-8025-98999abb5a88,Advaith Varughese,State Bank of India,8172-8199-9586,Romance Scam,306853.68,2026-07-04T09:31:16,Mumbai,Maharashtra
+f01aef90-d9fa-45cd-82be-89d168cf9c7b,Frederick Khurana,Bank of Baroda,5634-7347-7697,UPI Fraud,341054.37,2026-06-04T03:35:52,Chandigarh,Chandigarh
+f792954c-c8df-44a9-9c3a-ed4fcc5f82df,Vrinda Khosla,YES Bank,6482-2079-6401,Digital Arrest,281191.79,2026-07-06T14:20:14,Jaipur,Rajasthan
+37653a9f-ebef-431a-98d4-30fe69a77276,Vritti Sem,Punjab National Bank,3463-6461-2335,Romance Scam,333487.99,2026-08-27T01:45:05,Pune,Maharashtra
+56a85d56-e304-4b5e-8cc7-0f3d67702876,Girik Menon,Bank of Baroda,7421-3112-2388,UPI Fraud,281666.42,2026-07-31T13:01:31,Pune,Maharashtra
+e269b70c-1f83-4bdf-a501-ba021af6854e,Nidhi Kohli,YES Bank,3093-9624-2531,Investment Scam,256701.8,2026-05-31T20:03:27,Bengaluru,Karnataka
+ec79ad46-e2be-4dce-b8b1-236a618b395f,Jyoti Solanki,Bank of Baroda,3953-4509-6598,Investment Scam,100042.59,2026-06-12T10:07:40,Pune,Maharashtra
+9c6163cc-791f-44ca-afea-c0846b866c0d,Pavani Narayanan,ICICI Bank,5846-2657-9317,Romance Scam,418384.31,2026-08-23T20:42:22,Noida,Uttar Pradesh
+237439d4-3c7b-47e0-934b-ddeaa95283b3,Sudiksha Madan,Union Bank of India,6517-3147-7172,Job Scam,85312.37,2026-08-18T18:45:06,Delhi,Delhi
+9719e6ab-e23d-48d8-9e31-934280776b9b,Zayan Kashyap,IDBI Bank,3712-8170-1715,Investment Scam,185328.21,2026-08-07T22:20:01,Patna,Bihar
+3e975062-35a4-4421-9529-36c21c91bbf5,Reyansh Mutti,Axis Bank,5668-8355-4833,Romance Scam,123388.41,2026-08-16T13:48:27,Chennai,Tamil Nadu
+a951cb47-d5a6-41d9-91e7-f95bca4aa3ad,Qasim Handa,YES Bank,4178-7026-8218,Investment Scam,385872.08,2026-08-13T14:44:16,Chennai,Tamil Nadu
+d281903c-f7e5-432c-baef-f9d7e6ff91a7,Veda Malhotra,Canara Bank,9641-7859-3655,Job Scam,401623.32,2026-06-12T12:04:10,Kolkata,West Bengal
+6add482c-49df-44a5-96b6-933a109e1cec,Harish Hari,Federal Bank,1854-8873-7081,Romance Scam,467475.31,2026-08-07T03:15:42,Pune,Maharashtra
+803bb0ca-0852-4b03-ab45-b176709081f5,Utkarsh Patel,Federal Bank,3042-5670-2374,Job Scam,140031.69,2026-08-25T23:05:37,Kolkata,West Bengal
+3d0266a2-3fb0-4e9d-8a60-b74d7943c589,Chasmum Atwal,Union Bank of India,8167-2502-4637,Investment Scam,442891.74,2026-06-01T15:43:24,Gurgaon,Haryana
+bfaf334d-77da-428e-94dc-38db3c33453c,Anusha Bath,Canara Bank,7495-9224-7126,Job Scam,196152.23,2026-06-06T23:43:55,Delhi,Delhi
+df9873dd-1179-4d5a-9461-a19ebf012baf,Brinda Date,Bank of Baroda,1461-6221-2623,UPI Fraud,396733.42,2026-06-12T10:12:28,Mumbai,Maharashtra
+4200d18c-b6ee-4631-b033-fa6cc275afa2,Harshil Arora,State Bank of India,8740-3273-8685,Investment Scam,309597.39,2026-08-26T00:22:42,Pune,Maharashtra
+79f4e6b5-135e-4f36-b3fb-b496fa05f716,Upasna Srinivas,HDFC Bank,5193-4533-3449,Romance Scam,470411.84,2026-07-28T04:22:15,Delhi,Delhi
+d299dbd9-ceb9-4735-8c26-e62ada809065,Harini Gour,Union Bank of India,2821-5720-4893,UPI Fraud,65314.93,2026-06-22T05:10:54,Hyderabad,Telangana
+b8ffd68a-d66a-4fc4-9be5-5ed9aaceb246,Zayyan Sridhar,Canara Bank,8489-2029-2816,Investment Scam,300385.83,2026-05-31T15:52:28,Jaipur,Rajasthan
+355c2980-33d2-4113-ba6e-a48552b23d87,Dhruv Rattan,IndusInd Bank,4963-3352-5772,Investment Scam,5774.35,2026-07-03T07:41:54,Kolkata,West Bengal
+8195bd54-df04-4f19-93e4-da91a33f7f56,Ethan Bera,Axis Bank,7825-4068-2402,Romance Scam,487453.97,2026-06-05T15:16:54,Ahmedabad,Gujarat
+674518d5-10c9-4331-b365-6e982971d088,Manthan Modi,Union Bank of India,9312-9316-1333,Investment Scam,437299.06,2026-06-03T07:01:12,Kolkata,West Bengal
+5f75dc33-db7b-4e99-ac06-6b19157d2135,Yuvraj Dani,IndusInd Bank,7116-5155-1266,UPI Fraud,395317.41,2026-07-02T13:01:31,Hyderabad,Telangana
+d3711e9f-929e-497a-af80-c2fc840b0510,Upkaar Virk,Axis Bank,2698-6447-3185,Digital Arrest,179388.03,2026-07-01T22:26:59,Lucknow,Uttar Pradesh
+8eb0bc1d-d750-4fe5-9041-b5af17338336,Shravya Savant,Federal Bank,3868-8612-8840,Job Scam,406691.35,2026-06-05T04:36:44,Jaipur,Rajasthan
+c62559aa-2de7-4dd4-9c47-e913dce49758,Pushti Mody,IDBI Bank,8498-1605-5807,Job Scam,26684.11,2026-06-18T10:22:33,Patna,Bihar
+5c3007df-f151-41fa-97b6-52356b7d6618,Hardik Johal,South Indian Bank,6170-6080-9444,Investment Scam,494615.74,2026-07-21T18:55:50,Delhi,Delhi
+2d6b2b61-1fbc-4f30-9e2f-4d819a1852bb,Aishani Bumb,Kotak Mahindra Bank,1599-4131-5687,UPI Fraud,431758.57,2026-06-03T16:58:08,Pune,Maharashtra
+d1a8f689-912a-4e69-ac0f-67dabcb6c077,Wriddhish Ghose,Federal Bank,6438-5476-3039,UPI Fraud,221290.93,2026-07-07T21:41:44,Jaipur,Rajasthan
+b68d4b4e-fc14-491e-b16a-bee721d8fc0b,Naksh Agate,IDBI Bank,7334-6554-4060,Investment Scam,347573.9,2026-07-04T17:33:28,Chennai,Tamil Nadu
+22d14566-8beb-4612-80c2-b5369e6017ed,Shravya Singhal,South Indian Bank,9507-5369-2353,Investment Scam,44068.87,2026-07-27T13:23:43,Patna,Bihar
+d30597f4-b879-486a-9cae-f1238728bfa7,Bachittar Kata,Federal Bank,9937-5813-6262,Digital Arrest,44634.11,2026-08-02T05:37:51,Gurgaon,Haryana
+26ea4af7-ccf0-4d6c-a89a-eff7fe19d019,Barkha Setty,Punjab National Bank,8305-7981-3730,Investment Scam,179015.76,2026-06-03T04:16:19,Pune,Maharashtra
+c97de8c7-80ee-4df7-a71b-065a66fe8754,Vivaan Lalla,IDBI Bank,6776-8126-5498,Digital Arrest,42145.38,2026-07-30T23:05:21,Bhopal,Madhya Pradesh
+a647c6b8-3e10-420e-9110-b196200dff52,Pavani Contractor,Canara Bank,9406-3621-1510,Job Scam,425091.31,2026-08-03T21:38:20,Bengaluru,Karnataka
+c8855db1-9efb-4f9c-9d9b-48099fec5e1f,Manthan Lata,YES Bank,1570-3068-2101,Job Scam,390365.11,2026-07-04T15:11:04,Chennai,Tamil Nadu
+d8b01079-b780-423b-8d0b-d5de44b6fb57,Ekbal Bhasin,Bank of Baroda,1530-3513-8371,UPI Fraud,189146.62,2026-08-12T03:41:35,Hyderabad,Telangana
+6aed1a86-1352-4662-bacf-47d3534764cc,Damyanti Mani,HDFC Bank,3255-9674-7012,Investment Scam,160620.79,2026-06-26T02:58:18,Ahmedabad,Gujarat
+2ee24722-cb10-4ca4-96af-911125d8e03f,Jeet Sidhu,Axis Bank,1424-4048-9176,Romance Scam,196558.75,2026-07-23T14:22:11,Noida,Uttar Pradesh
+8a8607e7-a12c-49b3-a504-38e033da8480,Neha Magar,HDFC Bank,5264-8311-4515,Romance Scam,146360.55,2026-08-27T01:07:41,Pune,Maharashtra
+6d35643f-b7a8-4b17-863f-62751ff9f532,Raksha Buch,Kotak Mahindra Bank,3009-3223-2213,Investment Scam,90464.9,2026-08-07T07:50:59,Mumbai,Maharashtra
+941da135-8303-489c-9c32-27c2927c2f0c,Rachana Naidu,Kotak Mahindra Bank,6236-6692-2063,Romance Scam,273374.82,2026-08-24T14:31:51,Noida,Uttar Pradesh
+1d7993bf-fdcb-44e2-b8e6-3db3e24fb78c,Atharv Chand,Punjab National Bank,3580-3852-6922,Romance Scam,115999.6,2026-06-18T13:53:44,Bhopal,Madhya Pradesh
+914c959a-dd91-4231-b02e-d6ee340b578e,Ansh Luthra,YES Bank,4878-9094-1430,UPI Fraud,279240.61,2026-07-04T21:12:10,Gurgaon,Haryana
+b0c2339d-0486-4dd6-b5e1-78d866ffb20d,Parth Singhal,Kotak Mahindra Bank,3126-2412-2077,UPI Fraud,202089.19,2026-08-07T16:09:13,Patna,Bihar
+7835d606-d921-4d37-a4d2-ba78c971851a,Arunima Golla,IDBI Bank,9612-7730-7708,Romance Scam,41506.6,2026-06-29T20:18:19,Chennai,Tamil Nadu
+3c1f4fe7-f00c-4be2-88fb-fa1989101187,Vyanjana Chand,IndusInd Bank,8372-8632-9476,UPI Fraud,68525.63,2026-08-18T13:24:45,Noida,Uttar Pradesh
+d9543666-09af-4300-b47f-d96305a1c3ad,Ijaya Rege,YES Bank,3981-3114-8088,Romance Scam,455802.57,2026-06-04T10:41:55,Kolkata,West Bengal
+56de6fda-2cee-40ac-9b34-ba9b24cbd4b6,Ekani Cheema,Federal Bank,9488-3507-5982,Job Scam,85173.64,2026-08-06T22:26:28,Noida,Uttar Pradesh
+a673f91f-a381-4a2d-a729-b4221fe3f940,Forum Sabharwal,Axis Bank,9501-5653-2292,UPI Fraud,102169.45,2026-07-22T13:07:51,Bengaluru,Karnataka
+98a71d0d-7986-4b18-9db4-f439403b3f74,Bhavya Rattan,Punjab National Bank,5961-9740-2530,Romance Scam,322288.78,2026-07-26T12:35:28,Gurgaon,Haryana
+f0b75593-6b5b-4664-af80-c945e2f870aa,Suhani Chakrabarti,UCO Bank,3804-6531-1674,Digital Arrest,45205.31,2026-07-31T08:16:22,Gurgaon,Haryana
+728cff67-9dd9-4d70-b1d4-3362d4a246dd,Zayyan Naik,YES Bank,5336-4453-7825,Romance Scam,321300.64,2026-07-17T10:05:25,Ahmedabad,Gujarat
+58ae8bba-5642-413c-ab34-7f2ea5a8fac8,Netra Varkey,South Indian Bank,9938-5745-5949,Investment Scam,126214.57,2026-08-16T10:50:15,Jaipur,Rajasthan
+2d7a00d6-7b06-4efc-b699-e4f274a2ef31,Turvi Sachdev,IndusInd Bank,5873-8430-2195,Digital Arrest,83249.82,2026-07-09T10:02:46,Hyderabad,Telangana
+0f63fd10-6b11-424d-ba1c-c4275162ead1,Raghav Vasa,Kotak Mahindra Bank,4342-6573-3353,UPI Fraud,431435.11,2026-06-30T01:38:19,Chennai,Tamil Nadu
+46d55bac-d14a-483a-94e5-a47747c09722,Wishi Sathe,IDBI Bank,6658-7532-3142,UPI Fraud,259915.17,2026-06-09T09:00:14,Bhopal,Madhya Pradesh
+9655aacc-5ee4-4c56-931a-81665285f6b2,Samar Loke,Bank of Baroda,8642-3007-5382,Investment Scam,127719.85,2026-06-08T11:09:54,Mumbai,Maharashtra
+8a4c464d-3e93-4d31-b223-2813b6eb2e16,Bhavna Sarma,State Bank of India,7293-7850-5067,Job Scam,407671.53,2026-07-25T03:41:09,Pune,Maharashtra
+a74c161d-d80d-4ce5-8873-f6d5c044bd7b,Jairaj Balakrishnan,IDBI Bank,4110-3610-9163,Romance Scam,236073.48,2026-08-23T09:58:20,Bengaluru,Karnataka
+1ea1050b-3783-4f67-9c92-0bd2510922d7,Nathan Mukhopadhyay,Punjab National Bank,1379-2475-7442,Romance Scam,231329.17,2026-06-22T10:30:57,Chennai,Tamil Nadu
+34f4a279-9cd9-4c84-bee9-cf45814fd350,Nikita Chander,Axis Bank,6781-1797-1828,UPI Fraud,249972.63,2026-08-23T17:34:38,Ahmedabad,Gujarat
+a963ead2-81fa-43d9-b012-909280680d01,Ishaan Shenoy,Federal Bank,8710-5681-9793,Digital Arrest,424350.32,2026-07-10T21:42:43,Jaipur,Rajasthan
+f2abc379-40cb-4354-b3ad-985cb0d0acc2,Mitesh Tara,ICICI Bank,5333-6992-7606,UPI Fraud,27394.99,2026-06-04T00:47:00,Chandigarh,Chandigarh
+4e7835e4-7aee-45a2-bcf2-1dd168f0d6b6,Yashodhara Mahajan,UCO Bank,4189-6939-5728,Digital Arrest,196242.67,2026-07-12T18:58:45,Kolkata,West Bengal
+b6298904-c068-45a4-895b-28c8d3053fe6,Vasudha Sodhi,YES Bank,5582-2946-3108,Digital Arrest,199982.34,2026-08-15T05:49:20,Kolkata,West Bengal
+e835378a-5eac-4379-b99a-7d4f8d890489,Tanmayi Dhillon,Bank of Baroda,6990-3363-4261,Romance Scam,257015.65,2026-07-17T14:50:36,Kolkata,West Bengal
+19c41b7f-1fa9-4901-8705-2b3ed982e3bf,Rayaan Trivedi,State Bank of India,1637-3245-6456,Investment Scam,262069.69,2026-06-13T12:38:03,Delhi,Delhi
+06cb9ad8-a60d-458b-8c62-e44d01545b1b,Ekaraj Majumdar,UCO Bank,9446-3290-6373,Romance Scam,162672.37,2026-07-07T05:13:40,Chandigarh,Chandigarh
+b7ac7153-0098-4af7-b8e0-5ad157f486a8,Harini Tripathi,UCO Bank,5902-6511-9311,Romance Scam,268508.22,2026-08-06T21:03:39,Lucknow,Uttar Pradesh
+7569a2fd-279a-4b7a-aa1a-8c1141c324f1,Aarnav Mandal,UCO Bank,8780-1272-7035,UPI Fraud,338534.16,2026-07-09T12:11:12,Pune,Maharashtra
+26eb2482-eba5-41c7-837d-e6738a9b829f,Vrishti Dixit,UCO Bank,1436-8775-5350,Romance Scam,290929.03,2026-08-08T02:33:41,Pune,Maharashtra
+094a0f4d-2481-4200-8672-6265704ca4ef,Veda Pai,State Bank of India,8871-3793-9589,Romance Scam,388430.03,2026-07-05T23:29:06,Ahmedabad,Gujarat
+e9bf9f6f-41b3-4c30-81dc-3c0e7124f5ed,Krishna Shah,ICICI Bank,4968-1517-2800,Job Scam,14374.0,2026-06-29T12:32:02,Bhopal,Madhya Pradesh
+df3dbfc7-5989-4246-bc4f-d92a85a77df4,Ranbir Khare,Canara Bank,7765-4340-7723,Romance Scam,388611.29,2026-08-27T10:32:48,Gurgaon,Haryana
+ed7f8d4b-2b77-4abc-8905-852067c59b7e,Vivaan Roy,Kotak Mahindra Bank,2020-3262-9498,Job Scam,282638.95,2026-08-02T08:40:40,Bhopal,Madhya Pradesh
+15e8f964-cba2-4f7a-b275-2280ec5cf81e,Eesha Solanki,Kotak Mahindra Bank,7173-6140-3837,Investment Scam,456501.46,2026-07-02T07:15:26,Kolkata,West Bengal
+c3c289ea-e0b9-4fb1-a2dd-276194dd7a02,Libni Doshi,Union Bank of India,5331-8932-4150,Job Scam,143108.17,2026-06-28T01:07:51,Bengaluru,Karnataka
+c15d5c5e-2839-483e-93f4-9d5382e007de,Balhaar Date,Axis Bank,5735-4396-9011,UPI Fraud,242502.69,2026-07-23T11:36:29,Pune,Maharashtra
+df8daa7c-5a8c-4500-a962-e7e142e32b22,Harish Sarraf,South Indian Bank,5480-5715-2996,Romance Scam,339928.01,2026-07-05T22:19:44,Chandigarh,Chandigarh
+aae0b059-87a8-4f58-9661-36f49a42390b,Tanmayi Aurora,South Indian Bank,6654-3399-5758,Digital Arrest,147377.02,2026-08-07T09:38:50,Hyderabad,Telangana
+f29679b0-b947-41b0-bd6c-99823391f886,Nimrat Dubey,HDFC Bank,8247-5201-8849,Job Scam,105023.66,2026-07-21T08:33:18,Bengaluru,Karnataka
+9f05ab97-13f5-42a2-aeb2-5a4942d6741a,Upasna Lanka,Punjab National Bank,5450-3249-2789,Romance Scam,371741.03,2026-06-22T07:08:42,Chandigarh,Chandigarh
+5cfea5fe-7ab3-4bd6-83c5-a512b6c9d142,Mitali Buch,Axis Bank,9700-4697-4814,Digital Arrest,54597.99,2026-07-01T03:13:02,Delhi,Delhi
+ee0c6e85-8e49-4524-bde3-aab8828c2ee2,Lajita Nadig,IDBI Bank,2647-3252-1084,Romance Scam,489065.8,2026-06-14T09:36:24,Chennai,Tamil Nadu
+51e12e51-9e7d-42b6-b550-4d5164072185,Balendra Biswas,Canara Bank,8793-8822-4267,UPI Fraud,163978.01,2026-07-31T18:37:43,Jaipur,Rajasthan
+ffc5da05-5979-4be9-951c-698cd689b809,Bhavna Karan,State Bank of India,2465-4804-9767,Digital Arrest,457048.71,2026-06-16T01:30:28,Chandigarh,Chandigarh
+f4dc9b30-5cfa-415d-89fe-39a0bde365a1,Radha Chaudhari,Canara Bank,3880-1595-7504,Investment Scam,97224.26,2026-08-10T18:52:53,Chandigarh,Chandigarh
+4b8d296a-a742-485d-9dc6-c6328e22300b,Sachi Ganesan,Federal Bank,5742-1613-1151,UPI Fraud,286141.12,2026-06-09T11:36:22,Chandigarh,Chandigarh
+2a82f2c3-052e-4cc3-82ac-d11baea28742,Ayush Batra,South Indian Bank,5662-8444-9901,Romance Scam,249486.65,2026-06-12T02:17:09,Bengaluru,Karnataka
+68c8760b-00f2-40f5-8146-8f35bcd582f7,Daksh Memon,Federal Bank,8668-5470-4159,Digital Arrest,168688.63,2026-08-09T01:12:31,Kolkata,West Bengal
+f0101d05-738a-4007-884c-a15653431c51,Kavya Sankar,Kotak Mahindra Bank,5215-4050-1230,UPI Fraud,396429.99,2026-07-24T04:36:13,Jaipur,Rajasthan
+904fbdc5-bf6d-4cb9-b164-d3a160e12d26,Yash Wali,IndusInd Bank,4164-3875-7643,Investment Scam,260063.93,2026-06-07T11:41:28,Patna,Bihar
+8b5289e3-f7ee-421b-baed-cc64ac3d6389,Pranit Garde,Canara Bank,2562-4027-3303,Investment Scam,165182.83,2026-06-23T03:34:08,Jaipur,Rajasthan
+688c506b-8e3d-45b4-80dd-eff4bb53cc83,Farhan Raja,State Bank of India,7284-4858-8319,UPI Fraud,477247.24,2026-06-28T09:09:44,Pune,Maharashtra
+ff34403c-4f70-4f30-8eb4-227fad0a19e1,Widisha Dhar,UCO Bank,1187-5285-6890,Job Scam,35751.54,2026-06-10T13:03:40,Lucknow,Uttar Pradesh
+124e3bf0-f6d6-4056-b2d6-31747c820419,Triya Kumar,Kotak Mahindra Bank,3616-7642-9233,UPI Fraud,346693.74,2026-07-31T01:52:57,Pune,Maharashtra
+02a59de0-a5ce-464f-9d80-0e0767adcc6c,Aadhya Andra,South Indian Bank,7021-4618-4590,Job Scam,241700.04,2026-07-13T05:45:16,Pune,Maharashtra
+0cb0ffe1-0348-4489-8f5a-e3f9d9b1e207,Bhavna Dugar,IDBI Bank,7121-7813-9998,Investment Scam,379888.51,2026-08-15T22:21:40,Ahmedabad,Gujarat
+27a4af9b-fb79-4bf7-bbd1-0832a4e1c245,Riya Pai,IndusInd Bank,4578-5054-2341,Romance Scam,226140.25,2026-08-06T09:28:17,Bhopal,Madhya Pradesh
+9b6dabbf-2c68-4eff-8f25-5bb42113e879,Panini Krishna,Bank of Baroda,2838-2011-9972,Romance Scam,105067.61,2026-07-21T04:05:10,Noida,Uttar Pradesh
+7b1d870f-076e-4629-bc6d-d0c4675c64ff,Chasmum Issac,ICICI Bank,6375-9525-8239,Digital Arrest,341746.14,2026-08-07T16:07:02,Gurgaon,Haryana
+b13da682-8b7b-4fbd-ab28-05f1d4ba52cd,Vasudha Chhabra,UCO Bank,2489-9361-8298,Digital Arrest,229448.99,2026-07-18T21:31:53,Chennai,Tamil Nadu
+e0087f25-90ba-4f59-b6fb-71cb79dd6e9e,Lakshmi Parmer,Canara Bank,1945-8575-6049,Digital Arrest,200994.61,2026-08-17T08:03:05,Chennai,Tamil Nadu
+77c63f86-f6ee-4bdd-a4b2-7a850e9247a3,Chakrika Bains,State Bank of India,4570-2196-1742,Investment Scam,175541.79,2026-06-05T06:08:55,Lucknow,Uttar Pradesh
+a1da7ff7-5e5b-4cb4-9be3-bad18f5e8029,Anvi Anand,Union Bank of India,2130-8734-1519,UPI Fraud,207389.13,2026-08-12T17:24:44,Delhi,Delhi
+fae8504e-054a-434a-aa66-c309b378f277,Watika Mangat,ICICI Bank,7887-7135-7266,Investment Scam,435462.04,2026-08-26T02:29:54,Patna,Bihar
+53044d92-7db6-4a63-9044-07255be4cd08,Indira Kanda,Canara Bank,2314-9835-3178,UPI Fraud,63723.42,2026-07-21T05:28:49,Hyderabad,Telangana
+1de58e46-b869-4315-8a95-786e774b49e9,Zashil Devan,Canara Bank,3086-4648-1056,Digital Arrest,489352.89,2026-07-14T00:27:17,Kolkata,West Bengal
+8b5fc32f-a300-4fe6-90f3-df8ba6658a43,Balveer More,IndusInd Bank,9920-7948-9715,Investment Scam,412563.42,2026-06-23T02:19:20,Lucknow,Uttar Pradesh
+8913dcc3-d808-43fb-9d72-a9033f733dae,Bahadurjit Patla,Kotak Mahindra Bank,3541-5516-4088,Digital Arrest,20947.57,2026-08-02T03:56:58,Bengaluru,Karnataka
+c634b2b0-3c78-4c29-8717-e02f1142c24c,Gautam Merchant,Canara Bank,1256-4943-4376,Digital Arrest,54943.87,2026-06-02T07:48:57,Ahmedabad,Gujarat
+ae8cfccd-33d3-4a87-af9b-4a8398ef3756,Ojasvi Gill,Kotak Mahindra Bank,1797-5009-1724,Investment Scam,222286.59,2026-07-21T11:18:32,Ahmedabad,Gujarat
+e77f74e2-16fa-4c27-88e4-c8d4838b3296,Kevin Zacharia,Axis Bank,1924-3295-9255,UPI Fraud,120909.95,2026-08-27T00:56:14,Patna,Bihar
+d7e2370a-ac03-4349-bd0d-64589eb658db,Yachana Mahajan,IDBI Bank,6224-6253-4881,UPI Fraud,438747.87,2026-08-02T03:59:02,Ahmedabad,Gujarat
+c7539bbb-8fe7-476b-8e78-5a510e3d102e,Aarini Subramaniam,Union Bank of India,7775-5923-5508,Digital Arrest,280575.47,2026-07-26T12:15:42,Mumbai,Maharashtra
+a5198c5c-0c3a-41ca-a491-30434fd27d1f,Hamsini Contractor,South Indian Bank,3869-7999-9120,Digital Arrest,486283.67,2026-07-31T12:36:45,Lucknow,Uttar Pradesh
+35648402-e28e-473e-bdf3-72f2f00843a1,Faqid Dhaliwal,IndusInd Bank,9592-6222-7821,Investment Scam,78862.72,2026-07-05T14:47:35,Hyderabad,Telangana
+c1b56311-cfcd-468f-b032-b322a4779d7c,Mekhala Pau,ICICI Bank,9813-8758-4948,Job Scam,153864.53,2026-08-06T18:21:03,Patna,Bihar
+59620ff0-6e65-450c-b0eb-1f5cf9c93b39,Megha Atwal,ICICI Bank,8586-1944-7761,Investment Scam,280856.95,2026-06-12T02:02:10,Patna,Bihar
+7b169a93-178b-4f71-bb1b-23fdb468e257,Jatin Sha,Canara Bank,5177-4331-6411,Digital Arrest,461501.92,2026-08-20T07:32:28,Mumbai,Maharashtra
+ed103dee-5af7-4a46-afe9-6b32c829958b,Adweta Raj,Bank of Baroda,9775-4120-1844,UPI Fraud,191698.15,2026-07-27T19:15:30,Noida,Uttar Pradesh
+9683290c-52d2-4a51-bee5-b365a5da1cfb,Hritik Kaur,UCO Bank,2192-4082-4555,Investment Scam,108400.1,2026-08-26T03:07:01,Delhi,Delhi
+43ff23aa-c43e-437e-a4c0-f9e96b33f211,Aryan Narang,Bank of Baroda,1251-4470-4113,Digital Arrest,374705.22,2026-08-11T07:17:43,Pune,Maharashtra
+40aaf88f-5f01-4934-ad92-20b82810e3e5,Dev Shetty,Kotak Mahindra Bank,4974-4350-7498,Job Scam,278279.25,2026-08-13T08:39:20,Chandigarh,Chandigarh
+10c8d84e-7863-451c-969f-f56b17814aa7,Nilima Dada,Punjab National Bank,8639-9743-6886,UPI Fraud,134473.01,2026-07-18T20:31:35,Hyderabad,Telangana
+3b90eee9-5e6a-430e-a08a-4487a698a00b,Chakradev Barad,South Indian Bank,8635-2615-8692,UPI Fraud,457593.6,2026-07-05T01:22:57,Chennai,Tamil Nadu
+18d44e98-5901-47d5-a04b-581172fa99f1,Waida D’Alia,Bank of Baroda,1749-4625-3390,Digital Arrest,134083.18,2026-07-25T18:28:13,Hyderabad,Telangana
+4933ee31-3ea6-4746-9534-41dff64dae50,Wahab Yogi,UCO Bank,7841-5836-3497,Job Scam,168283.32,2026-07-05T22:40:05,Lucknow,Uttar Pradesh
+4c825586-b316-4f55-a207-616fe49153f6,Lipika Setty,UCO Bank,5026-9180-6530,UPI Fraud,382863.51,2026-07-16T12:08:49,Bhopal,Madhya Pradesh
+5acae32b-0cc4-4048-ac45-682bdbf6905a,Oni Dubey,IDBI Bank,9037-8550-3756,UPI Fraud,88786.53,2026-08-08T00:01:46,Jaipur,Rajasthan
+2c829ac1-7741-44a8-a293-b53ced002eed,Hardik Suri,Union Bank of India,4015-9882-1962,Romance Scam,21742.76,2026-08-20T06:31:31,Chennai,Tamil Nadu
+6dde5bda-c6e0-4240-be7a-4f5e0f68d07f,Ati Bali,HDFC Bank,1794-1104-7756,Job Scam,422059.63,2026-06-21T12:51:23,Bhopal,Madhya Pradesh
+54fda71a-e8bc-4dbb-9648-9b6e65647377,Teerth Sawhney,HDFC Bank,3474-1149-4583,Romance Scam,230724.78,2026-06-04T22:26:11,Lucknow,Uttar Pradesh
+9ed4f011-d173-423e-b83a-0d3fa8d24db1,Warinder Patil,UCO Bank,8916-8993-1257,Digital Arrest,268445.18,2026-07-09T00:03:56,Jaipur,Rajasthan
+1ee1cdf5-3c39-4dfa-9525-8dc6e3744a33,Jhalak Parmer,State Bank of India,9673-5501-9777,UPI Fraud,13485.59,2026-08-17T00:22:16,Delhi,Delhi
+27c77457-c0fd-4642-bb08-d6349eb71d1b,Mitali Majumdar,IDBI Bank,8054-3937-2753,Digital Arrest,264570.77,2026-06-22T11:04:32,Jaipur,Rajasthan
+3cd52ee1-31dc-45d0-8d9d-df34d955b995,Jason Sha,Axis Bank,9625-5135-6807,UPI Fraud,398493.48,2026-06-06T17:42:20,Ahmedabad,Gujarat
+76cb2374-43be-47df-a1f0-a2649769b913,Simon Bail,Bank of Baroda,8520-4984-4700,UPI Fraud,343600.6,2026-08-20T09:15:03,Hyderabad,Telangana
+deef3c68-ea2e-40b4-bd92-38a448cfaac5,Gauri Kohli,HDFC Bank,1519-2531-7640,Investment Scam,191698.94,2026-07-15T06:44:59,Jaipur,Rajasthan
+377be5b9-ef0f-45a4-94e7-1f7de612333a,Samesh Biswas,State Bank of India,1154-3807-2354,Investment Scam,423438.25,2026-07-31T16:19:13,Jaipur,Rajasthan
+b7ecbd01-f0b7-4809-ad77-53dd2104ea79,Tarak Kaul,YES Bank,2562-9653-1697,Job Scam,109651.44,2026-08-22T08:26:11,Bengaluru,Karnataka
+56cd4f67-ff58-4996-979b-c3286a739ca9,Manbir Agate,IDBI Bank,8790-5441-1762,Digital Arrest,343792.23,2026-06-26T06:53:38,Chandigarh,Chandigarh
+e9fb1342-de94-4001-8415-a4df570c546e,Maanav De,South Indian Bank,1539-3938-6152,Digital Arrest,480927.25,2026-07-26T01:28:14,Kolkata,West Bengal
+1b565190-d373-453b-9636-ee89891ea4a7,Owen Choudhary,ICICI Bank,7525-2260-5903,Job Scam,284159.31,2026-07-24T02:04:28,Patna,Bihar
+6a08d0af-ba9c-4c5d-b578-253b016cb9fb,Karan Aurora,Federal Bank,7375-9856-6435,Investment Scam,379026.59,2026-06-12T15:41:09,Bhopal,Madhya Pradesh
+3b778ad7-f14f-463e-a71b-2dfcd26bb28e,Wazir Naik,YES Bank,2284-9204-6666,Digital Arrest,53354.46,2026-06-21T14:30:44,Lucknow,Uttar Pradesh
+61de4ff4-4ca7-4054-ad73-5ebec4e8267f,Owen Lanka,Federal Bank,6580-7499-6347,Digital Arrest,318890.86,2026-08-14T03:22:37,Noida,Uttar Pradesh
+5cd9858a-a7b1-447a-bb9d-5bea1fb9f996,Jonathan Sama,Kotak Mahindra Bank,4737-6829-7150,Investment Scam,96940.23,2026-07-25T22:45:55,Chennai,Tamil Nadu
+ffdd8ddb-60e8-43db-89db-6ab09c27d7f2,Devansh Soni,IndusInd Bank,2404-5839-5037,Digital Arrest,45608.81,2026-06-14T00:56:18,Hyderabad,Telangana
+6d052846-0984-4fcd-b5f3-cb2e5fb4a6ee,Janaki Varghese,Canara Bank,3527-7383-6188,UPI Fraud,57742.7,2026-05-30T13:40:59,Lucknow,Uttar Pradesh
+57912dd4-bbcd-477a-b95d-940176308a0f,Siya Thakur,Punjab National Bank,6896-5419-2674,Job Scam,48212.13,2026-07-10T21:49:57,Chennai,Tamil Nadu
+ccc527d5-3ccf-4a7c-86bc-358b945eef42,Caleb Verma,Kotak Mahindra Bank,9395-7685-2692,Digital Arrest,49361.33,2026-07-22T21:00:11,Kolkata,West Bengal
+6307142b-ca04-493c-b600-5ae1eb653be0,Tara Balasubramanian,HDFC Bank,6315-7311-1202,UPI Fraud,209835.98,2026-08-13T17:10:23,Ahmedabad,Gujarat
+26456601-36f5-46a2-b864-9ce14c4c720e,Varenya Ratti,HDFC Bank,4977-9537-3778,Investment Scam,88903.36,2026-06-25T04:12:14,Lucknow,Uttar Pradesh
+09f45539-1704-46fa-b642-aa775a7755d0,Hritik Swaminathan,Punjab National Bank,9079-3390-2036,Job Scam,220164.75,2026-07-09T22:49:01,Pune,Maharashtra
+a711e2ec-825a-4fac-9a8f-1f2ce6402e74,Ethan Buch,Punjab National Bank,2260-6916-5123,Job Scam,361845.23,2026-07-17T04:52:51,Chennai,Tamil Nadu
+4b38f234-aade-413e-8c33-b1b586ebcbc1,Manbir Bhatti,UCO Bank,4203-8501-2752,Job Scam,155805.71,2026-07-07T11:36:23,Ahmedabad,Gujarat
+ee1d217d-98a8-47c2-b922-755d80c82bd7,Anvi Nair,Bank of Baroda,7224-6399-8212,UPI Fraud,218155.03,2026-08-18T00:33:13,Bhopal,Madhya Pradesh
+c85f8dc2-f850-4f16-bdec-7184e9c39c98,Chaitaly Setty,Federal Bank,3230-5922-6253,Romance Scam,473903.07,2026-06-18T13:35:43,Jaipur,Rajasthan
+47eef3e7-a82f-4810-b6be-f59ad4d5553f,Hardik Contractor,Kotak Mahindra Bank,3910-7524-6228,UPI Fraud,368762.81,2026-07-30T12:20:49,Bengaluru,Karnataka
+8ffbb0c6-2ed5-4cbb-ba44-2168edec9a71,Qushi Seth,Kotak Mahindra Bank,4971-6339-7161,UPI Fraud,409164.79,2026-07-07T05:10:57,Ahmedabad,Gujarat
+ac96f59a-f3b3-4b96-8c84-31d29a6bc098,Odika Nori,Bank of Baroda,4273-9939-3947,Romance Scam,18323.47,2026-08-08T16:06:26,Noida,Uttar Pradesh
+66da1001-0292-4ebb-9fd5-2be7dda82fc0,Mohini Sagar,Kotak Mahindra Bank,4434-8183-5773,Digital Arrest,410387.96,2026-08-15T07:35:32,Lucknow,Uttar Pradesh
+bf02e6b9-5e62-4398-add6-3c5c60670aac,Dhriti Sane,YES Bank,9180-3280-5961,Job Scam,130077.43,2026-06-14T00:45:26,Hyderabad,Telangana
+e07e6816-af47-443c-918a-c2f91d1478f8,Aadhya Prasad,IDBI Bank,7176-2211-8357,Romance Scam,242221.18,2026-07-07T23:31:15,Hyderabad,Telangana
+358b3c54-cb64-4bb3-acd4-4c6f6e24ba34,Urvi Bhavsar,Union Bank of India,7853-9907-1602,UPI Fraud,352308.97,2026-08-16T22:21:59,Kolkata,West Bengal
+76e1fc56-5dcd-4ffa-8971-71a188a05ff4,Frederick Chander,Union Bank of India,2392-2791-5067,UPI Fraud,87337.55,2026-07-28T13:13:13,Ahmedabad,Gujarat
+deb7b715-641d-48cd-8560-840f3ad3a2e1,Gopal Pradhan,State Bank of India,7547-6432-8052,Digital Arrest,10221.15,2026-06-24T04:28:53,Ahmedabad,Gujarat
+9aeffa1d-8dbc-49ff-a469-882a6f536335,Darpan Narayan,Axis Bank,9499-4621-8303,UPI Fraud,198611.41,2026-08-13T01:15:55,Kolkata,West Bengal
+77ed4381-62bb-4cc5-9970-3b58331335cf,Nirja Pandya,IndusInd Bank,9199-3469-6651,Digital Arrest,243971.69,2026-06-27T17:59:04,Ahmedabad,Gujarat
+25265630-bdf8-40de-8354-8e8bce7971e6,Charan Mani,Canara Bank,2406-2901-3321,UPI Fraud,159385.72,2026-07-13T06:34:45,Chandigarh,Chandigarh
+030bebb4-12e6-415e-8e81-3e8ad267ee25,Indira Chawla,YES Bank,9537-8912-6706,Investment Scam,53323.4,2026-08-08T03:56:43,Mumbai,Maharashtra
+ada0416d-d0e2-4efa-89f5-8a654b8e8570,Mohammed Subramaniam,IDBI Bank,6225-2100-5919,Digital Arrest,406042.04,2026-06-10T05:44:44,Chennai,Tamil Nadu
+a909f1eb-be29-4604-a510-ae003ec2cce1,Hritik Palla,State Bank of India,6620-2791-3692,Job Scam,260416.98,2026-07-22T15:37:18,Bhopal,Madhya Pradesh
+1fd5d497-269e-44d7-b79f-465f9d5ce81c,Ishwar Mallick,ICICI Bank,7985-8570-4798,Investment Scam,316731.36,2026-06-17T03:53:25,Bengaluru,Karnataka
+c1361e05-361a-432c-871d-28c8030e5e58,Pushti Bal,IndusInd Bank,8080-7481-1478,Romance Scam,442133.2,2026-07-12T17:09:47,Jaipur,Rajasthan
+8ffc7aad-a590-4685-82a0-deb89fc69613,Ayush Gole,UCO Bank,7370-1072-4519,Job Scam,142780.69,2026-08-06T09:27:23,Hyderabad,Telangana
+bfd5a5c0-4f4c-4e38-b8b5-00d9c77764d6,Dayamai Nori,YES Bank,2025-2667-9796,Job Scam,186067.55,2026-06-18T04:47:37,Patna,Bihar
+9723f722-713c-46a6-93d5-b3cc4bf7b213,Abeer Golla,Kotak Mahindra Bank,5298-9019-9646,UPI Fraud,300500.56,2026-07-28T10:01:45,Noida,Uttar Pradesh
+2dbeb66c-739b-41af-8eb8-71b40fd5e3de,Nandini Boase,Canara Bank,2871-6700-6766,Investment Scam,310594.53,2026-08-17T01:43:30,Ahmedabad,Gujarat
+38c95410-7b1b-45e9-91cf-db59d317b5d9,Azaan Chand,IndusInd Bank,5873-2388-3194,UPI Fraud,63341.52,2026-06-28T17:09:52,Lucknow,Uttar Pradesh
+1bae5e0e-2204-42db-b390-0e00c7f808c0,Krisha Saini,HDFC Bank,7116-3316-9369,Investment Scam,212028.36,2026-06-12T10:49:53,Gurgaon,Haryana
+8d101e9b-39d7-40e6-989e-41527f260d5f,Harita Dugar,UCO Bank,7931-4043-8973,Romance Scam,348249.3,2026-07-31T17:08:32,Hyderabad,Telangana
+7244bcb5-baf9-44f4-9fd7-c86766c5fa8f,Devika Nair,South Indian Bank,3733-9022-5732,Job Scam,97613.8,2026-08-19T19:32:42,Gurgaon,Haryana
+6181655f-decb-4f93-a2b2-185bae398e55,Charles Dugal,Kotak Mahindra Bank,1878-6882-1157,Investment Scam,72584.68,2026-08-17T05:10:05,Ahmedabad,Gujarat
+51d007c9-0552-4176-9e1a-c24cca0683e9,Chandran Bumb,Canara Bank,9281-9109-7703,Investment Scam,210737.07,2026-08-19T14:40:02,Kolkata,West Bengal
+854dc1a1-9bc8-4a1c-a4ea-6036c9dc517f,Saanvi Samra,Kotak Mahindra Bank,3740-2354-1505,Job Scam,149584.51,2026-06-25T18:01:52,Chennai,Tamil Nadu
+5c9fa241-4156-448f-b8d1-8683e9323c1a,Riya Sachdeva,Axis Bank,5729-3755-8492,Romance Scam,372546.53,2026-08-12T10:17:57,Kolkata,West Bengal
+e92cee4e-2b33-435f-a8e8-3140337652f4,Tanveer Vala,Kotak Mahindra Bank,9369-2854-2871,UPI Fraud,388680.95,2026-08-17T23:57:55,Kolkata,West Bengal
+95236e78-0877-46ba-9768-30eef7fc6571,Hemani Sani,Bank of Baroda,1681-8231-9951,Job Scam,494938.99,2026-06-09T00:13:30,Kolkata,West Bengal
+c9b27031-87c9-43ee-b334-ed735406cee8,Bhanumati Sur,IDBI Bank,5055-5877-1528,Investment Scam,135093.54,2026-08-21T18:38:53,Bhopal,Madhya Pradesh
+2f6ceec7-dffd-4f29-b94d-c73f4a538c0f,Chakradev Kannan,Federal Bank,8193-2923-4882,Job Scam,406297.84,2026-07-26T03:32:22,Noida,Uttar Pradesh
+4bf9b82f-7448-4b82-8bf7-0a11bce5f265,Christopher Amble,IDBI Bank,8015-3719-3281,Job Scam,407697.28,2026-08-16T06:23:23,Bengaluru,Karnataka
+f961a4d3-4538-43f7-aa86-94ff74e28e9a,Charvi Kakar,State Bank of India,6747-9720-5605,Romance Scam,271690.43,2026-06-30T11:44:42,Ahmedabad,Gujarat
+b7381eb2-8201-49d1-a651-d023423f2ea4,Aadhya Mann,IDBI Bank,5740-5380-9428,Digital Arrest,72116.51,2026-08-10T21:25:24,Pune,Maharashtra
+c1d9c0cf-6ad4-4142-8eed-e1d81d810373,Jagdish Amble,YES Bank,1971-5543-3078,Job Scam,128590.23,2026-08-07T03:14:51,Hyderabad,Telangana
+cafb5bf2-3b2d-4f1d-a72c-4fec330e165b,Qushi Gill,Bank of Baroda,5055-7434-9019,Job Scam,290825.64,2026-06-25T03:44:01,Bhopal,Madhya Pradesh
+7b286648-4af7-4349-9bc9-7ba5d9c20e92,Lajita Walia,IndusInd Bank,7146-8405-2237,Digital Arrest,204411.13,2026-08-10T20:44:37,Hyderabad,Telangana
+9b27257d-b232-4a29-8d73-879a0d2ec34b,Xiti Pandya,Punjab National Bank,7046-8449-8996,UPI Fraud,293067.99,2026-08-22T10:16:45,Lucknow,Uttar Pradesh
+4fc1180b-0fc6-4533-9599-2643c236a166,Mekhala Basak,YES Bank,2526-8511-6869,Digital Arrest,398860.57,2026-07-07T16:19:21,Bhopal,Madhya Pradesh
+4723fc9f-65fb-4aca-bbe5-cbf4d93cc7d0,Anirudh Sharaf,Axis Bank,4470-9105-5399,UPI Fraud,415030.09,2026-07-01T20:36:14,Hyderabad,Telangana
+2179d28d-8f25-4ffb-8a8d-02b8d5f38701,Dhriti Sanghvi,Union Bank of India,3139-8951-6631,Digital Arrest,27741.75,2026-07-29T20:40:53,Ahmedabad,Gujarat
+2089e4fe-acf5-4007-986a-f220d1402c80,Omisha Mann,YES Bank,8529-1266-3035,Job Scam,223436.54,2026-05-30T03:09:09,Bhopal,Madhya Pradesh
+be5aebb6-5d7a-498f-af63-010bd1a70e70,Nidhi Bail,Canara Bank,3161-5945-3604,UPI Fraud,51203.29,2026-07-04T01:27:10,Mumbai,Maharashtra
+378e11bd-c600-46b0-b02c-ef4a8b213780,Onveer Sharma,Punjab National Bank,7092-3711-1848,Investment Scam,314674.12,2026-08-08T13:15:10,Noida,Uttar Pradesh
+474bc986-e6a6-4035-9274-fbb3716969ba,Gaurang Sarkar,IDBI Bank,4836-8032-2494,Digital Arrest,5537.72,2026-07-15T08:37:03,Patna,Bihar
+9a49b728-56a7-4118-9879-3f6c09a7ae0c,Yagnesh Sarin,HDFC Bank,4705-9510-8291,Digital Arrest,8990.97,2026-07-02T10:09:47,Gurgaon,Haryana
+2584a998-d471-4f99-b155-58e5bf053894,Farhan Randhawa,Federal Bank,7919-3165-8826,Digital Arrest,118328.7,2026-06-07T17:44:02,Noida,Uttar Pradesh
+e0650768-6ebd-4721-b317-99ac1b79ac8b,Harinakshi Kant,IDBI Bank,2678-2690-6133,UPI Fraud,441089.55,2026-06-12T09:06:42,Patna,Bihar
+1ffa2ff5-c956-4815-9357-7a16a3ca0fdd,Om Bose,Canara Bank,3181-3340-2120,Romance Scam,283829.15,2026-07-28T07:43:27,Patna,Bihar
+7940f529-3bbb-427b-b1e1-c7f8d91232d3,Yashvi Hari,IndusInd Bank,8210-6753-4490,Job Scam,460347.59,2026-07-28T21:08:19,Gurgaon,Haryana
+d47c357d-857c-479a-8e5a-d32631378ead,Indali Divan,IndusInd Bank,4559-2420-2646,Job Scam,377460.6,2026-07-26T07:23:03,Chennai,Tamil Nadu
+a1a88e97-7712-43ed-a77e-f00b4d3d13d5,Harshil Dhingra,IDBI Bank,6759-8035-6152,Job Scam,127654.26,2026-07-31T15:39:08,Hyderabad,Telangana
+a4b94a34-111f-4d0c-b119-a836e3a4b37c,Rudra Ghose,HDFC Bank,5668-1439-5942,Job Scam,261285.82,2026-07-18T12:51:04,Mumbai,Maharashtra
+ea553d23-5fca-4ccb-a00f-fc2930b835f4,Faqid Goel,Axis Bank,7418-5842-1894,Job Scam,249969.42,2026-06-10T00:17:21,Lucknow,Uttar Pradesh
+266fb73f-2fe0-4209-98a3-fccf0d556277,Ucchal Sen,Axis Bank,2163-9655-1197,UPI Fraud,467292.58,2026-06-11T21:07:11,Chennai,Tamil Nadu
+c48663cd-7715-4d5b-94a6-52b7b934d103,Diya Dora,Canara Bank,7895-6986-9951,Job Scam,382549.34,2026-08-12T20:39:46,Bhopal,Madhya Pradesh
+eb3b5bc4-d3eb-4313-ab34-e9de5d5b3889,Ekansh Singh,HDFC Bank,2106-1225-5295,Job Scam,24714.3,2026-06-04T22:28:48,Delhi,Delhi
+beb92b47-50b0-4f61-9959-31615da88f5d,Chavvi Maharaj,YES Bank,9300-5693-9209,Investment Scam,214669.74,2026-07-08T02:57:06,Hyderabad,Telangana
+0b977432-9e26-438c-9cd9-ac19b9a48c49,Indira Tripathi,HDFC Bank,9791-9808-3501,UPI Fraud,46380.55,2026-06-06T17:42:39,Jaipur,Rajasthan
+ff3f6164-6910-4b35-94be-3781a8da4faf,Dayita Shenoy,Union Bank of India,4329-3545-9788,UPI Fraud,198412.09,2026-07-30T15:35:24,Chandigarh,Chandigarh
+89434425-9077-4538-a027-c0b6126a7e1a,Baljiwan Bhandari,YES Bank,2083-6081-8167,Job Scam,33663.44,2026-06-07T10:28:04,Bhopal,Madhya Pradesh
+40917b0b-ab3a-4d67-a675-d78046cf2ef3,Bhavini Bose,South Indian Bank,2900-8428-1901,UPI Fraud,334709.39,2026-08-01T22:57:02,Hyderabad,Telangana
+675cc7e4-7947-4296-b157-a5121e34193d,Yashica Rajagopalan,IDBI Bank,2956-1207-3248,Digital Arrest,86097.15,2026-07-02T17:27:32,Gurgaon,Haryana
+d4ef4c46-0e0e-4287-86de-6f25e2db4f04,Benjamin Sengupta,Union Bank of India,5247-3735-7092,Job Scam,376139.31,2026-08-22T20:53:13,Kolkata,West Bengal
+99ede115-1937-45cf-ab79-22c9f828e18e,Ekanta Soni,Punjab National Bank,2934-1480-6488,Investment Scam,139630.39,2026-06-05T06:24:36,Lucknow,Uttar Pradesh
+9f738994-2c2b-473d-9c07-e8cc25468338,David Seshadri,Punjab National Bank,2262-9128-8457,Romance Scam,183261.33,2026-07-17T13:45:11,Lucknow,Uttar Pradesh
+347c8f45-59a9-46a1-afe9-11b6d0d68266,Hemal Chad,Federal Bank,3734-7024-3577,UPI Fraud,387797.83,2026-08-24T21:22:26,Ahmedabad,Gujarat
+d4697b49-d8a4-4469-853f-0f7592ae64ef,Balveer Kota,UCO Bank,2889-4742-9336,Digital Arrest,26798.76,2026-08-21T20:20:47,Jaipur,Rajasthan
+0c3b1cf2-be5b-4798-a0ba-92e2beefd670,Reva Viswanathan,State Bank of India,1753-8729-6963,Investment Scam,460512.14,2026-06-16T10:35:12,Mumbai,Maharashtra
+f8f9913a-30f7-4528-967b-35733e9e9fd1,Januja Pradhan,South Indian Bank,1579-7870-4678,UPI Fraud,127890.28,2026-08-26T23:40:25,Bhopal,Madhya Pradesh
+0838cd0a-ec45-444b-965a-f7f06528efbd,Lila Rege,IDBI Bank,5444-2276-7108,Digital Arrest,253510.27,2026-08-25T15:15:08,Bengaluru,Karnataka
+8c98ca26-d80c-4146-9e04-c09256634a49,Charles Natt,State Bank of India,4656-9450-1752,Investment Scam,39118.59,2026-07-14T05:19:31,Gurgaon,Haryana
+3d46f062-c155-43c2-bdfb-ae1e033dc6c6,Forum Chandra,Federal Bank,6090-6362-2415,Romance Scam,231089.36,2026-07-04T21:13:18,Pune,Maharashtra
+aba026f6-5ab2-40d5-ab69-7e340993326d,Bhanumati Krishnan,Axis Bank,5979-4974-8600,UPI Fraud,297887.01,2026-07-16T23:11:28,Pune,Maharashtra
+e5a27d0b-c6ea-4c2c-bd3d-0d619397ef60,Gauri Bumb,YES Bank,4201-9954-5016,Job Scam,8157.05,2026-07-08T21:01:51,Patna,Bihar
+496d15a8-6efe-4578-8cc9-1d1f1a45f4c2,Inaya Mukherjee,State Bank of India,9872-6675-1157,UPI Fraud,5723.71,2026-08-01T21:12:23,Mumbai,Maharashtra
+42866429-42e9-4412-8f4c-d4f5500948c5,Kai Chad,Canara Bank,6038-2703-4361,Romance Scam,491642.29,2026-07-09T19:49:09,Bhopal,Madhya Pradesh
+1cb336ec-c4f0-4f18-89e1-40225967068e,Krisha Narasimhan,Kotak Mahindra Bank,3332-5584-2524,Digital Arrest,461030.83,2026-08-25T04:24:31,Delhi,Delhi
+8887e423-3f9a-466e-8dc9-4d6b423b7b20,Girik Sampath,Federal Bank,7767-7102-8511,Digital Arrest,292481.46,2026-07-18T03:18:34,Kolkata,West Bengal
+8e56a132-e9a0-4762-9af2-4f80e49a3a56,Andrew Patil,ICICI Bank,7461-2226-2020,Investment Scam,332909.74,2026-06-11T18:08:59,Jaipur,Rajasthan
+cba3b05b-3741-4846-9a0d-cb765fd5d7a1,Pranit Kala,Axis Bank,5276-6161-7438,UPI Fraud,162438.57,2026-06-25T11:16:50,Pune,Maharashtra
+1ce7f793-95bf-4b9b-bc17-79b70799bd51,Vedika Handa,Axis Bank,4321-3230-2785,Job Scam,57300.59,2026-07-12T17:08:38,Noida,Uttar Pradesh
+31a0798f-020c-4f3c-af99-313ccca40843,Laksh Dubey,Kotak Mahindra Bank,7660-2978-9780,UPI Fraud,482494.19,2026-06-19T05:24:17,Bengaluru,Karnataka
+e40c9760-69db-4251-8fe9-d77edbe498ab,Chakrika Chaudhuri,Kotak Mahindra Bank,8591-5341-2964,Digital Arrest,83019.61,2026-08-04T16:12:04,Pune,Maharashtra
+331b2e86-f415-4efe-a9dc-425436cf101f,Gayathri Deep,Punjab National Bank,1660-4522-6370,Job Scam,50150.39,2026-06-23T03:58:09,Bhopal,Madhya Pradesh
+4b09750a-93b4-4ba4-9efe-2e4d7a16d67e,Mitesh Gaba,Bank of Baroda,9412-1802-5896,UPI Fraud,410944.36,2026-06-15T22:43:07,Hyderabad,Telangana
+412e3785-fadf-4fd6-8891-2f3c1bd051df,Noah Sarma,State Bank of India,8408-5093-2551,Investment Scam,55444.14,2026-08-15T03:17:17,Hyderabad,Telangana
+41a29d69-9d17-4cde-8f6d-66870d73e4ba,Nirja Patla,ICICI Bank,1195-2010-4641,Job Scam,103075.85,2026-07-07T23:00:02,Noida,Uttar Pradesh
+1998b875-48f8-4d4f-b5d5-1cc53e072e5e,Sachi Mane,Bank of Baroda,2376-5240-2228,Digital Arrest,498594.91,2026-06-18T06:22:09,Jaipur,Rajasthan
+882cea38-d44b-4313-a7ba-566203e6cdc4,Vivaan Walla,South Indian Bank,8265-3110-2506,UPI Fraud,65651.19,2026-07-13T19:46:24,Jaipur,Rajasthan
+4b8b15b9-d876-4fe7-ab56-55c13b4ebe74,Dayamai Singh,State Bank of India,8096-7471-9128,Digital Arrest,194451.07,2026-07-10T11:46:36,Gurgaon,Haryana
+ca1ade83-6948-425a-9d43-371f4439111f,Jhalak Sastry,ICICI Bank,4517-4066-5505,UPI Fraud,225775.66,2026-06-13T11:54:49,Bengaluru,Karnataka
+0b8ee734-7a82-4a28-aa46-7c2e62d92f56,Baghyawati Raja,State Bank of India,5026-5835-9173,Investment Scam,441975.39,2026-07-15T13:48:01,Ahmedabad,Gujarat
+ed3d4578-c204-474a-9c49-676ca63f8274,Neel Iyengar,State Bank of India,5583-7275-3248,Investment Scam,103731.61,2026-08-23T22:58:02,Noida,Uttar Pradesh
+681527ef-601a-45a5-8fd9-9a3d4ca0fd17,Zashil Ben,YES Bank,5082-9907-1319,Investment Scam,392048.3,2026-07-03T22:22:09,Kolkata,West Bengal
+ebb6552b-8c83-4559-a14f-51186773e523,Kamya Chauhan,Kotak Mahindra Bank,8940-6636-9231,UPI Fraud,197248.73,2026-06-16T12:34:43,Kolkata,West Bengal
+8c1d6281-9b10-4064-8de6-8757dee10657,Bhavani Chacko,State Bank of India,4588-1480-5602,Digital Arrest,405283.67,2026-07-14T20:40:54,Bengaluru,Karnataka
+bcf1aae7-a9ec-4b60-9896-b545cfb4de14,Anjali Sengupta,Union Bank of India,4813-3615-2640,Job Scam,330147.89,2026-06-24T22:37:49,Bengaluru,Karnataka
+50a822fa-f54a-49ed-89b1-0e0d7c7a7f04,Rajeshri Chand,Union Bank of India,1916-4594-7363,UPI Fraud,467926.99,2026-08-20T03:05:05,Bhopal,Madhya Pradesh
+9d7cfb7c-4165-4f0e-8255-ddfb5aaa0a09,Shravya Palla,ICICI Bank,4875-6210-6878,Romance Scam,18962.25,2026-08-06T02:00:08,Gurgaon,Haryana
+2053e271-1b47-4836-9c07-c19c169e3698,Oeshi Bera,Bank of Baroda,3328-4084-9064,Romance Scam,157981.27,2026-07-16T16:22:37,Ahmedabad,Gujarat
+562aa778-d8c1-4463-9c04-a47d00a58354,Yadavi Prakash,State Bank of India,1920-4811-4584,Digital Arrest,265592.01,2026-05-30T03:10:12,Noida,Uttar Pradesh
+d8992944-328b-4ed8-bca3-d617032fcd21,Libni Bumb,Bank of Baroda,4300-3137-6582,Job Scam,459796.49,2026-08-20T00:54:07,Chandigarh,Chandigarh
+2221a661-ae4a-4f63-97ba-6b64fb1acfee,Udarsh Bala,Federal Bank,1975-1359-3420,Romance Scam,353824.69,2026-06-12T19:39:07,Bengaluru,Karnataka
+5d036aef-d94c-4524-baf9-ac46e9eea91d,Hardik Nayak,YES Bank,9622-6978-2188,UPI Fraud,353746.31,2026-08-02T08:28:28,Noida,Uttar Pradesh
+c8de1be4-b946-4dca-8eb3-0bbbe251195a,Laksh Barad,Canara Bank,2655-6514-5944,UPI Fraud,72543.58,2026-06-14T08:35:17,Ahmedabad,Gujarat
+4e71b56e-f8d5-4a8e-97e3-32a230003fac,Urmi Dewan,IDBI Bank,8982-6198-3854,Romance Scam,348312.4,2026-07-28T15:37:23,Hyderabad,Telangana
+7e422798-6e0a-4190-98b0-85ea1b88c889,Saumya Ahluwalia,YES Bank,4657-3872-7199,UPI Fraud,368327.51,2026-06-27T15:51:08,Bengaluru,Karnataka
+b308ecf6-c7ed-452a-a3d0-4f3d4092e1f3,Anirudh Kunda,ICICI Bank,1029-7415-1530,Job Scam,303182.39,2026-08-27T11:45:07,Gurgaon,Haryana
+745dc943-f45d-4724-9111-efb7bce2e6ee,Mason Wable,YES Bank,4619-2705-9129,Job Scam,168928.37,2026-06-06T14:52:48,Ahmedabad,Gujarat
+e3cafce7-4c66-457a-8cd6-8407f346142e,Indrajit Mani,Axis Bank,6234-3750-2453,UPI Fraud,226081.82,2026-06-24T19:34:02,Bengaluru,Karnataka
+96f4aeac-738d-4ffe-9d50-35d1a827d52d,Charvi Dara,Axis Bank,2110-6742-5205,Digital Arrest,361604.73,2026-06-03T17:46:09,Mumbai,Maharashtra
+55563c04-388f-46d9-bf6c-e43ace15d4df,William Saini,Canara Bank,7875-3725-7783,Investment Scam,441476.48,2026-07-03T04:00:19,Chennai,Tamil Nadu
+722233ca-38b5-488f-b920-fda472a865d7,Dev Choudhry,Union Bank of India,2661-8855-4695,Job Scam,228387.27,2026-08-15T15:50:08,Hyderabad,Telangana
+1dcade49-3112-42dd-9421-1f4729c5a575,Amol Varma,Federal Bank,5831-1328-6221,UPI Fraud,476072.76,2026-06-06T06:28:37,Delhi,Delhi
+2df24a25-ac0b-4a46-aa5d-4b88e123bb33,Maanas Manne,Bank of Baroda,7151-3636-2228,Romance Scam,471207.9,2026-06-08T02:31:37,Gurgaon,Haryana
+0be46cc5-4dfb-4aa7-9ba2-619fdc9e69fe,Aarav Pandit,Bank of Baroda,8909-1507-8066,Job Scam,305622.22,2026-07-11T05:20:15,Ahmedabad,Gujarat
+e78722a7-eae1-4896-a551-e1d4e4916161,Omaja Grover,ICICI Bank,2659-6424-4367,Job Scam,207593.53,2026-07-22T20:45:10,Delhi,Delhi
+ba9aa081-d9f2-43cc-b67f-719ae987a7b7,Jalsa Bir,IDBI Bank,9849-5346-5612,UPI Fraud,122586.4,2026-06-03T21:14:11,Chandigarh,Chandigarh
+5797b6f6-b240-4990-adf9-921f558d08cd,Madhavi Singhal,Canara Bank,9043-3516-1893,UPI Fraud,6888.71,2026-06-07T13:45:58,Ahmedabad,Gujarat
+c23f4892-0906-4b2f-9965-5addec54cdf3,Lila Prakash,Punjab National Bank,8869-4271-2589,Digital Arrest,107441.73,2026-07-31T00:40:10,Bhopal,Madhya Pradesh
+ba9fd24e-7970-46a1-a1f0-0ee718927fb6,Amol Parikh,Punjab National Bank,8758-2892-6052,Investment Scam,238117.5,2026-08-24T22:47:35,Noida,Uttar Pradesh
+f66d628f-a2ee-44d7-871c-86eb27ecf88e,Hemani Khosla,IndusInd Bank,2493-9914-7349,Job Scam,188655.16,2026-07-06T02:24:33,Pune,Maharashtra
+a7fa3e7d-26b3-439b-a9d1-613c7bce51d9,Gaurangi Deol,Bank of Baroda,8303-1731-5313,Investment Scam,235203.69,2026-06-21T00:45:36,Gurgaon,Haryana
+f0cc8e73-b1f6-43eb-8837-fade9c4e5cfb,Indira Nigam,Federal Bank,2009-3476-2584,Digital Arrest,335729.88,2026-08-16T12:46:25,Pune,Maharashtra
+25a390c0-966d-47d9-9551-c0a577979101,Ucchal Srinivas,Union Bank of India,4727-1999-7342,Romance Scam,212222.88,2026-07-21T01:24:59,Hyderabad,Telangana
+c54c68c6-b81b-42a5-9dfb-8d5667b5606b,Krishna Bhatnagar,IndusInd Bank,8779-4860-8803,UPI Fraud,44082.75,2026-08-25T17:12:03,Bhopal,Madhya Pradesh
+5072fbb8-7d7a-4300-ba43-c27289161306,Balhaar Memon,Federal Bank,1568-9226-9467,Romance Scam,340379.77,2026-07-29T06:55:07,Lucknow,Uttar Pradesh
+317c8ee6-f90e-4405-9da1-11a84c8ca0f1,Caleb Iyengar,ICICI Bank,8357-3832-3738,Job Scam,405188.06,2026-06-11T07:36:43,Noida,Uttar Pradesh
+6a408380-09bb-4fb1-a070-05c0626d2ef6,Diya Mukherjee,State Bank of India,2283-8133-4308,Job Scam,417883.52,2026-06-24T02:29:46,Hyderabad,Telangana
