@@ -36,14 +36,20 @@ Cyber fraud incidents reported on the National Cybercrime Reporting Portal (**19
            │
            ▼
 [ XGBoost Classifier & Regressor ]
-  ├── 📍 Top-3 ATM Cashout Prediction (92.8% Top-3 Accuracy)
-  ├── ⏱️ Time-to-Cashout Countdown (MAE: 0.05 min / 3 sec)
-  └── 🔒 Real-time Micro-Freeze Action Recommendation (<10ms latency)
+  ├── 📍 Top-3 ATM Cashout Prediction (91.5% Top-3 Accuracy)
+  ├── ⏱️ Time-to-Cashout Countdown (MAE: 0.08 min / 4.8 sec)
+  └── 🔒 Real-time Micro-Freeze Action Recommendation (<20ms latency)
 ```
+
+<div align="center">
+  <img src="docs/ml_matrix_architecture.jpg" alt="MuleShield AI Machine Learning Hybrid Feature Matrix Architecture" width="100%" />
+  <p><em>Figure 1: MuleShield AI Hybrid Machine Learning Pipeline — 64-dim GraphSAGE structural risk vectors fused with 8-dim spatial-temporal tabular attributes into a 72-dimensional feature matrix for XGBoost inference.</em></p>
+</div>
 
 ---
 
 ## 🔬 Core AI / ML Architecture
+
 
 ### 1. Graph Intelligence Engine (`engine/graph_engine.py`)
 - Constructs directed multi-hop transaction networks: `Victim Account ➔ Layer-1 Mule ➔ Layer-2 Mule ➔ Terminal Cashout Node`.
