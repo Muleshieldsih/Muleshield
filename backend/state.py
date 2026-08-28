@@ -212,6 +212,8 @@ def load_all() -> None:
 # no proxy, no heuristic.
 _gnn_head_w: Optional[np.ndarray] = None
 _gnn_head_b: float = 0.0
+# Isotonic calibration curve (x, y) fitted on the GNN validation split.
+_gnn_calib: Optional[tuple] = None
 
 
 def _load_gnn_head() -> bool:
@@ -228,6 +230,11 @@ def _load_gnn_head() -> bool:
         sd = ckpt.get("model_state_dict", ckpt)
         _gnn_head_w = sd["classifier.weight"].detach().cpu().numpy().reshape(-1)
         _gnn_head_b = float(sd["classifier.bias"].detach().cpu().numpy().reshape(-1)[0])
+        global _gnn_calib
+        cal = ckpt.get("calibration")
+        if cal:
+            _gnn_calib = (np.asarray(cal["x"], dtype=float),
+                          np.asarray(cal["y"], dtype=float))
         logger.info("[STATE] GraphSAGE classification head loaded for risk scoring.")
         return True
     except Exception as e:  # pragma: no cover — defensive
@@ -249,9 +256,17 @@ def gnn_risk_score(account_id: str) -> float:
     logit = float(np.dot(_gnn_head_w, np.asarray(emb, dtype=np.float64)) + _gnn_head_b)
     # Numerically stable sigmoid
     if logit >= 0:
-        return float(1.0 / (1.0 + np.exp(-logit)))
-    z = np.exp(logit)
-    return float(z / (1.0 + z))
+        raw = float(1.0 / (1.0 + np.exp(-logit)))
+    else:
+        z = np.exp(logit)
+        raw = float(z / (1.0 + z))
+
+    # Map to a calibrated probability. The raw sigmoid saturates, so an uncalibrated
+    # score reads 100% for every account in a traced chain - true of the ordering,
+    # misleading as a number on screen.
+    if _gnn_calib is not None:
+        return float(np.interp(raw, _gnn_calib[0], _gnn_calib[1]))
+    return raw
 
 
 def get_xgb_predictor():

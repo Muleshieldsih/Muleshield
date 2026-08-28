@@ -359,6 +359,35 @@ def train(
     coverage = float(np.mean((yt_test >= lo_pred) & (yt_test <= hi_pred)))
     interval_width = float(np.mean(hi_pred - lo_pred))
 
+    # ── C3: "in Advance" -- how much warning does an officer actually get? ────
+    #
+    # MAE says how wrong the clock is; it does not say whether there was time to
+    # act. Lead time is the quantity the problem statement's "in Advance" asks
+    # for: minutes remaining once the pipeline has produced an answer, and how
+    # often that clears a realistic dispatch threshold.
+    PIPELINE_SECONDS = 60.0        # 1930 intake -> answer on screen, generously
+    DISPATCH_MIN = 15.0            # a patrol needs at least this long to reach
+
+    lead = yt_test - (PIPELINE_SECONDS / 60.0)
+    actionable = float(np.mean(lead >= DISPATCH_MIN))
+    # Only counts when the model ALSO says there is time - a correct forecast the
+    # operator does not believe is not actionable.
+    predicted_lead = y_time_pred - (PIPELINE_SECONDS / 60.0)
+    flagged_and_true = float(np.mean((predicted_lead >= DISPATCH_MIN) & (lead >= DISPATCH_MIN)))
+    precision_of_call = (
+        float(np.sum((predicted_lead >= DISPATCH_MIN) & (lead >= DISPATCH_MIN))
+              / max(1, np.sum(predicted_lead >= DISPATCH_MIN)))
+    )
+
+    if verbose:
+        print()
+        print("      -- C3: lead time (\"in Advance\") -------------------------")
+        print(f'      median actual lead time      : {np.median(lead):.1f} min')
+        print(f'      cases with >={DISPATCH_MIN:.0f} min to act    : {actionable:.1%}')
+        print(f'      model calls them, correctly  : {flagged_and_true:.1%} of all cases')
+        print(f'      precision of the "go" call   : {precision_of_call:.1%}')
+        print()
+
     if verbose:
         print(f"      Trained in  : {reg_time:.0f}ms  (best iter {reg.best_iteration})")
         print(f"      Test MAE    : {time_mae:.2f} min   (mean-baseline {baseline_mae:.2f} min)")
@@ -418,6 +447,9 @@ def train(
         "time_mae_minutes": time_mae,
         "time_baseline_mae": baseline_mae,
         "time_r2": time_r2,
+        "lead_time_median_min": float(np.median(lead)),
+        "lead_actionable_rate": actionable,
+        "lead_call_precision": precision_of_call,
         "interval_coverage": coverage,
         "interval_width_min": interval_width,
         "n_train": len(X_train),

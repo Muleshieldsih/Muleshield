@@ -40,7 +40,8 @@ import networkx as nx
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT / "engine"))
 
-from gnn_model import GraphSAGEMule, FEATURE_COLS, IN_CHANNELS, OUT_CHANNELS
+from gnn_model import (GraphSAGEMule, FEATURE_COLS, IN_CHANNELS, OUT_CHANNELS,
+                       derive_features)
 
 DATA_DIR = ROOT / "data"
 MODELS_DIR = ROOT / "models"
@@ -68,6 +69,8 @@ def load_pyg_data(
         - scaler:       Fitted StandardScaler for inference-time normalization
     """
     node_df = pd.read_csv(node_features_path)
+    # Ratios and logs the raw columns cannot express to an axis-aligned split.
+    node_df = derive_features(node_df)
     txn_df = pd.read_csv(transactions_path)
 
     # ── Build account_id -> integer index mapping ─────────────────────────────
@@ -121,9 +124,19 @@ def load_pyg_data(
     x_tensor = torch.tensor(x_scaled, dtype=torch.float)
 
     # ── Build edge_index [2, E] ───────────────────────────────────────────────
+    #
+    # Both directions. SAGEConv aggregates over a node's INCOMING edges only, so
+    # a directed src->dst graph means an account never sees who it paid - only
+    # who paid it. Mule behaviour is defined by what an account does with money
+    # after receiving it, so the out-neighbourhood is at least as informative as
+    # the in-neighbourhood. Reverse edges are appended so message passing reaches
+    # both sides, with direction preserved as an edge feature.
     src_indices = [account_to_idx[s] for s in txn_df["src_account"]]
     dst_indices = [account_to_idx[d] for d in txn_df["dst_account"]]
-    edge_index = torch.tensor([src_indices, dst_indices], dtype=torch.long)
+
+    fwd = torch.tensor([src_indices, dst_indices], dtype=torch.long)
+    rev = torch.tensor([dst_indices, src_indices], dtype=torch.long)
+    edge_index = torch.cat([fwd, rev], dim=1)
 
     # ── Train / Val / Test masks (70 / 15 / 15, stratified above) ────────────
     train_mask = torch.zeros(N, dtype=torch.bool)
@@ -305,6 +318,20 @@ def train(
     if best_state:
         model.load_state_dict(best_state)
 
+    # ── Probability calibration on VALIDATION ─────────────────────────────────
+    # The raw sigmoid is badly calibrated: scores saturate, so the console shows
+    # "100.0% risk" for every account in a traced chain, which reads as fabricated
+    # even when the ranking is correct. Isotonic regression fitted on validation
+    # maps scores to frequencies that mean what they say. Fitted on validation
+    # only, so it never sees test.
+    from sklearn.isotonic import IsotonicRegression
+    model.eval()
+    with torch.no_grad():
+        _p_all = torch.sigmoid(model(data.x, data.edge_index).squeeze(-1)).numpy()
+    _va = data.val_mask.numpy()
+    calibrator = IsotonicRegression(out_of_bounds="clip", y_min=0.0, y_max=1.0)
+    calibrator.fit(_p_all[_va], data.y.numpy()[_va])
+
     # Threshold is tuned on validation only, then frozen for the test report.
     tuned_threshold = best_threshold(model, data, data.val_mask)
     test_metrics = evaluate(model, data, data.test_mask,
@@ -338,6 +365,11 @@ def train(
         # The split is saved so scripts/evaluate_baselines.py can score every
         # baseline on exactly these test nodes. Comparing a model measured on one
         # split against baselines measured on another is not a comparison.
+        # Isotonic mapping from raw sigmoid to calibrated probability.
+        "calibration": {
+            "x": calibrator.X_thresholds_.tolist(),
+            "y": calibrator.y_thresholds_.tolist(),
+        },
         "split": {
             "train_idx": [int(i) for i in split_idx["train"]],
             "val_idx": [int(i) for i in split_idx["val"]],

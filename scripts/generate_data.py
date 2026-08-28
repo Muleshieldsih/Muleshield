@@ -51,6 +51,7 @@ Usage:
 """
 
 import argparse
+import os
 
 import random
 import uuid
@@ -72,8 +73,14 @@ VELOCITY_WINDOW_SECONDS = 300
 MIN_SPLIT_DESTINATIONS = 3
 DATA_DIR = Path(__file__).parent.parent / "data"
 
-# Fraction of ground-truth labels that are wrong, reflecting imperfect bank
-# reporting: undetected mules and accounts wrongly flagged in an STR.
+# Ground-truth labelling is imperfect, but its two error modes have very
+# different rates. Mules evade detection often; innocent customers are rarely
+# reported. A single symmetric rate applied to the whole population would put
+# most of its damage on the small positive class.
+UNDETECTED_MULE_RATE = 0.08     # mules never reported -> labelled clean
+FALSE_REPORT_RATE = 0.002       # clean accounts wrongly flagged in an STR
+
+# Retained for reporting/back-compat; no longer used to flip labels.
 LABEL_NOISE_RATE = 0.02
 
 # ATM choice model — a mule does not always walk to the nearest ATM.
@@ -96,6 +103,25 @@ ATM_SYNDICATE_PREF_BOOST = 9.0  # a crew's established cashout points
 ATM_PREF_PER_SYNDICATE = 4      # how many points a crew keeps in rotation
 ATM_CANDIDATE_RADIUS_KM = 60.0
 ATM_MIN_CANDIDATES = 25
+
+# Base share of cashouts where a runner is already at the machine when the
+# transfer lands. Without this the delay distribution has a ~22-minute floor and
+# every case looks comfortably interceptable, which is not what makes the problem
+# hard. The per-account probability is modulated by the crew's dwell behaviour.
+IMMEDIATE_CASHOUT_RATE = 0.28
+
+# How mule accounts are recruited, and how much ordinary banking history that
+# leaves behind. Mules with NO civilian history are trivially separable, which is
+# a property of a naive simulator rather than of the real problem.
+FRESH_MULE_SHARE = 0.35        # opened for the purpose vs rented from a customer
+
+# Ordinary-traffic participation is a function of account age alone, applied to
+# every account identically, so it can never act as a proxy for the mule label.
+OBSERVATION_WINDOW_DAYS = 120.0
+
+# Probability that a legitimate payment begins a short burst of further payments
+# from the same account (paying several bills in one sitting, batch settlements).
+SESSION_START_PROB = 0.22
 
 # Realistic Cybercrime Modalities (NCRP / 1930 Helpline taxonomies)
 FRAUD_TYPES = [
@@ -144,33 +170,44 @@ INDIAN_BANKS = [
 
 ARCHETYPES = {
     "salaried": {
-        "is_mule": False, "weight": 0.30,
+        "is_mule": False, "weight": 0.335,
         "age_days": (400, 3200), "dwell_hours": (18.0, 400.0),
         "passthrough": (0.05, 0.55), "fan_out": (1, 4), "night_ratio": (0.02, 0.15),
     },
     "merchant": {
-        "is_mule": False, "weight": 0.22,
+        "is_mule": False, "weight": 0.245,
         "age_days": (200, 2600), "dwell_hours": (2.0, 60.0),
         "passthrough": (0.30, 0.85), "fan_out": (2, 9), "night_ratio": (0.05, 0.25),
     },
     "transit_business": {          # deliberate overlap class
-        "is_mule": False, "weight": 0.10,
+        "is_mule": False, "weight": 0.115,
         "age_days": (60, 1400), "dwell_hours": (0.08, 3.0),
         "passthrough": (0.72, 0.98), "fan_out": (3, 12), "night_ratio": (0.10, 0.40),
     },
     "student": {
-        "is_mule": False, "weight": 0.13,
+        "is_mule": False, "weight": 0.145,
         "age_days": (40, 900), "dwell_hours": (6.0, 180.0),
         "passthrough": (0.20, 0.80), "fan_out": (1, 5), "night_ratio": (0.10, 0.35),
     },
     "senior": {
-        "is_mule": False, "weight": 0.07,
+        "is_mule": False, "weight": 0.145,
         "age_days": (900, 6000), "dwell_hours": (48.0, 900.0),
         "passthrough": (0.02, 0.35), "fan_out": (1, 3), "night_ratio": (0.01, 0.08),
     },
     "mule": {
-        "is_mule": True, "weight": 0.18,
-        "age_days": (4, 320), "dwell_hours": (0.03, 6.0),
+        # ~3% of accounts in the graph. Money mules are a small minority of real
+        # bank customers; at 18% every metric flatters the model and F1 stops
+        # being the question a bank actually asks.
+        #
+        # `age_days` here applies ONLY to freshly-opened mule accounts. A rented
+        # mule is an ordinary customer's account and inherits that customer's
+        # age - see _mule_account_age(). Giving every mule an age of 4-320 days
+        # while `salaried` starts at 400 made the two classes almost disjoint on
+        # a single feature: account_age_days alone scored AUC 0.93, and the
+        # derived activity_per_day (corr 0.92 with 1/age) simply re-encoded it.
+        # That is a property of the archetype bands, not of money mules.
+        "is_mule": True, "weight": 0.030,
+        "age_days": (4, 180), "dwell_hours": (0.03, 6.0),
         "passthrough": (0.84, 0.995), "fan_out": (2, 8), "night_ratio": (0.15, 0.55),
     },
 }
@@ -318,6 +355,30 @@ def _haversine_km(lat1, lon1, lat2, lon2):
 # GENERATOR 0 — Account Registry (built BEFORE any transaction)
 # ─────────────────────────────────────────────
 
+# Civilian archetypes a rented mule account could have belonged to before it was
+# recruited. A rented account IS an ordinary customer's account, so it carries an
+# ordinary customer's age.
+_CIVILIAN_ARCHETYPES = ["salaried", "merchant", "transit_business", "student", "senior"]
+
+
+def _mule_account_age(rng: random.Random) -> tuple[int, str]:
+    """
+    Age of a mule account, and how it was recruited.
+
+    fresh  - opened for the purpose, often on forged KYC. Genuinely young.
+    rented - an existing customer sold or lent their account. Its age is drawn
+             from the civilian population, because that is exactly what it is.
+             These are the hard cases, and excluding them made age a near-perfect
+             classifier.
+    """
+    if rng.random() < FRESH_MULE_SHARE:
+        lo, hi = ARCHETYPES["mule"]["age_days"]
+        return rng.randint(lo, hi), "fresh"
+    donor = rng.choice(_CIVILIAN_ARCHETYPES)
+    lo, hi = ARCHETYPES[donor]["age_days"]
+    return rng.randint(lo, hi), "rented"
+
+
 def build_account_registry(n_accounts: int, n_syndicates: int = 180) -> dict:
     """
     Create the population of bank accounts with intrinsic behavioural traits.
@@ -347,6 +408,11 @@ def build_account_registry(n_accounts: int, n_syndicates: int = 180) -> dict:
         if acc_id in registry:
             continue
 
+        if spec["is_mule"]:
+            age_days, recruitment = _mule_account_age(random)
+        else:
+            age_days, recruitment = random.randint(*spec["age_days"]), "n/a"
+
         registry[acc_id] = {
             "account_id": acc_id,
             "archetype": archetype,
@@ -359,7 +425,7 @@ def build_account_registry(n_accounts: int, n_syndicates: int = 180) -> dict:
             "state": state,
             "lat": alat,
             "long": alon,
-            "account_age_days": random.randint(*spec["age_days"]),
+            "account_age_days": age_days,
             # Behavioural dials, sampled per account inside the archetype's band.
             "dwell_hours": random.uniform(*spec["dwell_hours"]),
             "passthrough": random.uniform(*spec["passthrough"]),
@@ -367,6 +433,7 @@ def build_account_registry(n_accounts: int, n_syndicates: int = 180) -> dict:
             # chain widths are drawn independently in _build_chain.
             "fan_out": random.randint(*spec["fan_out"]),
             "night_ratio": random.uniform(*spec["night_ratio"]),
+            "recruitment": recruitment,
             "syndicate_id": -1,
         }
         if spec["is_mule"]:
@@ -445,6 +512,20 @@ def generate_victim_complaints(n: int, fake: Faker, registry: dict) -> pd.DataFr
 # GENERATOR 2 — Legitimate Banking Activity
 # ─────────────────────────────────────────────
 
+def _weighted_pool(accounts: list[str], weights: dict, resolution: int = 20) -> list[str]:
+    """
+    Expand accounts into a flat pool whose multiplicity encodes their weight.
+
+    Sampling from this with random.choice is O(1) per draw, where
+    random.choices(..., weights=...) would rebuild a cumulative distribution on
+    every one of hundreds of thousands of draws.
+    """
+    pool: list[str] = []
+    for a in accounts:
+        pool.extend([a] * max(1, int(round(weights.get(a, 1.0) * resolution))))
+    return pool
+
+
 def generate_legitimate_activity(registry: dict, n_txns: int) -> list[dict]:
     """
     Simulate ordinary banking traffic among non-mule accounts.
@@ -455,10 +536,54 @@ def generate_legitimate_activity(registry: dict, n_txns: int) -> list[dict]:
     salary credits, merchant settlements, remittances and P2P transfers, which is
     what forces a model to look at *how* money moves rather than *whether* it did.
     """
-    legit = [a for a, r in registry.items() if not r["is_mule"]]
+    # Mule accounts take part in ordinary banking too.
+    #
+    # Excluding them was a serious leak. It gave mules ~1.7 legitimate
+    # transactions each against ~12.4 for clean accounts, so "this account has
+    # almost no normal activity" separated the classes at AUC 0.96 on its own -
+    # an artefact of the simulator, not of mule behaviour. A classifier trained
+    # on that is detecting a hole in the data, not a mule.
+    #
+    # Real recruitment has two modes and both leave history:
+    #   rented  - an ordinary customer sells or lends an existing account, so it
+    #             carries a full, normal transaction history right up to the day
+    #             it starts laundering. This is the hard case.
+    #   fresh   - an account opened for the purpose, often on forged KYC. Thin
+    #             history, but not empty; it still receives something.
+    # `account_age_days` already distinguishes the fresh ones legitimately, so
+    # nothing is lost by removing the structural giveaway.
+    clean_accounts = [a for a, r in registry.items() if not r["is_mule"]]
+    mule_accounts = [a for a, r in registry.items() if r["is_mule"]]
+
+    rng = random.Random(20260829)
+    legit_pool_all = clean_accounts + mule_accounts
+
+    # Participation in ordinary traffic scales with ACCOUNT AGE, and with nothing
+    # else. An account opened 30 days into a 120-day window simply has less
+    # history than one opened years ago - that is physics, not a mule signal.
+    #
+    # Setting participation from the mule flag (even indirectly, via a
+    # "recruitment" mode) reintroduces the leak in a subtler form: it makes
+    # "volume of ordinary activity" a proxy for the label. Scaling by age applies
+    # the identical rule to every account, so mule status has no influence on how
+    # much civilian history an account carries. Freshly-opened mules still end up
+    # thinner - because they ARE younger - and `account_age_days` captures that
+    # legitimately.
+    weights = {}
+    for a in legit_pool_all:
+        age = registry[a]["account_age_days"]
+        weights[a] = float(np.clip(age / OBSERVATION_WINDOW_DAYS, 0.12, 1.0))
+
+    legit = clean_accounts + mule_accounts
     by_arch = defaultdict(list)
     for a in legit:
-        by_arch[registry[a]["archetype"]].append(a)
+        # A mule's cover behaviour looks like whatever ordinary customer it was
+        # recruited from, so give it a plausible civilian archetype for pooling.
+        arch = registry[a]["archetype"]
+        if arch == "mule":
+            arch = rng.choice(["salaried", "student", "merchant", "senior"])
+            registry[a]["cover_archetype"] = arch
+        by_arch[arch].append(a)
 
     base_ts = datetime.now() - timedelta(days=120)
     txns: list[dict] = []
@@ -479,8 +604,23 @@ def generate_legitimate_activity(registry: dict, n_txns: int) -> list[dict]:
     if not purposes:
         return txns
 
+    # Pre-compute weighted pools once; random.choices with weights per draw over
+    # 600k transactions is far too slow.
+    weighted_pools = {}
+    for i, (purpose, src_pool, dst_pool, amt_range) in enumerate(purposes):
+        weighted_pools[i] = (
+            _weighted_pool(src_pool, weights),
+            _weighted_pool(dst_pool, weights),
+        )
+
+    session_left, session_src, session_ts = 0, None, base_ts
+
     for _ in range(n_txns):
-        purpose, src_pool, dst_pool, amt_range = random.choice(purposes)
+        pi = random.randrange(len(purposes))
+        purpose, _sp, _dp, amt_range = purposes[pi]
+        src_pool, dst_pool = weighted_pools[pi]
+        if not src_pool or not dst_pool:
+            continue
         src = random.choice(src_pool)
         dst = random.choice(dst_pool)
         if src == dst:
@@ -495,10 +635,27 @@ def generate_legitimate_activity(registry: dict, n_txns: int) -> list[dict]:
         else:
             hour = random.randint(8, 21)
 
-        ts = base_ts + timedelta(
-            seconds=random.randint(0, 120 * 24 * 3600 - 1)
-        )
-        ts = ts.replace(hour=hour, minute=random.randint(0, 59), second=random.randint(0, 59))
+        # Ordinary payments arrive in SESSIONS, not as a uniform sprinkle.
+        #
+        # Spreading every legitimate transaction uniformly over 120 days meant a
+        # clean account essentially never had two payments within five minutes,
+        # while a laundering chain splits funds 1-to-3 inside that window. That
+        # made `burst_out_5min` an artefact detector (AUC 0.90) rather than a
+        # behavioural signal. Real customers pay several bills in one sitting and
+        # merchants settle invoices in batches, so bursts must exist on both
+        # sides and the model has to learn which bursts matter.
+        if session_left > 0 and session_src == src:
+            session_left -= 1
+            ts = session_ts + timedelta(seconds=random.randint(20, 280))
+        else:
+            ts = base_ts + timedelta(seconds=random.randint(0, 120 * 24 * 3600 - 1))
+            ts = ts.replace(hour=hour, minute=random.randint(0, 59),
+                            second=random.randint(0, 59))
+            if random.random() < SESSION_START_PROB:
+                session_left = random.randint(1, 4)
+                session_src, session_ts = src, ts
+            else:
+                session_left = 0
 
         txns.append({
             "txn_id": str(uuid.uuid4()),
@@ -826,14 +983,38 @@ def assign_cashouts(txn_df: pd.DataFrame, atm_df: pd.DataFrame, registry: dict) 
         chosen_atm.append(atm_ids[pick])
 
         # ── Delay to cashout ────────────────────────────────────────────────
+        #
+        # Two regimes, because real cashouts have two. An organised crew often
+        # has a runner already standing at the machine when the transfer lands,
+        # and the cash is out within minutes; otherwise someone has to travel.
+        # A single-regime model with a ~22-minute floor never produces an urgent
+        # case, which makes any "did we have time to act?" metric trivially 100%
+        # and hides exactly the cases the system exists to catch.
         travel_km = float(dists[pick])
         hour = pd.Timestamp(row["timestamp"]).hour
-        # Syndicates move faster in daylight; night withdrawals wait for cover.
         night_penalty = 14.0 if hour in (0, 1, 2, 3, 4) else 0.0
         discipline = registry[acc]["dwell_hours"] if rec else 1.0
-        base = 22.0 + 1.9 * travel_km + night_penalty + min(discipline * 2.2, 25.0)
-        noise = np.random.gamma(shape=2.2, scale=4.6) - 10.1   # heavy-tailed, ~0 mean
-        delays.append(float(np.clip(base + noise, 4.0, 180.0)))
+
+        # Whether a runner is waiting is NOT a coin flip - it tracks how the crew
+        # operates. An account that habitually forwards funds within minutes is
+        # run by people who are already in position; a slower account is not.
+        # Drawing this at random instead made the regime unobservable, i.e. pure
+        # irreducible noise, and the countdown regressor collapsed to predicting
+        # the mixture mean (MAE 16.2, R2 0.06). Tying it to dwell behaviour keeps
+        # the bimodality realistic AND leaves it learnable, because
+        # median_dwell_seconds is measured from the ledger and fed to the model.
+        p_immediate = float(np.clip(
+            IMMEDIATE_CASHOUT_RATE * 2.2 * np.exp(-discipline / 1.5), 0.02, 0.75
+        ))
+        if np.random.random() < p_immediate:
+            # Runner in position: dominated by withdrawal mechanics, not travel.
+            base = 3.0 + 0.25 * travel_km
+            noise = np.random.gamma(shape=1.6, scale=2.1) - 3.4
+        else:
+            base = 22.0 + 1.9 * travel_km + night_penalty + min(discipline * 2.2, 25.0)
+            noise = np.random.gamma(shape=2.2, scale=4.6) - 10.1
+
+        delays.append(float(np.clip(base + noise, 2.0, 180.0)))
 
     # Both columns are seeded as empty strings when the rows are built, which
     # pins them to a string dtype; recreate them with the right types before
@@ -987,10 +1168,29 @@ def generate_node_features(transactions_df: pd.DataFrame, registry: dict) -> pd.
     # Ground truth from bank STR filings is not perfect: some mules are never
     # reported, some ordinary accounts are wrongly flagged. Without this the
     # ceiling is an artefact of the simulator.
-    n_flip = int(len(node_df) * LABEL_NOISE_RATE)
-    if n_flip:
-        flip_idx = np.random.choice(node_df.index, size=n_flip, replace=False)
-        node_df.loc[flip_idx, "is_mule_label"] = 1 - node_df.loc[flip_idx, "is_mule_label"]
+    # Noise is CLASS-CONDITIONAL, because the two error types are not remotely
+    # equally likely in reality.
+    #
+    # Flipping a flat 2% of ALL accounts was wrong: at ~5% prevalence that turns
+    # ~1.9% of accounts into clean-but-labelled-mule, which is ~40% of the entire
+    # positive class. It capped precision at 0.71 and F1 at 0.82 for a PERFECT
+    # classifier - an artefact of the noise model, not of the problem.
+    #
+    # What actually happens: mules routinely go undetected and are never reported
+    # (a sizeable false-negative rate), while banks do not file suspicious-activity
+    # reports on random innocent customers (a very small false-positive rate).
+    mule_idx = node_df.index[node_df["is_mule_label"] == 1]
+    clean_idx = node_df.index[node_df["is_mule_label"] == 0]
+
+    n_missed = int(len(mule_idx) * UNDETECTED_MULE_RATE)
+    n_false = int(len(clean_idx) * FALSE_REPORT_RATE)
+
+    if n_missed:
+        missed = np.random.choice(mule_idx, size=n_missed, replace=False)
+        node_df.loc[missed, "is_mule_label"] = 0
+    if n_false:
+        falsely = np.random.choice(clean_idx, size=n_false, replace=False)
+        node_df.loc[falsely, "is_mule_label"] = 1
 
     node_df["lat"] = node_df["lat"].clip(INDIA_LAT_MIN, INDIA_LAT_MAX).round(6)
     node_df["long"] = node_df["long"].clip(INDIA_LON_MIN, INDIA_LON_MAX).round(6)
@@ -1014,7 +1214,7 @@ def generate_node_features(transactions_df: pd.DataFrame, registry: dict) -> pd.
 # ─────────────────────────────────────────────
 
 def main(n_complaints=2500, n_transactions=20000, n_atms=1000, seed=42,
-         n_accounts=20000, n_legit_txns=30000):
+         n_accounts=50000, n_legit_txns=600000):
     """Run the full Pan-India data generation pipeline."""
     random.seed(seed)
     np.random.seed(seed)
@@ -1064,11 +1264,53 @@ def main(n_complaints=2500, n_transactions=20000, n_atms=1000, seed=42,
     node_df = generate_node_features(txn_df, registry)
     edges_df = generate_graph_edges(txn_df)
 
-    complaints_df.to_csv(DATA_DIR / "victim_complaints.csv", index=False)
-    txn_df.to_csv(DATA_DIR / "transactions.csv", index=False)
-    atm_df.to_csv(DATA_DIR / "atm_directory.csv", index=False)
-    edges_df.to_csv(DATA_DIR / "graph_edges.csv", index=False)
-    node_df.to_csv(DATA_DIR / "node_features.csv", index=False)
+    # Write every CSV or none of them.
+    #
+    # A half-finished write is worse than no write: the pipeline downstream will
+    # happily train on a node_features.csv from one run and a transactions.csv
+    # from another, and nothing will complain. This bit us for real - an editor
+    # held graph_edges.csv open, the write raised PermissionError midway, and the
+    # next training run silently used a stale label file.
+    outputs = {
+        "victim_complaints.csv": complaints_df,
+        "transactions.csv": txn_df,
+        "atm_directory.csv": atm_df,
+        "graph_edges.csv": edges_df,
+        "node_features.csv": node_df,
+    }
+
+    locked = []
+    for name in outputs:
+        target = DATA_DIR / name
+        if target.exists():
+            try:
+                with open(target, "a"):
+                    pass
+            except PermissionError:
+                locked.append(name)
+    if locked:
+        raise PermissionError(
+            "Cannot write the dataset - these files are open in another program "
+            f"(usually an editor or Excel): {', '.join(locked)}. "
+            "Close them and re-run. Nothing was written, so the existing dataset "
+            "is still internally consistent."
+        )
+
+    tmp_paths = {}
+    try:
+        for name, frame in outputs.items():
+            tmp = DATA_DIR / (name + ".tmp")
+            frame.to_csv(tmp, index=False)
+            tmp_paths[name] = tmp
+        for name, tmp in tmp_paths.items():
+            os.replace(tmp, DATA_DIR / name)
+    except Exception:
+        for tmp in tmp_paths.values():
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise
 
     mule_count = int(node_df["is_mule_label"].sum())
     print("\n" + "=" * 68)
@@ -1081,7 +1323,8 @@ def main(n_complaints=2500, n_transactions=20000, n_atms=1000, seed=42,
     print(f"  Accounts in graph : {len(node_df):,}")
     print(f"  Labelled mules    : {mule_count:,} ({mule_count/len(node_df):.1%})")
     print(f"  ATMs              : {len(atm_df):,}")
-    print(f"  Label noise       : {LABEL_NOISE_RATE:.0%}")
+    print(f"  Label noise       : {UNDETECTED_MULE_RATE:.0%} of mules missed, "
+          f"{FALSE_REPORT_RATE:.1%} of clean wrongly flagged")
     print("=" * 68)
 
     # Keyed by name so callers (and the Phase 1 test-suite) do not depend on
@@ -1101,8 +1344,8 @@ if __name__ == "__main__":
     ap.add_argument("--complaints", type=int, default=2500)
     ap.add_argument("--transactions", type=int, default=20000)
     ap.add_argument("--atms", type=int, default=1000)
-    ap.add_argument("--accounts", type=int, default=20000)
-    ap.add_argument("--legit", type=int, default=30000)
+    ap.add_argument("--accounts", type=int, default=50000)
+    ap.add_argument("--legit", type=int, default=600000)
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
 

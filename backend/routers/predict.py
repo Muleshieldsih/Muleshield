@@ -92,6 +92,25 @@ async def predict_cashout(complaint_id: str) -> PredictionResponse:
     # The ranker scores the ATMs reachable from the terminal account, so it
     # needs the account itself: prior cashouts by the account's graph
     # neighbourhood are one of the candidate features.
+    # Observed hop timing of THIS traced chain - median gap, fastest gap, span.
+    # Available the moment the chain is traced; uses nothing after the transfer.
+    import numpy as _np
+    _ts = sorted(
+        _np.datetime64(str(t.get("timestamp"))[:19])
+        for t in state.get_transactions_for(complaint_id)
+        if t.get("timestamp")
+    )
+    if len(_ts) >= 2:
+        _gaps = _np.diff(_np.array(_ts)).astype("timedelta64[s]").astype(float)
+        _gaps = _gaps[_gaps >= 0]
+        chain_timing = (
+            (float(_np.median(_gaps)), float(_gaps.min()),
+             float((_ts[-1] - _ts[0]) / _np.timedelta64(1, "s")))
+            if len(_gaps) else (0.0, 0.0, 0.0)
+        )
+    else:
+        chain_timing = (0.0, 0.0, 0.0)
+
     node_rec = state.get_node_feature(terminal_acc) or {}
     raw_result = predictor.predict(
         feature_vec,
@@ -99,6 +118,7 @@ async def predict_cashout(complaint_id: str) -> PredictionResponse:
         node_lon=node_lon,
         node_bank=str(node_rec.get("bank_name", "UNKNOWN")),
         account=terminal_acc,
+        chain_timing=chain_timing,
     )
 
     elapsed_ms = round((time.time() - t0) * 1000, 2)

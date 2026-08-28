@@ -37,7 +37,7 @@ ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT / "engine"))
 DATA = ROOT / "data"
 
-from gnn_model import FEATURE_COLS  # noqa: E402
+from gnn_model import FEATURE_COLS, derive_features  # noqa: E402
 
 
 def _hav(lat, lon, lats, lons):
@@ -47,6 +47,32 @@ def _hav(lat, lon, lats, lons):
     dlam = np.radians(lons - lon)
     a = np.sin(dphi / 2) ** 2 + np.cos(p1) * np.cos(p2) * np.sin(dlam / 2) ** 2
     return 2 * r * np.arcsin(np.sqrt(np.clip(a, 0, 1)))
+
+
+
+def precision_at_k(y_true: np.ndarray, y_score: np.ndarray, ks=(100, 500, 1000)) -> dict:
+    """
+    Precision within the top-K highest-scoring accounts.
+
+    At realistic prevalence (~1.5%) F1 stops being the operative question. An
+    investigation team can work a fixed number of alerts a day, so what matters
+    is: of the K accounts we surface, how many are actually mules? Reported
+    alongside lift over random, which is what makes the number interpretable -
+    Precision@100 of 0.30 is poor at 20% prevalence and excellent at 1.5%.
+    """
+    order = np.argsort(y_score)[::-1]
+    base_rate = float(y_true.mean())
+    out = {}
+    for k in ks:
+        k_eff = min(k, len(order))
+        hits = float(y_true[order[:k_eff]].sum())
+        prec = hits / max(1, k_eff)
+        out[k] = {
+            "precision": prec,
+            "recall": hits / max(1.0, float(y_true.sum())),
+            "lift": prec / base_rate if base_rate > 0 else float("nan"),
+        }
+    return out
 
 
 def _load_gnn_checkpoint():
@@ -66,6 +92,7 @@ def mule_detection_baselines(ckpt) -> pd.DataFrame:
     nothing. The split is now persisted at training time and reused verbatim here.
     """
     node = pd.read_csv(DATA / "node_features.csv")
+    node = derive_features(node)
 
     # The checkpoint's split indices refer to `account_ids` order, so align on it.
     order = {a: i for i, a in enumerate(ckpt["account_ids"])}
@@ -95,6 +122,7 @@ def mule_detection_baselines(ckpt) -> pd.DataFrame:
         )
 
     rows = [row("Majority class (all mule)", np.ones_like(yte))]
+    scores_by_model: dict[str, np.ndarray] = {}
 
     # Best single feature: threshold chosen on TRAIN, scored on TEST.
     best_f1, best_col, best_rule = 0.0, None, None
@@ -114,18 +142,22 @@ def mule_detection_baselines(ckpt) -> pd.DataFrame:
     rows.append(row(f"Best single feature ({best_col})",
                     ((Xte[:, j] > t) if sign == 1 else (Xte[:, j] <= t)).astype(int),
                     score))
+    scores_by_model[f"Best single feature ({best_col})"] = score
 
     lr = LogisticRegression(max_iter=2000, class_weight="balanced").fit(Xtr_s, ytr)
-    rows.append(row("Logistic regression (no graph)",
-                    lr.predict(Xte_s), lr.predict_proba(Xte_s)[:, 1]))
+    lr_score = lr.predict_proba(Xte_s)[:, 1]
+    rows.append(row("Logistic regression (no graph)", lr.predict(Xte_s), lr_score))
+    scores_by_model["Logistic regression (no graph)"] = lr_score
 
     rf = RandomForestClassifier(n_estimators=300, max_depth=14, random_state=42,
                                 class_weight="balanced", n_jobs=-1).fit(Xtr, ytr)
-    rows.append(row("Random forest (no graph)",
-                    rf.predict(Xte), rf.predict_proba(Xte)[:, 1]))
+    rf_score = rf.predict_proba(Xte)[:, 1]
+    rows.append(row("Random forest (no graph)", rf.predict(Xte), rf_score))
+    scores_by_model["Random forest (no graph)"] = rf_score
 
-    return pd.DataFrame(rows, columns=["model", "f1", "auc", "pr_auc",
-                                       "precision", "recall"])
+    return (pd.DataFrame(rows, columns=["model", "f1", "auc", "pr_auc",
+                                        "precision", "recall"]),
+            scores_by_model, yte)
 
 
 def atm_baselines() -> pd.DataFrame:
@@ -167,7 +199,7 @@ def main():
     print("  (all rows scored on the SAME held-out nodes as the GNN)")
     print("=" * 92)
 
-    df = mule_detection_baselines(ckpt)
+    df, scores_by_model, yte = mule_detection_baselines(ckpt)
     df.loc[len(df)] = (
         "GraphSAGE GNN (this system)",
         m["test_f1"], m["test_auc"], m.get("test_pr_auc", float("nan")),
@@ -187,6 +219,23 @@ def main():
     print("-" * 92)
     print(f'  Lift over the best non-graph baseline: {m["test_f1"] - best_naive:+.4f} F1')
     print(f'  Decision threshold (tuned on validation): {m.get("threshold", 0.5):.4f}')
+
+    # ── Precision@K: what an alert budget actually buys ──────────────────────
+    base_rate = float(yte.mean())
+    print()
+    print("=" * 92)
+    print("  ALERT BUDGET - of the top K accounts we surface, how many are mules?")
+    print(f"  (base rate in this population: {base_rate:.2%})")
+    print("=" * 92)
+    print(f'{"model":<40}{"P@100":>11}{"P@500":>11}{"P@1000":>11}{"lift@100":>11}')
+    print("-" * 92)
+    for name, sc in scores_by_model.items():
+        pk = precision_at_k(yte, sc)
+        print(f'{name:<40}{pk[100]["precision"]:>11.3f}{pk[500]["precision"]:>11.3f}'
+              f'{pk[1000]["precision"]:>11.3f}{pk[100]["lift"]:>10.1f}x')
+    print("-" * 92)
+    print("  The GNN's own scores are not re-derived here; run engine/train_gnn.py")
+    print("  for its precision/recall at the tuned threshold.")
 
     print()
     print("=" * 74)

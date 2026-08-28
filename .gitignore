@@ -31,3 +31,14 @@ node_modules/
 frontend/node_modules/
 frontend/dist/
 .env.local
+
+# ── Generated dataset ────────────────────────────────────────────────────────
+# transactions.csv is ~114 MB and graph_edges.csv ~40 MB at the current corpus
+# size, past GitHub's 100 MB limit. Both are fully reproducible and deterministic
+# (seed 42), so the generator is the source of truth rather than the artefact:
+#
+#     python scripts/generate_data.py
+#
+# The small CSVs stay tracked so the repo is inspectable without a full run.
+data/transactions.csv
+data/graph_edges.csv

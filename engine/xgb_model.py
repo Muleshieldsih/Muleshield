@@ -402,6 +402,7 @@ class MuleXGBPredictor:
         node_bank: str = "UNKNOWN",
         account: Optional[str] = None,
         gnn_mule_prob: float = 0.0,
+        chain_timing: Optional[tuple] = None,
     ) -> dict:
         """
         Rank the reachable ATMs for one terminal account and estimate the delay.
@@ -431,6 +432,10 @@ class MuleXGBPredictor:
                     float(gnn_mule_prob),
                 ], dtype=np.float32),
                 np.asarray(beh, dtype=np.float32),
+                # Observed hop timing of the traced chain; mirrors
+                # FeatureBuilder.rank_context.
+                np.log1p(np.asarray(chain_timing or (0.0, 0.0, 0.0),
+                                    dtype=np.float32)),
             ])
 
         if node_lat is None or node_lon is None or self.atm_lats is None:

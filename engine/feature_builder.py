@@ -269,6 +269,7 @@ class FeatureBuilder:
         self._gnn_head = None                             # (weight, bias) of the GNN head
         self._behaviour_lookup: dict = {}                 # account -> BEHAVIOUR_COLS values
         self.history_complaints: set = set()              # prior-only complaints
+        self._chain_timing: dict = {}                     # complaint -> observed hop timing
 
     def load(self) -> "FeatureBuilder":
         """Load all data sources and build O(1) indexed structures."""
@@ -494,6 +495,45 @@ class FeatureBuilder:
     CANDIDATE_FEATURES = 12   # per-candidate feature block appended to the base
     HISTORY_FRACTION = 0.50   # earliest share of complaints used only as priors
 
+    def build_chain_timing(self) -> None:
+        """
+        Measure how fast each traced laundering chain is actually moving.
+
+        The countdown target is driven by the crew's operating speed. The only
+        proxy the regressor had for that was `median_dwell_seconds`, measured
+        over ALL of an account's traffic - and since a mule now carries mostly
+        ordinary banking activity, that statistic is dominated by civilian
+        behaviour and barely reflects the crew at all. R2 sat at 0.16 against an
+        achievable 0.89.
+
+        The chain's own hop-to-hop timing is the direct measurement, and it is
+        fully available at prediction time: when a 1930 complaint is traced, the
+        timestamps of every hop are on the statement in front of you. Nothing
+        here uses the cashout, or anything after the terminal transfer.
+        """
+        df = self.txn_df[self.txn_df["is_terminal"].notna()].copy()
+        df = df[df["complaint_id"].astype(str).str.len() > 0]
+        df["_dt"] = pd.to_datetime(df["timestamp"], errors="coerce")
+        df = df.dropna(subset=["_dt"]).sort_values(["complaint_id", "_dt"])
+
+        self._chain_timing = {}
+        for cid, grp in df.groupby("complaint_id", sort=False):
+            ts = grp["_dt"].to_numpy()
+            if len(ts) < 2:
+                self._chain_timing[cid] = (0.0, 0.0, 0.0)
+                continue
+            gaps = np.diff(ts).astype("timedelta64[s]").astype(float)
+            gaps = gaps[gaps >= 0]
+            if not len(gaps):
+                self._chain_timing[cid] = (0.0, 0.0, 0.0)
+                continue
+            span = float((ts[-1] - ts[0]) / np.timedelta64(1, "s"))
+            self._chain_timing[cid] = (
+                float(np.median(gaps)),   # typical hop-to-hop delay
+                float(gaps.min()),        # fastest hop = upper bound on crew speed
+                span,                     # total time the chain has been running
+            )
+
     def build_cashout_priors(self) -> None:
         """
         Build ATM cashout priors from the EARLIEST slice of complaints only.
@@ -645,7 +685,7 @@ class FeatureBuilder:
 
         return order, block
 
-    RANK_CONTEXT_DIM = 7 + len(BEHAVIOUR_COLS)   # 12
+    RANK_CONTEXT_DIM = 7 + len(BEHAVIOUR_COLS) + 3   # 15 (+3 chain timing)
 
     def gnn_mule_probability(self, account: str) -> float:
         """
@@ -680,7 +720,8 @@ class FeatureBuilder:
         except Exception:
             self._gnn_head = None
 
-    def rank_context(self, base_vec: np.ndarray, account: str) -> np.ndarray:
+    def rank_context(self, base_vec: np.ndarray, account: str,
+                     complaint_id: str | None = None) -> np.ndarray:
         """
         Per-cashout context handed to the ranker alongside the candidate block.
 
@@ -702,6 +743,12 @@ class FeatureBuilder:
                 self.gnn_mule_probability(account),
             ], dtype=np.float32),
             beh.astype(np.float32),
+            # Observed speed of THIS chain: median hop gap, fastest hop, elapsed
+            # span. Log-scaled because hop gaps span seconds to days.
+            np.log1p(np.array(
+                self._chain_timing.get(complaint_id, (0.0, 0.0, 0.0)),
+                dtype=np.float32,
+            )),
         ])
 
     def build_ranking_set(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, pd.DataFrame]:
@@ -717,6 +764,7 @@ class FeatureBuilder:
             (X[N*K, 17], y[N*K], group_ids[N*K], meta_df[N rows])
         """
         self.build_cashout_priors()
+        self.build_chain_timing()
 
         terminal_txns = self.txn_df[self.txn_df["is_terminal"] == 1].copy()
         complaint_amounts = self.complaints_df.set_index("ticket_id")["stolen_amount"].to_dict()
@@ -753,7 +801,7 @@ class FeatureBuilder:
             # it as unreachable keeps the accuracy denominator honest.
             reachable = truth in set(int(i) for i in cand_idx)
 
-            ctx = self.rank_context(base, terminal_acc)
+            ctx = self.rank_context(base, terminal_acc, complaint_id)
             for j, atm_i in enumerate(cand_idx):
                 X_rows.append(np.concatenate([ctx, block[j]]))
                 y_rows.append(1 if int(atm_i) == truth else 0)
