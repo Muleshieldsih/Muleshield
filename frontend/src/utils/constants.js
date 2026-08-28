@@ -5,6 +5,12 @@ export const CITIES = ["Delhi","Mumbai","Bengaluru","Hyderabad","Chennai","Kolka
 export function amountFmt(n){ try{ return `₹${Number(n).toLocaleString('en-IN')}` }catch{ return `₹${n}` } }
 export function pctFmt(p){ return `${(Number(p)*100).toFixed(1)}%` }
 
+export function formatTicket(id) {
+  if (!id) return '—'
+  if (id.startsWith('TKT-') || id.startsWith('1930-')) return id
+  return `1930-TKT-${String(id).slice(0, 8).toUpperCase()}`
+}
+
 export const mockComplaints = [
   { ticket_id:'TKT-A1B2C3D4', victim_name:'Rohan Sharma', victim_bank:'HDFC Bank', victim_account:'XXXX-XXXX-4821', fraud_type:'UPI Fraud', stolen_amount:120000, city:'Delhi', state:'Delhi', complaint_timestamp: new Date(Date.now()-8*60000).toISOString(), status:'ACTIVE' },
   { ticket_id:'TKT-E5F6G7H8', victim_name:'Priya Nair', victim_bank:'SBI', victim_account:'XXXX-XXXX-9932', fraud_type:'Job Scam', stolen_amount:45000, city:'Mumbai', state:'Maharashtra', complaint_timestamp: new Date(Date.now()-22*60000).toISOString(), status:'ACTIVE' },

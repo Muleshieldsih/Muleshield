@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useCallback, memo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { endpoints } from '../services/api'
-import { mockComplaints, amountFmt } from '../utils/constants'
+import { mockComplaints, amountFmt, formatTicket } from '../utils/constants'
 import { timeAgo } from '../hooks/useCountdown'
 import { ShieldAlert, Plus, Search, MapPinned, GitBranch, Zap, ArrowUpRight } from 'lucide-react'
 
@@ -27,7 +27,7 @@ const ComplaintItem = memo(function ComplaintItem({ c, isSelected, onSelect }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full ${lvl.dot}`} />
-          <span className="mono text-[12px] font-bold text-white">{c.ticket_id}</span>
+          <span className="mono text-[12px] font-bold text-white">{formatTicket(c.ticket_id)}</span>
           <span className={`px-2 py-0.5 rounded text-[10px] mono border ${lvl.bg} ${lvl.color}`}>{lvl.label}</span>
         </div>
         <span className="mono text-[13px] font-bold text-aegis-green">{amountFmt(c.stolen_amount)}</span>
@@ -325,7 +325,7 @@ export default function TriageFeed({ complaints: liveComplaints, onSelect }) {
             <div className="aegis-panel p-4 space-y-4">
               <div className="border-b border-ink-border pb-3">
                 <div className="mono text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Selected Incident Overview</div>
-                <div className="text-lg font-bold text-white mono mt-0.5">{selectedComplaint.ticket_id}</div>
+                <div className="text-lg font-bold text-white mono mt-0.5">{formatTicket(selectedComplaint.ticket_id)}</div>
                 <div className="text-[12px] mono text-zinc-400 mt-1">
                   Victim: <span className="text-white font-medium">{selectedComplaint.victim_name}</span> • {selectedComplaint.victim_bank} ({selectedComplaint.victim_account})
                 </div>
