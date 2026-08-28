@@ -1,10 +1,9 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, memo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { endpoints } from '../services/api'
 import { mockComplaints, amountFmt } from '../utils/constants'
 import { timeAgo } from '../hooks/useCountdown'
-import { Panel } from '../components/Shell'
-import { ShieldAlert, Plus, Search, Filter, ArrowUpRight, MapPinned, GitBranch, Zap, CheckCircle2, Clock } from 'lucide-react'
+import { ShieldAlert, Plus, Search, MapPinned, GitBranch, Zap, ArrowUpRight } from 'lucide-react'
 
 function levelOf(iso) {
   const mins = (Date.now() - new Date(iso).getTime()) / 60000
@@ -13,21 +12,149 @@ function levelOf(iso) {
   return { label: 'MONITORING', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/30', dot: 'bg-emerald-500' }
 }
 
+// ISOLATED INGEST MODAL COMPONENT (Eliminates typing latency on parent feed)
+const IngestComplaintModal = memo(function IngestComplaintModal({ isOpen, onClose, onSuccess }) {
+  const [formData, setFormData] = useState({
+    victim_name: '',
+    victim_bank: 'SBI',
+    victim_account: '',
+    fraud_type: 'UPI Fraud',
+    stolen_amount: '75000',
+    city: 'Delhi',
+    state: 'Delhi'
+  })
+  const [ingesting, setIngesting] = useState(false)
+
+  if (!isOpen) return null
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setIngesting(true)
+    try {
+      const payload = {
+        ...formData,
+        stolen_amount: Number(formData.stolen_amount) || 50000,
+        victim_account: formData.victim_account || `ACC-${Math.floor(10000000 + Math.random() * 90000000)}`
+      }
+      const res = await endpoints.ingestComplaint(payload)
+      onSuccess(res)
+      onClose()
+    } catch (err) {
+      alert(`Ingestion failed: ${err.message}`)
+    } finally {
+      setIngesting(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/80 z-50 grid place-items-center p-4">
+      <div className="aegis-panel w-full max-w-lg p-5 bg-ink-bg border border-ink-border2 shadow-2xl">
+        <div className="flex items-center justify-between pb-3 border-b border-ink-border">
+          <div className="mono text-[13px] font-bold text-white flex items-center gap-2">
+            <Plus size={16} className="text-aegis-green" /> Ingest 1930 Cybercrime Complaint
+          </div>
+          <button onClick={onClose} className="text-zinc-400 hover:text-white mono text-[12px]">✕</button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-3 mt-4 mono text-[11px]">
+          <div>
+            <label className="block text-zinc-400 mb-1">Victim Full Name</label>
+            <input
+              required
+              type="text"
+              placeholder="e.g. Ramesh Chandra"
+              value={formData.victim_name}
+              onChange={e => setFormData(prev => ({ ...prev, victim_name: e.target.value }))}
+              className="w-full bg-ink-panel border border-ink-border rounded px-3 py-2 text-white outline-none focus:border-aegis-green"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-zinc-400 mb-1">Victim Bank</label>
+              <select
+                value={formData.victim_bank}
+                onChange={e => setFormData(prev => ({ ...prev, victim_bank: e.target.value }))}
+                className="w-full bg-ink-panel border border-ink-border rounded px-3 py-2 text-white outline-none focus:border-aegis-green"
+              >
+                <option value="SBI">State Bank of India (SBI)</option>
+                <option value="HDFC">HDFC Bank</option>
+                <option value="ICICI">ICICI Bank</option>
+                <option value="PNB">Punjab National Bank</option>
+                <option value="Axis">Axis Bank</option>
+                <option value="Kotak">Kotak Mahindra Bank</option>
+                <option value="BOI">Bank of India</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-zinc-400 mb-1">Stolen Amount (₹)</label>
+              <input
+                required
+                type="number"
+                min="1000"
+                placeholder="e.g. 75000"
+                value={formData.stolen_amount}
+                onChange={e => setFormData(prev => ({ ...prev, stolen_amount: e.target.value }))}
+                className="w-full bg-ink-panel border border-ink-border rounded px-3 py-2 text-white outline-none focus:border-aegis-green"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-zinc-400 mb-1">Fraud Category</label>
+              <select
+                value={formData.fraud_type}
+                onChange={e => setFormData(prev => ({ ...prev, fraud_type: e.target.value }))}
+                className="w-full bg-ink-panel border border-ink-border rounded px-3 py-2 text-white outline-none focus:border-aegis-green"
+              >
+                <option value="UPI Fraud">UPI Fraud</option>
+                <option value="Digital Arrest">Digital Arrest</option>
+                <option value="Job Scam">Job Scam</option>
+                <option value="Investment Scam">Investment Scam</option>
+                <option value="KYC Fraud">KYC Fraud</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-zinc-400 mb-1">City / Region</label>
+              <input
+                required
+                type="text"
+                placeholder="e.g. Delhi"
+                value={formData.city}
+                onChange={e => setFormData(prev => ({ ...prev, city: e.target.value }))}
+                className="w-full bg-ink-panel border border-ink-border rounded px-3 py-2 text-white outline-none focus:border-aegis-green"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-ink-border">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded border border-ink-border text-zinc-400 hover:text-white"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={ingesting}
+              className="px-4 py-2 rounded bg-aegis-green text-black font-bold hover:bg-emerald-400 disabled:opacity-50"
+            >
+              {ingesting ? 'Broadcasting...' : 'Ingest & Trigger AI'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+})
+
 export default function TriageFeed({ complaints: liveComplaints, onSelect }) {
   const [remote, setRemote] = useState([])
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState('ALL')
   const [modalOpen, setModalOpen] = useState(false)
-  const [ingesting, setIngesting] = useState(false)
-  const [newComplaint, setNewComplaint] = useState({
-    victim_name: '',
-    victim_bank: 'SBI',
-    victim_account: '',
-    fraud_type: 'UPI Fraud',
-    stolen_amount: 75000,
-    city: 'Delhi',
-    state: 'Delhi'
-  })
   const [selectedComplaint, setSelectedComplaint] = useState(null)
   const navigate = useNavigate()
 
@@ -65,24 +192,9 @@ export default function TriageFeed({ complaints: liveComplaints, onSelect }) {
     if (onSelect) onSelect(c.ticket_id)
   }
 
-  const handleIngest = async (e) => {
-    e.preventDefault()
-    setIngesting(true)
-    try {
-      const payload = {
-        ...newComplaint,
-        stolen_amount: Number(newComplaint.stolen_amount) || 50000,
-        victim_account: newComplaint.victim_account || `ACC-${Math.floor(10000000 + Math.random() * 90000000)}`
-      }
-      const res = await endpoints.ingestComplaint(payload)
-      setModalOpen(false)
-      loadData()
-      handleSelect(res)
-    } catch (err) {
-      alert(`Ingestion failed: ${err.message}`)
-    } finally {
-      setIngesting(false)
-    }
+  const handleIngestSuccess = (res) => {
+    loadData()
+    handleSelect(res)
   }
 
   const criticalCount = complaints.filter(c => levelOf(c.complaint_timestamp).label.includes('CRITICAL')).length
@@ -93,22 +205,22 @@ export default function TriageFeed({ complaints: liveComplaints, onSelect }) {
       {/* TOP STATS CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <div className="aegis-panel p-3 border-l-4 border-l-blue-500">
-          <div className="mono text-[11px] text-zinc-500 uppercase tracking-wider">Active 1930 Complaints</div>
+          <div className="mono text-[11px] text-zinc-400 uppercase tracking-wider font-semibold">Active 1930 Complaints</div>
           <div className="text-2xl font-bold text-white mt-1 mono">{complaints.length}</div>
           <div className="text-[11px] text-zinc-400 mt-1">Live queue from NCRP feed</div>
         </div>
         <div className="aegis-panel p-3 border-l-4 border-l-red-500">
-          <div className="mono text-[11px] text-zinc-500 uppercase tracking-wider">Critical (Golden Hour)</div>
+          <div className="mono text-[11px] text-zinc-400 uppercase tracking-wider font-semibold">Critical (Golden Hour)</div>
           <div className="text-2xl font-bold text-red-400 mt-1 mono">{criticalCount}</div>
           <div className="text-[11px] text-red-400/80 mt-1">&lt; 15 mins since reporting</div>
         </div>
         <div className="aegis-panel p-3 border-l-4 border-l-emerald-500">
-          <div className="mono text-[11px] text-zinc-500 uppercase tracking-wider">Total At-Risk Funds</div>
+          <div className="mono text-[11px] text-zinc-400 uppercase tracking-wider font-semibold">Total At-Risk Funds</div>
           <div className="text-2xl font-bold text-emerald-400 mt-1 mono">{amountFmt(totalAmount)}</div>
           <div className="text-[11px] text-emerald-400/80 mt-1">Target for rapid interdiction</div>
         </div>
         <div className="aegis-panel p-3 border-l-4 border-l-purple-500">
-          <div className="mono text-[11px] text-zinc-500 uppercase tracking-wider">AI Pipeline Latency</div>
+          <div className="mono text-[11px] text-zinc-400 uppercase tracking-wider font-semibold">AI Pipeline Latency</div>
           <div className="text-2xl font-bold text-purple-400 mt-1 mono">25.8 ms</div>
           <div className="text-[11px] text-zinc-400 mt-1">GraphSAGE GNN + XGBoost v2</div>
         </div>
@@ -126,7 +238,7 @@ export default function TriageFeed({ complaints: liveComplaints, onSelect }) {
               </div>
               <button
                 onClick={() => setModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-aegis-green text-black mono text-[11px] font-bold hover:bg-emerald-400 transition"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-aegis-green text-black mono text-[11px] font-bold hover:bg-emerald-400 transition shadow-[0_0_10px_rgba(124,240,0,0.2)]"
               >
                 <Plus size={14} /> Ingest 1930 Complaint
               </button>
@@ -199,7 +311,7 @@ export default function TriageFeed({ complaints: liveComplaints, onSelect }) {
           {selectedComplaint ? (
             <div className="aegis-panel p-4 space-y-4">
               <div className="border-b border-ink-border pb-3">
-                <div className="mono text-[10px] uppercase tracking-wider text-zinc-500">Selected Incident Overview</div>
+                <div className="mono text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Selected Incident Overview</div>
                 <div className="text-lg font-bold text-white mono mt-0.5">{selectedComplaint.ticket_id}</div>
                 <div className="text-[12px] mono text-zinc-400 mt-1">
                   Victim: <span className="text-white font-medium">{selectedComplaint.victim_name}</span> • {selectedComplaint.victim_bank} ({selectedComplaint.victim_account})
@@ -208,19 +320,19 @@ export default function TriageFeed({ complaints: liveComplaints, onSelect }) {
 
               <div className="grid grid-cols-2 gap-2 text-[11px] mono">
                 <div className="bg-ink-bg p-2.5 rounded border border-ink-border">
-                  <div className="text-zinc-500">Stolen Amount</div>
+                  <div className="text-zinc-400">Stolen Amount</div>
                   <div className="text-base font-bold text-red-400 mt-0.5">{amountFmt(selectedComplaint.stolen_amount)}</div>
                 </div>
                 <div className="bg-ink-bg p-2.5 rounded border border-ink-border">
-                  <div className="text-zinc-500">Incident Category</div>
+                  <div className="text-zinc-400">Incident Category</div>
                   <div className="text-sm font-semibold text-white mt-1">{selectedComplaint.fraud_type}</div>
                 </div>
                 <div className="bg-ink-bg p-2.5 rounded border border-ink-border">
-                  <div className="text-zinc-500">Location</div>
+                  <div className="text-zinc-400">Location</div>
                   <div className="text-sm text-zinc-200 mt-1">{selectedComplaint.city}, {selectedComplaint.state}</div>
                 </div>
                 <div className="bg-ink-bg p-2.5 rounded border border-ink-border">
-                  <div className="text-zinc-500">Time Reported</div>
+                  <div className="text-zinc-400">Time Reported</div>
                   <div className="text-sm text-zinc-200 mt-1">{timeAgo(selectedComplaint.complaint_timestamp)}</div>
                 </div>
               </div>
@@ -236,7 +348,7 @@ export default function TriageFeed({ complaints: liveComplaints, onSelect }) {
                       <MapPinned size={16} className="text-red-400" />
                       <div>
                         <div className="mono text-[11px] font-bold text-white">View Tactical GIS Map</div>
-                        <div className="mono text-[10px] text-zinc-500">Pinpoint predicted ATM & dispatch PCR units</div>
+                        <div className="mono text-[10px] text-zinc-400">Pinpoint predicted ATM & dispatch PCR units</div>
                       </div>
                     </div>
                     <ArrowUpRight size={14} className="text-zinc-500 group-hover:text-white" />
@@ -250,7 +362,7 @@ export default function TriageFeed({ complaints: liveComplaints, onSelect }) {
                       <GitBranch size={16} className="text-blue-400" />
                       <div>
                         <div className="mono text-[11px] font-bold text-white">View Forensic Money-Flow Graph</div>
-                        <div className="mono text-[10px] text-zinc-500">Inspect multi-hop mule layering & GNN risk scores</div>
+                        <div className="mono text-[10px] text-zinc-400">Inspect multi-hop mule layering & GNN risk scores</div>
                       </div>
                     </div>
                     <ArrowUpRight size={14} className="text-zinc-500 group-hover:text-white" />
@@ -264,7 +376,7 @@ export default function TriageFeed({ complaints: liveComplaints, onSelect }) {
                       <Zap size={16} className="text-aegis-green" />
                       <div>
                         <div className="mono text-[11px] font-bold text-white">1-Click Emergency Card Freeze</div>
-                        <div className="mono text-[10px] text-zinc-500">Lock terminal debit accounts before ATM cashout</div>
+                        <div className="mono text-[10px] text-zinc-400">Lock terminal debit accounts before ATM cashout</div>
                       </div>
                     </div>
                     <ArrowUpRight size={14} className="text-zinc-500 group-hover:text-white" />
@@ -280,105 +392,12 @@ export default function TriageFeed({ complaints: liveComplaints, onSelect }) {
         </div>
       </div>
 
-      {/* INGEST COMPLAINT MODAL */}
-      {modalOpen && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 grid place-items-center p-4">
-          <div className="aegis-panel w-full max-w-lg p-5 bg-ink-bg border border-ink-border2 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-ink-border">
-              <div className="mono text-[13px] font-bold text-white flex items-center gap-2">
-                <Plus size={16} className="text-aegis-green" /> Ingest 1930 Cybercrime Complaint
-              </div>
-              <button onClick={() => setModalOpen(false)} className="text-zinc-400 hover:text-white mono text-[12px]">✕</button>
-            </div>
-            <form onSubmit={handleIngest} className="space-y-3 mt-4 mono text-[11px]">
-              <div>
-                <label className="block text-zinc-400 mb-1">Victim Full Name</label>
-                <input
-                  required
-                  type="text"
-                  placeholder="e.g. Ramesh Chandra"
-                  value={newComplaint.victim_name}
-                  onChange={e => setNewComplaint({ ...newComplaint, victim_name: e.target.value })}
-                  className="w-full bg-ink-panel border border-ink-border rounded px-3 py-2 text-white outline-none focus:border-aegis-green"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-zinc-400 mb-1">Victim Bank</label>
-                  <select
-                    value={newComplaint.victim_bank}
-                    onChange={e => setNewComplaint({ ...newComplaint, victim_bank: e.target.value })}
-                    className="w-full bg-ink-panel border border-ink-border rounded px-3 py-2 text-white outline-none focus:border-aegis-green"
-                  >
-                    <option value="SBI">State Bank of India (SBI)</option>
-                    <option value="HDFC">HDFC Bank</option>
-                    <option value="ICICI">ICICI Bank</option>
-                    <option value="PNB">Punjab National Bank</option>
-                    <option value="Axis">Axis Bank</option>
-                    <option value="Kotak">Kotak Mahindra Bank</option>
-                    <option value="BOI">Bank of India</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-zinc-400 mb-1">Stolen Amount (₹)</label>
-                  <input
-                    required
-                    type="number"
-                    min="1000"
-                    placeholder="e.g. 75000"
-                    value={newComplaint.stolen_amount}
-                    onChange={e => setNewComplaint({ ...newComplaint, stolen_amount: e.target.value })}
-                    className="w-full bg-ink-panel border border-ink-border rounded px-3 py-2 text-white outline-none focus:border-aegis-green"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-zinc-400 mb-1">Fraud Category</label>
-                  <select
-                    value={newComplaint.fraud_type}
-                    onChange={e => setNewComplaint({ ...newComplaint, fraud_type: e.target.value })}
-                    className="w-full bg-ink-panel border border-ink-border rounded px-3 py-2 text-white outline-none focus:border-aegis-green"
-                  >
-                    <option value="UPI Fraud">UPI Fraud</option>
-                    <option value="Digital Arrest">Digital Arrest</option>
-                    <option value="Job Scam">Job Scam</option>
-                    <option value="Investment Scam">Investment Scam</option>
-                    <option value="KYC Fraud">KYC Fraud</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-zinc-400 mb-1">City / Region</label>
-                  <input
-                    required
-                    type="text"
-                    placeholder="e.g. Mumbai"
-                    value={newComplaint.city}
-                    onChange={e => setNewComplaint({ ...newComplaint, city: e.target.value })}
-                    className="w-full bg-ink-panel border border-ink-border rounded px-3 py-2 text-white outline-none focus:border-aegis-green"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-3 border-t border-ink-border">
-                <button
-                  type="button"
-                  onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 rounded border border-ink-border text-zinc-400 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={ingesting}
-                  className="px-4 py-2 rounded bg-aegis-green text-black font-bold hover:bg-emerald-400 disabled:opacity-50"
-                >
-                  {ingesting ? 'Broadcasting...' : 'Ingest & Trigger AI'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* ISOLATED MODAL COMPONENT */}
+      <IngestComplaintModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSuccess={handleIngestSuccess}
+      />
     </div>
   )
 }
