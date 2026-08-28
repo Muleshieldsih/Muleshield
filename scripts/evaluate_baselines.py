@@ -29,8 +29,8 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import f1_score, roc_auc_score
-from sklearn.model_selection import train_test_split
+from sklearn.metrics import (average_precision_score, f1_score, precision_score,
+                             recall_score, roc_auc_score)
 from sklearn.preprocessing import StandardScaler
 
 ROOT = Path(__file__).parent.parent
@@ -49,27 +49,57 @@ def _hav(lat, lon, lats, lons):
     return 2 * r * np.arcsin(np.sqrt(np.clip(a, 0, 1)))
 
 
-def mule_detection_baselines(seed: int = 42) -> pd.DataFrame:
+def _load_gnn_checkpoint():
+    """Load the GraphSAGE checkpoint: its split, metrics and threshold."""
+    import torch
+    return torch.load(ROOT / "models" / "graphsage_mule.pt",
+                      map_location="cpu", weights_only=False)
+
+
+def mule_detection_baselines(ckpt) -> pd.DataFrame:
+    """
+    Score every non-graph baseline on the GNN's OWN test nodes.
+
+    A previous version split `node_features.csv` independently for the baselines
+    while reading the GNN's score out of its checkpoint - so the reported "lift
+    over the best non-graph baseline" compared two different test sets and meant
+    nothing. The split is now persisted at training time and reused verbatim here.
+    """
     node = pd.read_csv(DATA / "node_features.csv")
+
+    # The checkpoint's split indices refer to `account_ids` order, so align on it.
+    order = {a: i for i, a in enumerate(ckpt["account_ids"])}
+    node = node[node["account_id"].isin(order)].copy()
+    node["_pos"] = node["account_id"].map(order)
+    node = node.sort_values("_pos").reset_index(drop=True)
+
     X = node[FEATURE_COLS].to_numpy(dtype=np.float64)
     y = node["is_mule_label"].to_numpy()
 
-    Xtr, Xte, ytr, yte = train_test_split(
-        X, y, test_size=0.2, random_state=seed, stratify=y
-    )
+    split = ckpt["split"]
+    tr = np.array(split["train_idx"] + split["val_idx"])   # baselines get train+val
+    te = np.array(split["test_idx"])
+
+    Xtr, Xte, ytr, yte = X[tr], X[te], y[tr], y[te]
     sc = StandardScaler().fit(Xtr)
     Xtr_s, Xte_s = sc.transform(Xtr), sc.transform(Xte)
 
-    rows = []
+    def row(name, y_pred, y_score=None):
+        return (
+            name,
+            f1_score(yte, y_pred, zero_division=0),
+            roc_auc_score(yte, y_score) if y_score is not None else float("nan"),
+            average_precision_score(yte, y_score) if y_score is not None else float("nan"),
+            precision_score(yte, y_pred, zero_division=0),
+            recall_score(yte, y_pred, zero_division=0),
+        )
 
-    # 1. Majority class
-    pred = np.ones_like(yte)
-    rows.append(("Majority class (all mule)", f1_score(yte, pred), float("nan")))
+    rows = [row("Majority class (all mule)", np.ones_like(yte))]
 
-    # 2. Best single feature, threshold swept on TRAIN, scored on TEST
+    # Best single feature: threshold chosen on TRAIN, scored on TEST.
     best_f1, best_col, best_rule = 0.0, None, None
     for j, col in enumerate(FEATURE_COLS):
-        v_tr, v_te = Xtr[:, j], Xte[:, j]
+        v_tr = Xtr[:, j]
         for t in np.unique(np.percentile(v_tr, np.linspace(2, 98, 50))):
             for sign in (1, -1):
                 p_tr = ((v_tr > t) if sign == 1 else (v_tr <= t)).astype(int)
@@ -80,35 +110,22 @@ def mule_detection_baselines(seed: int = 42) -> pd.DataFrame:
                     best_f1, best_col, best_rule = f1_tr, col, (t, sign)
     t, sign = best_rule
     j = FEATURE_COLS.index(best_col)
-    p_te = ((Xte[:, j] > t) if sign == 1 else (Xte[:, j] <= t)).astype(int)
-    rows.append((f"Best single feature ({best_col})", f1_score(yte, p_te),
-                 roc_auc_score(yte, p_te)))
+    score = Xte[:, j] if sign == 1 else -Xte[:, j]
+    rows.append(row(f"Best single feature ({best_col})",
+                    ((Xte[:, j] > t) if sign == 1 else (Xte[:, j] <= t)).astype(int),
+                    score))
 
-    # 3. Logistic regression
     lr = LogisticRegression(max_iter=2000, class_weight="balanced").fit(Xtr_s, ytr)
-    rows.append(("Logistic regression (no graph)",
-                 f1_score(yte, lr.predict(Xte_s)),
-                 roc_auc_score(yte, lr.predict_proba(Xte_s)[:, 1])))
+    rows.append(row("Logistic regression (no graph)",
+                    lr.predict(Xte_s), lr.predict_proba(Xte_s)[:, 1]))
 
-    # 4. Random forest
-    rf = RandomForestClassifier(
-        n_estimators=300, max_depth=14, random_state=seed,
-        class_weight="balanced", n_jobs=-1
-    ).fit(Xtr, ytr)
-    rows.append(("Random forest (no graph)",
-                 f1_score(yte, rf.predict(Xte)),
-                 roc_auc_score(yte, rf.predict_proba(Xte)[:, 1])))
+    rf = RandomForestClassifier(n_estimators=300, max_depth=14, random_state=42,
+                                class_weight="balanced", n_jobs=-1).fit(Xtr, ytr)
+    rows.append(row("Random forest (no graph)",
+                    rf.predict(Xte), rf.predict_proba(Xte)[:, 1]))
 
-    return pd.DataFrame(rows, columns=["model", "f1", "auc"])
-
-
-def gnn_reported() -> tuple[float, float]:
-    """Read the metrics recorded in the trained GraphSAGE checkpoint."""
-    import torch
-    ckpt = torch.load(ROOT / "models" / "graphsage_mule.pt",
-                      map_location="cpu", weights_only=False)
-    m = ckpt.get("metrics", {})
-    return float(m.get("test_f1", float("nan"))), float(m.get("test_auc", float("nan")))
+    return pd.DataFrame(rows, columns=["model", "f1", "auc", "pr_auc",
+                                       "precision", "recall"])
 
 
 def atm_baselines() -> pd.DataFrame:
@@ -142,22 +159,34 @@ def atm_baselines() -> pd.DataFrame:
 
 
 def main():
-    print("=" * 74)
-    print("  MULE DETECTION — does the GNN earn its complexity?")
-    print("=" * 74)
-    df = mule_detection_baselines()
-    gf1, gauc = gnn_reported()
-    df.loc[len(df)] = ("GraphSAGE GNN (this system)", gf1, gauc)
+    ckpt = _load_gnn_checkpoint()
+    m = ckpt["metrics"]
 
-    print(f'{"model":<38}{"F1":>10}{"AUC":>10}')
-    print("-" * 74)
+    print("=" * 92)
+    print("  MULE DETECTION — does the GNN earn its complexity?")
+    print("  (all rows scored on the SAME held-out nodes as the GNN)")
+    print("=" * 92)
+
+    df = mule_detection_baselines(ckpt)
+    df.loc[len(df)] = (
+        "GraphSAGE GNN (this system)",
+        m["test_f1"], m["test_auc"], m.get("test_pr_auc", float("nan")),
+        m.get("test_precision", float("nan")), m.get("test_recall", float("nan")),
+    )
+
+    hdr = f'{"model":<40}{"F1":>9}{"AUC":>9}{"PR-AUC":>9}{"Prec":>9}{"Recall":>9}'
+    print(hdr)
+    print("-" * 92)
     for _, r in df.iterrows():
-        auc = "—" if not np.isfinite(r["auc"]) else f'{r["auc"]:.4f}'
-        print(f'{r["model"]:<38}{r["f1"]:>10.4f}{auc:>10}')
+        def fmt(v):
+            return "—" if not np.isfinite(v) else f"{v:.4f}"
+        print(f'{r["model"]:<40}{fmt(r["f1"]):>9}{fmt(r["auc"]):>9}'
+              f'{fmt(r["pr_auc"]):>9}{fmt(r["precision"]):>9}{fmt(r["recall"]):>9}')
 
     best_naive = df.iloc[:-1]["f1"].max()
-    print("-" * 74)
-    print(f'  Lift over the best non-graph baseline: +{gf1 - best_naive:.4f} F1')
+    print("-" * 92)
+    print(f'  Lift over the best non-graph baseline: {m["test_f1"] - best_naive:+.4f} F1')
+    print(f'  Decision threshold (tuned on validation): {m.get("threshold", 0.5):.4f}')
 
     print()
     print("=" * 74)

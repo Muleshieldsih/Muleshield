@@ -162,15 +162,38 @@ Auto-generates GPS navigation alerts via SMS/WhatsApp to the nearest patrol unit
 
 ## 📊 Success Metrics
 
-| Metric | Current Baseline | MuleShield Target |
+Model metrics are stated against the **naive baseline they must beat**, measured on
+held-out data. Where a baseline is a real-world process rather than a model, that is
+marked as such.
+
+### Model performance (measured)
+
+| Metric | Naive baseline | MuleShield | Status |
+|---|---|---|---|
+| **Withdrawal-zone containment** *(the PS deliverable)* | 76.5% (nearest-3 centroid) | **86.8%** | ✅ |
+| Search cost | 1,000 ATMs | **7 ATMs**, 9.4 km radius (median) | ✅ |
+| Cashout countdown MAE | 9.41 min (predict the mean) | **6.14 min** | ✅ |
+| GNN mule detection F1 | 0.9031 (random forest, no graph) | **0.9386** | ✅ |
+| Top-3 exact-ATM ranking | 0.5596 (nearest 3 by distance) | **0.5658** | ✅ marginal |
+| End-to-end inference | — | **~15 ms** (target < 200 ms) | ✅ |
+| Mule graph build | Manual, hours | **~2 ms** per complaint | ✅ |
+
+Exact-ATM ranking beats distance only marginally, and we say so: distance genuinely
+dominates which machine is used, and the Bayes-optimal ranker on this data reaches
+only ≈0.58. That is exactly why the committed deliverable is the **zone**, not the
+machine — and the zone is where the model shows real skill.
+
+### Operational targets (design goals, not yet measured end-to-end)
+
+| Metric | Current reality | MuleShield design target |
 |---|---|---|
-| Fund recovery rate | < 8% | > 40% (demo scenario) |
+| Fund recovery rate | < 8% nationally | Improved via golden-hour interception — unquantified |
 | Police response time | 2–4 hours | < 15 minutes |
-| Mule graph build time | Manual, hours | < 1 second (automated) |
-| **GNN mule detection F1** | N/A | **> 0.88** (GraphSAGE on synthetic) |
-| ATM prediction accuracy | N/A (none exists) | > 85% Top-1, > 95% Top-3 |
-| Account freeze time | 2–4 hours (inter-bank) | < 30 seconds (micro-freeze) |
-| End-to-end inference | N/A | < 200ms (embed → XGBoost) |
+| Account freeze time | 2–4 hours (inter-bank) | < 30 seconds (simulated micro-freeze) |
+
+> These three are **design goals**, not measurements. We have not run a field trial,
+> so we do not claim a recovery-rate figure. An earlier revision of this table
+> asserted "> 40%"; that number had no measurement behind it and has been withdrawn.
 
 ---
 

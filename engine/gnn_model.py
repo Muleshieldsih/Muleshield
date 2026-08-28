@@ -4,7 +4,7 @@ MuleShield AI -- Phase 2a: GraphSAGE Model Definition
 SIH26184 | MHA / I4C
 
 Architecture: 2-layer GraphSAGE binary node classifier
-  in_channels   = 7   (numeric features from node_features.csv)
+  in_channels   = 15  (behavioural features measured from the ledger)
   hidden_channels = 64
   out_channels  = 64  (embedding dimension)
   num_layers    = 2
@@ -21,7 +21,6 @@ from torch_geometric.nn import SAGEConv
 
 
 # ── Feature columns used for GNN input (must match node_features.csv) ────────
-# 7 numeric columns (strings excluded: account_id, bank_name, city)
 # Behavioural features, every one of them measurable by a bank from its own
 # transaction log.
 #
@@ -52,7 +51,8 @@ FEATURE_COLS = [
 IN_CHANNELS = len(FEATURE_COLS)   # 15
 HIDDEN_CHANNELS = 64
 OUT_CHANNELS = 64                  # embedding dimension
-NUM_LAYERS = 2
+NUM_LAYERS = 2                     # documentation only - depth is fixed by
+                                   # conv1/conv2 below, not driven by this
 
 
 class GraphSAGEMule(nn.Module):

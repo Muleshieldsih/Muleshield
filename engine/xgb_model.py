@@ -1,30 +1,31 @@
 # -*- coding: utf-8 -*-
 """
-MuleShield AI -- Phase 2b: XGBoost ATM Predictor (v2 — Bayesian Spatial Reranking)
+MuleShield AI -- Cash-Withdrawal Location Forecasting
 SIH26184 | MHA / I4C
 
-Two models trained on the 80-dim hybrid feature vector:
-  1. ATM Classifier   -- XGBClassifier  -> Top-3 ATM IDs + confidence scores
-  2. Time Regressor   -- XGBRegressor   -> time_to_cashout_minutes
+Serves the problem statement's primary ask: forecast likely cash withdrawal
+locations in advance.
 
-v2 Accuracy Upgrade — Bayesian Spatial Prior Reranking:
-  After XGBoost raw softmax probabilities are computed, scores are multiplied
-  by a Gaussian distance decay kernel and an ATM risk weight:
+Two models:
+  1. ConditionalLogitRanker -- ranks the K reachable ATMs for a terminal account
+  2. XGBRegressor           -- estimates minutes until the withdrawal
 
-      FinalScore(ATM_i) = P(ATM_i | x)
-                          × exp(−dist(node, ATM_i)² / 2σ²)
-                          × (1 + 0.35 × risk_score_i)
+Where a cashout happens is a discrete choice among alternatives, and its drivers
+compose multiplicatively (proximity x surveillance risk x bank affinity x the
+crew's established habits). In log space that product is a sum, which is exactly
+a conditional logit. A 953-way softmax over the national ATM directory saw ~5
+examples per class and scored below a plain "nearest ATM" rule; a gradient-boosted
+ranker had to approximate products with axis-aligned steps and also lost.
 
-  This guarantees ATMs thousands of km away (impossible candidates) get near-zero
-  score, while nearby high-risk ATMs rise to the top of the rankings.
+An earlier revision documented a "Bayesian Spatial Prior Reranking" step here.
+That code was never reachable (it required a label encoder the trainer never
+supplied) and has been removed rather than left as an advertised feature that
+does not run.
 
 Inference output per complaint:
     {
-        "top3_atms": [
-            {"atm_id": "ATM-001", "confidence": 0.91, "rank": 1},
-            {"atm_id": "ATM-042", "confidence": 0.07, "rank": 2},
-            {"atm_id": "ATM-017", "confidence": 0.02, "rank": 3},
-        ],
+        "top3_atms": [{"atm_id": ..., "confidence": ..., "rank": 1}, ...],
+        "search_zone": {"lat": ..., "lon": ..., "radius_km": ..., "atm_count": ...},
         "time_to_cashout_minutes": 23.4,
         "interception_confidence": 0.91,
     }
@@ -41,17 +42,11 @@ ROOT = Path(__file__).parent.parent
 MODELS_DIR = ROOT / "models"
 XGB_MODEL_PATH = MODELS_DIR / "xgb_cashout.pkl"
 
-# Bayesian spatial prior sigma (km): within this radius ATMs get full score.
-# Set to 15km — covers dense urban ATM clusters without over-restricting rural.
-_SPATIAL_SIGMA_KM = 15.0
-_SPATIAL_SIGMA_SQ = _SPATIAL_SIGMA_KM ** 2
-
-
-def _gaussian_decay(dist_km: float) -> float:
-    """Gaussian decay kernel: exp(−d² / 2σ²). Returns 1.0 at d=0."""
-    return float(np.exp(-(dist_km ** 2) / (2 * _SPATIAL_SIGMA_SQ)))
-
-
+# Hops of the money graph used to approximate an account's crew when counting
+# prior cashouts. FeatureBuilder.neighbourhood_prior imports this so training and
+# serving expand the same neighbourhood; a mismatch silently shrinks the strongest
+# non-distance signal at serving time.
+CREW_HOPS = 3
 
 
 def _haversine_array(lat: float, lon: float, lats: np.ndarray, lons: np.ndarray) -> np.ndarray:
@@ -118,19 +113,18 @@ class ConditionalLogitRanker:
 
 class MuleXGBPredictor:
     """
-    Wraps XGBClassifier (ATM) + XGBRegressor (time) for unified inference.
+    Wraps the ConditionalLogitRanker (where) + XGBRegressor (when).
 
-    v2: supports optional Bayesian spatial reranking for higher accuracy.
+    Ranking needs the account's coordinates to build its ATM candidate set, and
+    the account id to look up prior cashouts by its crew.
 
     Usage:
         predictor = MuleXGBPredictor.load()
-        result = predictor.predict(feature_vector_80d)
-        # with spatial reranking:
-        result = predictor.predict(feature_vector_80d,
-                                   node_lat=28.6, node_lon=77.2,
-                                   atm_lats=atm_lats_arr,
-                                   atm_lons=atm_lons_arr,
-                                   atm_risk_scores=risk_arr)
+        result = predictor.predict(
+            feature_vector_80d,
+            node_lat=28.6139, node_lon=77.2090,
+            node_bank="HDFC Bank", account="1234-5678-9012",
+        )
     """
 
     def __init__(
@@ -148,6 +142,9 @@ class MuleXGBPredictor:
         atm_prior_counts: Optional[np.ndarray] = None,
         acct_atm_hist: Optional[dict] = None,
         graph_adj: Optional[dict] = None,
+        behaviour: Optional[dict] = None,
+        regressor_lo=None,          # 10th-percentile countdown model
+        regressor_hi=None,          # 90th-percentile countdown model
         candidate_k: int = 25,
     ):
         self.classifier = classifier
@@ -165,6 +162,11 @@ class MuleXGBPredictor:
         self.acct_atm_hist = acct_atm_hist or {}
         # account -> set of graph neighbours, for reaching the account's crew
         self.graph_adj = graph_adj or {}
+        # account -> account-behaviour vector (BEHAVIOUR_COLS order), used by
+        # the countdown regressor. Inert for ranking, informative for timing.
+        self.behaviour = behaviour or {}
+        self.regressor_lo = regressor_lo
+        self.regressor_hi = regressor_hi
         self.candidate_k = candidate_k
 
 
@@ -212,6 +214,9 @@ class MuleXGBPredictor:
             "atm_prior_counts": self.atm_prior_counts,
             "acct_atm_hist": self.acct_atm_hist,
             "graph_adj": self.graph_adj,
+            "behaviour": self.behaviour,
+            "regressor_lo": self.regressor_lo,
+            "regressor_hi": self.regressor_hi,
             "candidate_k": self.candidate_k,
         }
         with open(path, "wb") as f:
@@ -236,66 +241,46 @@ class MuleXGBPredictor:
             atm_prior_counts=bundle.get("atm_prior_counts"),
             acct_atm_hist=bundle.get("acct_atm_hist"),
             graph_adj=bundle.get("graph_adj"),
+            behaviour=bundle.get("behaviour"),
+            regressor_lo=bundle.get("regressor_lo"),
+            regressor_hi=bundle.get("regressor_hi"),
             candidate_k=bundle.get("candidate_k", 25),
         )
 
-    # ── Bayesian Spatial Reranking ─────────────────────────────────────────────
-
-    def _apply_spatial_prior(
-        self,
-        probs: np.ndarray,      # shape (num_classes,) — XGBoost softmax output
-        node_lat: float,
-        node_lon: float,
-    ) -> np.ndarray:
-        """
-        Rerank XGBoost probabilities using Bayesian Gaussian spatial decay.
-
-        For each class i (mapped to a physical ATM), compute:
-            score_i = P(i | x) × exp(−dist(node, ATM_i)² / 2σ²) × (1 + 0.35 × risk_i)
-
-        Returns normalised scores (sum to 1).
-        """
-        if self.atm_lats is None or self.label_encoder is None:
-            return probs  # graceful fallback — no spatial data available
-
-        scores = probs.copy()
-        for enc_idx, p in enumerate(probs):
-            orig_idx = int(self.label_encoder.classes_[enc_idx])
-            if orig_idx < len(self.atm_lats):
-                atm_lat = float(self.atm_lats[orig_idx])
-                atm_lon = float(self.atm_lons[orig_idx])
-                # Haversine distance (inline for speed)
-                import math
-                phi1, phi2 = math.radians(node_lat), math.radians(atm_lat)
-                dphi = math.radians(atm_lat - node_lat)
-                dlam = math.radians(atm_lon - node_lon)
-                a = (math.sin(dphi / 2) ** 2
-                     + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2)
-                dist_km = 6371.0 * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-                decay = _gaussian_decay(dist_km)
-                risk_boost = 1.0
-                if self.atm_risk_scores is not None and orig_idx < len(self.atm_risk_scores):
-                    risk_boost = 1.0 + 0.35 * float(self.atm_risk_scores[orig_idx])
-                scores[enc_idx] = p * decay * risk_boost
-
-        total = scores.sum()
-        if total > 0:
-            scores /= total
-        return scores
 
     # ── Inference ─────────────────────────────────────────────────────────────
 
+    def _behaviour_dim(self) -> int:
+        """Width of the stored behaviour vector (0 if none was bundled)."""
+        for v in self.behaviour.values():
+            return len(v)
+        return 0
+
     def _crew_prior(self, account: Optional[str], cand_idx: np.ndarray) -> np.ndarray:
-        """Historical cashouts at each candidate by the account's 2-hop crew."""
+        """
+        Historical cashouts at each candidate by the account's crew.
+
+        Must expand exactly CREW_HOPS hops — the same depth
+        FeatureBuilder.neighbourhood_prior uses when building the training set.
+        Serving a shallower neighbourhood than training produces systematically
+        smaller counts for the strongest non-distance signal in the model, which
+        is a silent train/serve skew rather than an error.
+        """
         counts = np.zeros(len(cand_idx), dtype=np.float32)
         if not account or account not in self.graph_adj:
             return counts
 
         neigh = {account}
-        for n1 in self.graph_adj.get(account, ()):
-            neigh.add(n1)
-            for n2 in self.graph_adj.get(n1, ()):
-                neigh.add(n2)
+        frontier = {account}
+        for _ in range(CREW_HOPS):
+            nxt = set()
+            for n in frontier:
+                nxt.update(self.graph_adj.get(n, ()))
+            nxt -= neigh
+            if not nxt:
+                break
+            neigh |= nxt
+            frontier = nxt
 
         pos = {int(a): j for j, a in enumerate(cand_idx)}
         for acc in neigh:
@@ -304,6 +289,57 @@ class MuleXGBPredictor:
                 if j is not None:
                     counts[j] += c
         return counts
+
+
+    # Share of probability mass a search zone must cover. 0.80 keeps the zone
+    # tight enough to be worth deploying to while still usually containing the
+    # withdrawal; the achieved hit-rate is measured, not assumed.
+    ZONE_MASS = 0.80
+
+    def _search_zone(self, cand_idx: np.ndarray, conf: np.ndarray) -> dict:
+        """
+        Collapse the candidate distribution into one search area.
+
+        SIH26184 asks for withdrawal *locations*, and a patrol is dispatched to an
+        area rather than to a single machine. The ranker already produces a
+        calibrated distribution over reachable ATMs; this reads it as a spatial
+        posterior instead of discarding everything below rank 3.
+
+        The zone is the probability-weighted centroid of the smallest set of
+        candidates covering ZONE_MASS of the mass, with a radius that reaches the
+        furthest member of that set.
+        """
+        order = np.argsort(conf)[::-1]
+        cum = np.cumsum(conf[order])
+        n_keep = int(np.searchsorted(cum, self.ZONE_MASS) + 1)
+        n_keep = max(1, min(n_keep, len(order)))
+        keep = order[:n_keep]
+
+        idx = cand_idx[keep]
+        w = conf[keep]
+        w = w / w.sum() if w.sum() > 0 else np.full(len(w), 1.0 / len(w))
+
+        lats = self.atm_lats[idx]
+        lons = self.atm_lons[idx]
+        c_lat = float(np.sum(w * lats))
+        c_lon = float(np.sum(w * lons))
+
+        spread = _haversine_array(c_lat, c_lon, lats, lons)
+        radius = float(spread.max()) if len(spread) else 0.0
+
+        # How many ATMs of the whole directory fall inside the zone - the number
+        # of machines a team would actually have to cover.
+        inside = int((_haversine_array(c_lat, c_lon, self.atm_lats, self.atm_lons)
+                      <= max(radius, 0.05)).sum())
+
+        return {
+            "lat": round(c_lat, 6),
+            "lon": round(c_lon, 6),
+            "radius_km": round(radius, 3),
+            "atm_count": inside,
+            "candidates_covered": int(n_keep),
+            "probability_mass": round(float(cum[n_keep - 1]), 4),
+        }
 
     def _candidate_block(self, node_lat, node_lon, node_bank="UNKNOWN", account=None):
         """
@@ -386,10 +422,16 @@ class MuleXGBPredictor:
         # Accept the full 80-dim vector for API compatibility and reduce it to
         # the 7-dim ranker context. Must mirror FeatureBuilder.rank_context.
         if X.shape[0] >= 80:
-            X = np.array([
-                X[64], X[65], X[66], X[68], X[70], X[71],
-                float(gnn_mule_prob),
-            ], dtype=np.float32)
+            beh = self.behaviour.get(account)
+            if beh is None:
+                beh = np.zeros(self._behaviour_dim(), dtype=np.float32)
+            X = np.concatenate([
+                np.array([
+                    X[64], X[65], X[66], X[68], X[70], X[71],
+                    float(gnn_mule_prob),
+                ], dtype=np.float32),
+                np.asarray(beh, dtype=np.float32),
+            ])
 
         if node_lat is None or node_lon is None or self.atm_lats is None:
             raise ValueError(
@@ -426,9 +468,20 @@ class MuleXGBPredictor:
         best_row = self.scaler.transform(rows[int(rank_order[0])].reshape(1, -1))
         minutes = float(self.regressor.predict(best_row)[0])
 
+        # 80% prediction interval, when the quantile models are bundled. A single
+        # number hides how much of this delay is genuinely unknowable.
+        lo = hi = None
+        if self.regressor_lo is not None and self.regressor_hi is not None:
+            lo = float(self.regressor_lo.predict(best_row)[0])
+            hi = float(self.regressor_hi.predict(best_row)[0])
+            lo, hi = max(1.0, min(lo, hi)), max(1.0, max(lo, hi))
+
         return {
             "top3_atms": top,
+            "search_zone": self._search_zone(cand_idx, conf),
             "time_to_cashout_minutes": round(max(1.0, minutes), 2),
+            "time_to_cashout_low": round(lo, 2) if lo is not None else None,
+            "time_to_cashout_high": round(hi, 2) if hi is not None else None,
             "interception_confidence": top[0]["confidence"] if top else 0.0,
         }
 

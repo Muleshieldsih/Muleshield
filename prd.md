@@ -19,7 +19,7 @@ When a citizen reports financial cyber fraud (UPI scams, Digital Arrest, Job Sca
 MuleShield AI targets the **Golden Hour (0–60 minutes)** by:
 1. Reconstructing the multi-hop transaction chain in $<185\text{ ms}$.
 2. Identifying terminal mule accounts using 64-dimensional GraphSAGE GNN embeddings.
-3. Predicting the **Top-3 probable ATM destinations** and **cashout countdown timer** with $98.52\%$ Top-3 accuracy.
+3. Predicting the **Top-3 probable ATM destinations** and **cashout countdown timer** as a ranked search zone.
 4. Enabling **1-Click Emergency Micro-Freezes** and **Automated Police PCR Van GPS Dispatch**.
 
 ---
@@ -44,7 +44,7 @@ MuleShield AI targets the **Golden Hour (0–60 minutes)** by:
 │ 1. Ingestion Layer        │ 1930 Helpline Intake (REST / WebSockets)                    │
 │ 2. Graph Intelligence     │ NetworkX Multi-Hop BFS Traversal (<185ms)                   │
 │ 3. Deep Graph Learning    │ PyTorch Geometric GraphSAGE (64-dim Inductive Embeddings)   │
-│ 4. Spatio-Temporal Model  │ XGBoost v2 (80-dim Vector + Bayesian Spatial Prior)         │
+│ 4. Spatio-Temporal Model  │ Conditional-Logit ATM Choice + XGBoost Countdown            │
 │ 5. Backend Engine         │ FastAPI + Uvicorn ASGI + WebSocket Feed                     │
 │ 6. Tactical Command UI    │ React 19 + TailwindCSS + React Flow + Leaflet.js            │
 └───────────────────────────┴─────────────────────────────────────────────────────────────┘
@@ -80,10 +80,21 @@ MuleShield AI targets the **Golden Hour (0–60 minutes)** by:
 - **FR-4.1:** System shall construct an 80-dimensional hybrid feature vector combining:
   - 64-dim GraphSAGE embedding
   - 16 spatial/temporal tabular features (3D Cartesian coordinates $X, Y, Z$, compass bearing, multi-ATM distance triplets, bank affinity).
-- **FR-4.2:** Model must output **Top-3 ranked ATM candidates** with confidence percentages.
-- **FR-4.3:** Model must output a **time-to-cashout regression countdown** (in minutes).
-- **FR-4.4:** Bayesian Gaussian spatial prior reranking must be applied:
-  $$\text{Score}_i = P_{\text{XGB}}(i \mid \mathbf{x}) \cdot \exp\left(-\frac{d_i^2}{2\sigma^2}\right) \cdot (1 + 0.35 r_i)$$
+- **FR-4.2:** Model must output a **search zone** — centroid, radius, and the number
+  of ATMs inside it — as the primary location forecast, plus **Top-3 ranked ATM
+  candidates** with confidence percentages as the tactical drill-down.
+- **FR-4.3:** Model must output a **time-to-cashout countdown** in minutes, with a
+  q05–q95 prediction band.
+- **FR-4.4:** ATM ranking must use a **conditional-logit choice model** over the $K$
+  reachable candidates, with utility linear in log space:
+  $$P(\text{ATM}_i \mid \text{candidates}) = \text{softmax}_i\left(\mathbf{w} \cdot \log \mathbf{f}_i\right)$$
+  where $\log \mathbf{f}_i$ carries distance decay, surveillance risk, bank affinity and
+  the crew's prior cashout history. Learned weights are reported so an evaluator can
+  check them against expectation.
+
+  > A "Bayesian Gaussian spatial prior reranking" step was specified here in earlier
+  > issues. It was never reachable in code and has been removed rather than left as a
+  > documented feature that does not run.
 - **FR-4.5:** API endpoint `GET /api/v1/predict/cashout/{complaint_id}` must respond in $<200\text{ ms}$ (typical $<30\text{ ms}$).
 
 ### FR-5: 1-Click Emergency Bank Micro-Freeze
@@ -101,14 +112,40 @@ MuleShield AI targets the **Golden Hour (0–60 minutes)** by:
 ## 5. Non-Functional Requirements (NFR)
 
 ### NFR-1: Latency & Performance SLA
-- **Graph Traversal:** $< 500\text{ ms}$ (Achieved: **$182.4\text{ ms}$**).
-- **End-to-End Prediction:** $< 200\text{ ms}$ (Achieved: **$25.8\text{ ms}$**).
-- **Test Suite Pass Rate:** $100\%$ automated passing tests (184/184 Unit + 51/51 API).
+- **Per-Complaint Graph Build:** $< 500\text{ ms}$ (Achieved: **$\approx 2\text{ ms}$**).
+- **Full National Graph Build (startup):** $< 1200\text{ ms}$ (Achieved: **$\approx 670\text{ ms}$**).
+- **End-to-End Prediction:** $< 200\text{ ms}$ (Achieved: **$\approx 15\text{ ms}$**).
+- **Test Suite Pass Rate:** $100\%$ automated passing tests (237/237).
 
 ### NFR-2: Accuracy & Model Precision SLA
-- **GNN Node Classification F1-Score:** $> 0.85$ (Achieved: **$0.9996$**, AUC: $1.000$).
-- **Top-3 ATM Prediction Accuracy:** $> 85.0\%$ (Achieved: **$98.52\%$**).
-- **Cashout Countdown Error (MAE):** $< 5.0\text{ min}$ (Achieved: **$0.02\text{ min}$ / $1.2\text{ sec}$**).
+
+Every target below is stated **with the naive baseline it must beat**. A score
+without its baseline says nothing about a model.
+
+**Primary — withdrawal-location forecast (the problem statement's ask):**
+- **Search-zone containment:** $> 80\%$ — the withdrawal falls inside the predicted
+  zone (Achieved: **$86.8\%$**, vs $76.5\%$ for a nearest-3 centroid and $72.1\%$ for
+  centring on the mule, all at equal search cost).
+- **Search cost:** median zone of $9.4\text{ km}$ radius covering **7 of 1,000 ATMs**.
+
+**Supporting:**
+- **Top-3 ATM ranking:** $0.5658$ (vs $0.5596$ distance-only). Distance genuinely
+  dominates the exact-machine choice — the Bayes-optimal ranker on this data only
+  reaches $\approx 0.58$ — which is precisely why the zone, not the machine, is the
+  committed deliverable.
+- **Cashout countdown (MAE):** $< 8.0\text{ min}$ (Achieved: **$6.14\text{ min}$**, vs a
+  $9.41\text{ min}$ mean-prediction baseline; $R^2 = 0.55$ against a noise-imposed
+  ceiling of $0.72$). Reported with a q05–q95 band at $85.7\%$ empirical coverage.
+- **GNN mule detection F1:** $> 0.85$ (Achieved: **$0.9386$**, vs $0.9031$ for a random
+  forest on identical features, scored on the same held-out nodes).
+
+> **Revision note.** Earlier issues of this PRD reported $0.9996$ GNN F1, $98.52\%$
+> Top-3 ATM accuracy and $0.02\text{ min}$ MAE as achieved. Those figures were
+> artefacts of label leakage: the mule label was a copy of the `total_received`
+> feature, the ATM label was `argmin(distance)` while distance was an input, and
+> the countdown target was a closed-form line in two of its own inputs. The
+> dataset and the evaluation were rebuilt; the numbers above are what the system
+> measures now. See `README.md` → *Honest Evaluation*.
 
 ### NFR-3: Security & Statutory Privacy Compliance
 - **Digital Personal Data Protection (DPDP) Act, 2023:**
@@ -142,7 +179,7 @@ MuleShield AI targets the **Golden Hour (0–60 minutes)** by:
 ```
 Phase 1 (Complete)  ──► Phase 2 (Complete)  ──► Phase 3 (Complete)  ──► Phase 4 (Next)     ──► Phase 5 (Final)
 Data Generator          AI Engine (GNN+XGB)     FastAPI Backend         React Command Center    PPT & Live Pitch
-100% Synthetic Pan-India 98.52% Top-3 Accuracy  REST + WebSockets       4 Tactical Screens      Jury Presentation
+100% Synthetic Pan-India 86.8% Zone Containment  REST + WebSockets       4 Tactical Screens      Jury Presentation
 ```
 
 ---

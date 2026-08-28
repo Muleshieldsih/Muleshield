@@ -142,11 +142,32 @@ class ATMPrediction(BaseModel):
     historical_fraud_count: int
 
 
+class SearchZone(BaseModel):
+    """
+    The area to deploy to — the problem statement's primary output.
+
+    SIH26184 asks for likely cash withdrawal *locations*. A unit is dispatched to
+    an area, not to a single machine, so the zone is the deliverable and the
+    Top-3 ATM list is the tactical drill-down inside it.
+    """
+    lat: float
+    lon: float
+    radius_km: float
+    atm_count: int              # machines a team would have to cover
+    candidates_covered: int
+    probability_mass: float     # share of the model's distribution inside the zone
+
+
 class PredictionResponse(BaseModel):
     """Full cashout prediction for GET /api/v1/predict/cashout/{id}"""
     complaint_id: str
+    search_zone: Optional[SearchZone] = None
     top3_atms: list[ATMPrediction]
     time_to_cashout_minutes: float
+    # 5th/95th-percentile band. The delay carries irreducible noise, so a point
+    # estimate alone overstates what is knowable.
+    time_to_cashout_low: Optional[float] = None
+    time_to_cashout_high: Optional[float] = None
     interception_confidence: float
     inference_time_ms: float
     stolen_amount: float

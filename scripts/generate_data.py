@@ -363,6 +363,8 @@ def build_account_registry(n_accounts: int, n_syndicates: int = 180) -> dict:
             # Behavioural dials, sampled per account inside the archetype's band.
             "dwell_hours": random.uniform(*spec["dwell_hours"]),
             "passthrough": random.uniform(*spec["passthrough"]),
+            # NOTE: sampled for archetype completeness but not yet consumed -
+            # chain widths are drawn independently in _build_chain.
             "fan_out": random.randint(*spec["fan_out"]),
             "night_ratio": random.uniform(*spec["night_ratio"]),
             "syndicate_id": -1,

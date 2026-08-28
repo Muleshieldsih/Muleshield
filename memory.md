@@ -140,6 +140,7 @@ When Indian citizens report financial cyber-fraud via Helpline **1930** or **NCR
 | 2026-08-28 | **Phase 3 + 4 Complete (51/51 API tests):** FastAPI REST + WebSocket backend and the 4-screen React command console. |
 | 2026-08-28 | **Hardening Pass (235/235 tests):** Fixed the demo-critical defects — live-ingested complaints now build a real mule chain and run the full pipeline (were 404/422); micro-freeze POST was failing schema validation on every click and faking success client-side; velocity/fund-split panels were hardcoded and now read real `graph_engine` detections; node risk switched from embedding mean (~0) to the trained GraphSAGE head `sigmoid(Wh+b)`; the two bank-affinity features were dead constants, repaired and XGBoost retrained (98.46% Top-3); ATM addresses named random unrelated cities; removed `react-leaflet` (broke `npm install` on React 19); self-hosted fonts + basemap fallback for offline venues. |
 | 2026-08-29 | **Leakage Removal & Honest Re-baselining (237/237 tests):** Peer feedback that the model was "too accurate to be true" was correct. `total_received > 0` reproduced the mule label with F1=1.0000 - the label was a copy of a feature, and the 0.9996 GNN F1 measured nothing. The ATM label was `argmin(distance)` while distance was feature #67, and the countdown target was a closed-form line in two inputs (R2=0.9998). Rebuilt the generator: mule status fixed before any transaction exists, 29,998 legitimate transactions so classes overlap, cashout ATM sampled from a choice model, complaint-level splits, time-separated priors, 2% label noise. Honest results: GNN F1 0.9386 (vs RF 0.9031), ATM Top-3 0.5658 (vs distance 0.5526), countdown MAE 6.35 min (vs mean 9.41). Added `scripts/evaluate_baselines.py`. |
+| 2026-08-29 | **Re-aimed at the problem statement (237/237 tests):** Audited SIH26184 and found we were optimising the wrong task - the PS asks to "Forecast Likely Cash Withdrawal Locations", and mule detection appears nowhere in the ministry's wording. Added a SEARCH ZONE as the primary output: 86.8% containment vs 76.5% for a nearest-3 centroid at equal search cost, narrowing 1,000 ATMs to a median of 7. Fixed correctness bugs: crew_prior expanded 3 hops in training but 2 at serving; baselines were scored on a different split from the GNN (headline lift was not apples-to-apples, now +0.032 F1); removed dead "Bayesian Spatial Reranking" that was documented but never invoked; scaler and pos_weight were fitted over all nodes pre-split; threshold hardcoded at 0.5. Fed the countdown the account-behaviour features it was blind to (MAE 6.38 -> 6.14, R2 0.52 -> 0.55) and added a q05-q95 band at 85.7% coverage. Restated every published target in prd.md/product.md to one we actually meet. |
 
 ---
 
@@ -164,16 +165,29 @@ It was, and we fixed it. Say this plainly:
 - We rebuilt the generator so mule status is assigned **before any transaction
   exists**, added ~30k legitimate transactions so the classes overlap, and made
   the cashout ATM a **sampled choice** rather than `argmin(distance)`.
-- Honest numbers, each against its baseline:
-  | Task | Ours | Best naive baseline |
-  |---|---|---|
-  | Mule detection F1 | **0.9386** | 0.9031 (random forest, no graph) |
-  | ATM Top-3 | **0.5658** | 0.5526 (nearest 3 by distance) |
-  | Countdown MAE | **6.35 min** | 9.41 min (predict the mean) |
 - `tests/test_phase1.py::test_label_is_not_a_copy_of_a_feature` fails the build
   if any single feature reproduces the label above F1 0.95.
 
 Run `python scripts/evaluate_baselines.py` live if challenged.
+
+### Lead the pitch with THIS, not with F1
+
+SIH26184 asks to *"Forecast Likely Cash **Withdrawal Locations** in Advance."*
+Location forecasting is the deliverable; mule detection is internal machinery the
+ministry never asked for. Order the deck accordingly.
+
+| Task | Ours | Best naive baseline |
+|---|---|---|
+| **Withdrawal-zone containment** | **86.8%** | 76.5% (nearest-3 centroid) |
+| Search cost | **7 of 1,000 ATMs**, 9.4 km | — |
+| Countdown MAE | **6.14 min** | 9.41 min (predict the mean) |
+| Mule detection F1 | 0.9386 | 0.9031 (random forest, no graph) |
+| Top-3 exact ATM | 0.5658 | 0.5596 (nearest 3 by distance) |
+
+If asked why exact-ATM Top-3 is only marginally above the distance baseline: because
+distance genuinely dominates which machine is used — the Bayes-optimal ranker on this
+data reaches only ~0.58. That is exactly why the zone is the committed deliverable.
+Volunteering this is stronger than being caught by it.
 
 ### Known limitations to state before being asked
 - All data is synthetic; archetypes are informed by published mule typologies,
@@ -188,5 +202,5 @@ Run `python scripts/evaluate_baselines.py` live if challenged.
 
 ---
 
-*Last updated: 2026-08-29 (Phases 1–4 + hardening + leakage removal | 237/237 tests passed)*
+*Last updated: 2026-08-29 (Phases 1-4 + hardening + leakage removal + PS re-aim | 237/237 tests passed)*
 

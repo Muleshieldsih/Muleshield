@@ -4,11 +4,13 @@ MuleShield AI -- Phase 3: Prediction Router
 SIH26184 | MHA / I4C
 
 GET /api/v1/predict/cashout/{complaint_id}
-  Runs the full XGBoost inference pipeline for a complaint:
+  Forecasts where and when the cash will be withdrawn -- the primary ask of
+  SIH26184:
     1. Find the terminal mule account
     2. Build the 80-dim hybrid feature vector (GNN + spatial tabular)
-    3. Run MuleXGBPredictor.predict() with Bayesian spatial reranking
-    4. Return Top-3 ATMs + countdown + interception confidence
+    3. Rank the reachable ATMs with the conditional-logit choice model
+    4. Return the search ZONE (the deliverable), the Top-3 ATMs inside it
+       (tactical drill-down), and a countdown with a q05-q95 band
 """
 
 import logging
@@ -19,7 +21,7 @@ from pathlib import Path
 import numpy as np
 from fastapi import APIRouter, HTTPException
 
-from backend.models.schemas import ATMPrediction, PredictionResponse
+from backend.models.schemas import ATMPrediction, PredictionResponse, SearchZone
 from backend.websocket import manager
 import backend.state as state
 
@@ -41,12 +43,12 @@ async def predict_cashout(complaint_id: str) -> PredictionResponse:
     Runs the full XGBoost inference pipeline for a given complaint.
 
     Pipeline:
-      1. Locate terminal mule account from transaction ledger
-      2. Build 80-dim feature vector (64-dim GNN embedding + 16 spatial tabular features)
-      3. Apply Bayesian Gaussian spatial prior reranking
-      4. Return Top-3 ATMs with confidence, countdown, and GPS coordinates
+      1. Locate the terminal mule account from the transaction ledger
+      2. Build the 80-dim feature vector (64-dim GNN embedding + 16 spatial)
+      3. Rank the 25 reachable ATMs (conditional logit over log-space utilities)
+      4. Collapse that distribution into a search zone, and estimate the delay
 
-    Latency target: < 200ms (typical: ~26ms)
+    Latency target: < 200ms (typical: ~15ms)
     """
     t0 = time.time()
 
@@ -84,7 +86,7 @@ async def predict_cashout(complaint_id: str) -> PredictionResponse:
         stolen_amount=stolen_amount,
     )
 
-    # ── XGBoost inference with Bayesian spatial reranking ────────────────────
+    # ── Rank the reachable ATMs, then aggregate into a search zone ───────────
     predictor = state.get_xgb_predictor()
 
     # The ranker scores the ATMs reachable from the terminal account, so it
@@ -122,10 +124,14 @@ async def predict_cashout(complaint_id: str) -> PredictionResponse:
             historical_fraud_count=int(atm_meta.get("historical_fraud_count", 0)),
         ))
 
+    zone_raw = raw_result.get("search_zone")
     response = PredictionResponse(
         complaint_id=complaint_id,
+        search_zone=SearchZone(**zone_raw) if zone_raw else None,
         top3_atms=enriched_atms,
         time_to_cashout_minutes=raw_result["time_to_cashout_minutes"],
+        time_to_cashout_low=raw_result.get("time_to_cashout_low"),
+        time_to_cashout_high=raw_result.get("time_to_cashout_high"),
         interception_confidence=raw_result["interception_confidence"],
         inference_time_ms=elapsed_ms,
         stolen_amount=stolen_amount,
@@ -142,6 +148,7 @@ async def predict_cashout(complaint_id: str) -> PredictionResponse:
             "top_atm": enriched_atms[0].atm_id if enriched_atms else None,
             "confidence": raw_result["interception_confidence"],
             "countdown_minutes": raw_result["time_to_cashout_minutes"],
+            "zone_radius_km": zone_raw.get("radius_km") if zone_raw else None,
         },
     })
 

@@ -66,7 +66,8 @@ app = FastAPI(
     title="MuleShield AI — Backend API",
     description=(
         "Real-time cybercrime interdiction API for MHA / I4C. "
-        "Powered by GraphSAGE GNN + XGBoost with Bayesian Spatial Reranking. "
+        "Forecasts cash-withdrawal locations from 1930 complaints using a "
+        "GraphSAGE GNN, a conditional-logit ATM choice model and XGBoost. "
         "SIH26184 | Smart India Hackathon 2026."
     ),
     version="3.0.0",

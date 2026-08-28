@@ -271,14 +271,20 @@ cd frontend && npm run dev
 - `engine/gnn_model.py`: Unit test for forward pass output shape `(N, 64)`
 - `engine/embed.py`: Test that embeddings are generated for all nodes, values in `[-5, 5]` range
 - `engine/xgb_model.py`: Unit test for prediction output shape and confidence score range (0–1)
-- `engine/feature_builder.py`: Test that output feature vector is exactly 72 dimensions
+- `engine/feature_builder.py`: Test that `build_feature_vector` returns exactly
+  **80** dimensions (64 GNN embedding + 16 spatial/temporal tabular), and that
+  `build_ranking_set` returns **24** columns per candidate row
+  (12 context + 12 candidate)
 - `backend/routers/*.py`: Integration test for each endpoint (use FastAPI `TestClient`)
 
 ### 6.3 Demo Stability Rule
 > **If it can fail during the demo, add a fallback.**
 - If API call fails → show cached/mock data, not an error screen
 - If WebSocket disconnects → auto-reconnect silently
-- If model inference fails → return pre-computed demo results from a JSON fixture
+- If model inference fails → show an explicit degraded state in the UI.
+  **Never substitute pre-computed results for a live inference.** A number on
+  screen that might be a fixture is undefendable in front of ministry
+  evaluators; an honest "prediction unavailable" is not.
 
 ---
 
@@ -318,7 +324,7 @@ Examples:
 [Phase 2a] Implement GraphSAGE 2-layer model + offline training script
 [Phase 2a] Generate 64-dim node embeddings for all synthetic accounts
 [Phase 2b] Build feature_builder.py combining GNN embeddings + 8 tabular features
-[Phase 2b] Train XGBoost on 72-dim hybrid features, F1=0.91
+[Phase 2b] Train XGBoost on 80-dim hybrid features, Top-3=0.57
 [Phase 3] Add /api/v1/embeddings endpoint returning GNN risk scores
 [Phase 4] Implement React Flow forensic graph with GNN risk score overlay
 ```

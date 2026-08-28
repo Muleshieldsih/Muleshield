@@ -85,7 +85,7 @@ def generate_all_embeddings(
     Returns:
         dict: {account_id: np.ndarray of shape (64,)}
     """
-    data, returned_ids, _ = load_pyg_data(
+    data, returned_ids, _, _ = load_pyg_data(
         transactions_path=transactions_path,
         node_features_path=node_features_path,
     )

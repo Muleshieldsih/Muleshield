@@ -58,7 +58,7 @@ Cyber fraud incidents reported on the National Cybercrime Reporting Portal (**19
 1. **Trace multi-hop fund dispersal** in real time from victim complaint origins in $<185\text{ ms}$.
 2. **Detect fraud rings, fund-splitting, and velocity anomalies** using graph topology.
 3. **Generate 64-dimensional structural risk embeddings** via **GraphSAGE** (capturing complex neighborhood relationships).
-4. **Narrow 1,000 ATMs to a ranked Top-3** and estimate a **countdown to cashout**, in **under 15 ms** end-to-end.
+4. **Narrow 1,000 ATMs to a search zone containing the withdrawal 86.8% of the time** (a median of 7 machines), with a **countdown and prediction band**, in **under 15 ms** end-to-end.
 
 ```
 [ 1930 Victim Complaint ]
@@ -74,8 +74,9 @@ Cyber fraud incidents reported on the National Cybercrime Reporting Portal (**19
            │
            ▼
 [ XGBoost Classifier & Regressor v2 ]
+  ├── 📍 Search Zone (86.8% containment; 1,000 ATMs -> a median of 7)
   ├── 📍 Top-3 ATM Ranking (Conditional Logit over 25 reachable candidates)
-  ├── ⏱️ Time-to-Cashout Countdown (MAE: 6.35 min, R² 0.53)
+  ├── ⏱️ Time-to-Cashout Countdown (MAE: 6.14 min, R² 0.55, q05-q95 band)
   └── 🔒 Real-time Micro-Freeze Action Recommendation (<25ms latency)
 ```
 
@@ -96,7 +97,7 @@ Cyber fraud incidents reported on the National Cybercrime Reporting Portal (**19
 - Binary classification head trained with `BCEWithLogitsLoss` and inverse class-frequency weighting (`pos_weight = 0.142`).
 - **Output:** 64-dimensional dense risk representation vector ($h_v \in \mathbb{R}^{64}$) for each bank account node.
 
-### 3. XGBoost ATM Interception Engine v2 (`engine/feature_builder.py`, `engine/xgb_model.py`)
+### 3. Withdrawal-Location Forecasting Engine (`engine/feature_builder.py`, `engine/xgb_model.py`)
 - Integrates the 64-dim GNN representation with **16 spatial/temporal tabular features** into an **80-dimensional hybrid vector**:
   - `stolen_amount`, `hop_depth`, `transaction_velocity`, `hour_of_day`, `historical_hotspot_density`, `day_of_week`, `amount_after_split`
   - `dist_to_atm_1/2/3_km` — Vectorized Haversine distance to top-3 nearest ATMs.
@@ -104,8 +105,8 @@ Cyber fraud incidents reported on the National Cybercrime Reporting Portal (**19
   - `bearing_to_atm_1_deg` — Compass bearing to nearest ATM (0°–360°).
   - `is_nearest_same_bank`, `nearest_same_bank_atm_dist` — Bank affiliation preference features.
 - **Models:**
-  - **`ConditionalLogitRanker`**: ranks the 25 reachable ATMs per cashout — **Top-3 0.5658** vs a 0.5526 distance-only baseline. Where a cashout happens is a *discrete choice among alternatives*, and the drivers compose multiplicatively, so in log space the choice is linear — which is exactly a conditional logit. A 953-way softmax over the national ATM directory saw ~5 examples per class and scored *below* a nearest-ATM rule; a gradient-boosted ranker had to approximate products with axis-aligned steps and also lost.
-  - **`XGBRegressor`**: Estimates countdown minutes — **6.35 min MAE** ($R^2 = 0.53$) against a 9.41 min mean-prediction baseline.
+  - **`ConditionalLogitRanker`**: ranks the 25 reachable ATMs per cashout — **Top-3 0.5658** vs a 0.5596 distance-only baseline, and aggregated into a **search zone with 86.8% containment** vs 76.5% for a nearest-3 centroid. Where a cashout happens is a *discrete choice among alternatives*, and the drivers compose multiplicatively, so in log space the choice is linear — which is exactly a conditional logit. A 953-way softmax over the national ATM directory saw ~5 examples per class and scored *below* a nearest-ATM rule; a gradient-boosted ranker had to approximate products with axis-aligned steps and also lost.
+  - **`XGBRegressor`**: Estimates countdown minutes — **6.14 min MAE** ($R^2 = 0.55$) against a 9.41 min mean-prediction baseline, with a q05-q95 band at 85.7% coverage.
 - **Interpretable utility weights** (recovered from data, checkable against the generator):
 
   | Term | Learned | True |
@@ -113,89 +114,128 @@ Cyber fraud incidents reported on the National Cybercrime Reporting Portal (**19
   | `-distance/5` | +0.99 | 1.00 |
   | `log(1 + 2·risk)` | +0.79 | 1.00 |
   | `same_bank` | +0.60 | log 2 = 0.69 |
+  | `crew_prior` | +0.29 | — |
 
 ---
 
 ## 📊 Benchmark & Validation Results
 
-Every figure below is reported **next to the naive baseline it has to beat**. A score
-without its baseline says nothing about a model, and an accuracy that looks too good
-usually is: an earlier revision of this repository reported 0.9996 GNN F1 and 98.5%
-Top-3 ATM accuracy, both of which were artefacts of label leakage (see
-[Honest Evaluation](#-honest-evaluation) below).
+SIH26184 asks for one thing: *"Forecast Likely Cash **Withdrawal Locations** in
+Advance."* That is what the headline metric measures. Every figure is reported **next
+to the naive baseline it has to beat** — a score without its baseline says nothing
+about a model, and an accuracy that looks too good usually is (see
+[Honest Evaluation](#-honest-evaluation)).
 
 Validated on a Pan-India dataset of **19,271 accounts**, **51,847 transactions**
 (21,849 laundering + 29,998 legitimate) and **1,000 ATMs**, with **237/237 tests passing**.
 
-### Mule detection — does the GNN earn its complexity?
+### 1. Withdrawal-location forecast — the deliverable
 
-| Model | F1 | AUC |
+A patrol is dispatched to an *area*, not to one machine. The model collapses its
+distribution over reachable ATMs into a search zone; the question is whether the
+withdrawal happens inside it.
+
+| Zone centre | Contains the withdrawal | Median error |
 |---|---|---|
-| Majority class (predict everything is a mule) | 0.3304 | — |
-| Best single feature, threshold swept (`account_age_days`) | 0.7938 | 0.9056 |
-| Logistic regression — same features, no graph | 0.8234 | 0.9428 |
-| Random forest — same features, no graph | 0.9031 | 0.9495 |
-| **GraphSAGE GNN (this system)** | **0.9386** | **0.9601** |
+| Centre on the mule's location | 72.1% | 6.26 km |
+| Nearest-3 ATM centroid | 76.5% | 5.32 km |
+| **Model search zone** | **86.8%** | **5.21 km** |
 
-**+0.036 F1 over the best non-graph model on identical features.** That margin is the
-graph's actual contribution: neighbourhood structure separates a mule from a
-`transit_business` account that also sweeps funds fast, which no per-account feature can.
+*All three given the same radius, so the comparison is at equal search cost — a
+bigger zone always contains more, and rewarding that would measure zone size rather
+than skill.*
 
-### ATM cashout prediction — is it more than "go to the nearest one"?
+**Search cost: 1,000 ATMs narrowed to a median of 7, inside a 9.4 km radius, in ~15 ms.**
 
-| Model | Top-1 | Top-3 |
-|---|---|---|
-| Distance only (nearest ATM / nearest 3) | 0.2522 | 0.5526 |
-| **Conditional-logit ranker (this system)** | 0.2618 | **0.5658** |
-
-Distance genuinely dominates where a mule withdraws, so the honest headroom over a
-distance rule is small — the Bayes-optimal ranker, given the true generative
-parameters, only reaches ~0.58. The operational claim is the useful one: **1,000 ATMs
-narrowed to 3 in under 15 ms**, with the model's learned weights open to inspection.
-
-### Time-to-cashout countdown
+### 2. Time to cashout — "in Advance"
 
 | Model | MAE | R² |
 |---|---|---|
 | Predict the mean | 9.41 min | 0.00 |
-| **XGBoost regressor (this system)** | **6.35 min** | **0.53** |
+| **XGBoost regressor** | **6.14 min** | **0.55** |
 
-### System performance
+Reported with a **q05–q95 band at 85.7% empirical coverage** (median width 23 min).
+The generator injects heavy-tailed noise with σ ≈ 6.8 min, which caps achievable MAE
+near 5.1 min and R² near 0.72 — so a point estimate alone would overstate what is
+knowable, and "expected in 24–48 min" is the honest form.
 
-| Requirement | Target | Achieved | Status |
-|---|---|---|---|
-| Per-complaint graph build | < 500 ms | **~2 ms** | ✅ |
-| Full national graph build (startup) | < 1200 ms | **~670 ms** | ✅ |
-| End-to-end inference latency | < 200 ms | **~13 ms** | ✅ |
-| GNN embedding for all 19,271 nodes | < 2.0 s | **1.7 s** | ✅ |
-| Automated test coverage | 100% | **237 / 237** | ✅ |
+### 3. Exact-ATM ranking — tactical drill-down
 
-Reproduce the baseline table with:
+| Model | Top-1 | Top-3 |
+|---|---|---|
+| Distance only (nearest / nearest 3) | 0.2790 | 0.5596 |
+| **Conditional-logit ranker** | 0.2618 | **0.5658** |
+
+Distance genuinely dominates which machine is used: the Bayes-optimal ranker, given
+the true generative parameters, reaches only ≈0.58. We beat the distance rule on
+Top-3 but not on Top-1, and we report both. This is precisely why the **zone** is the
+committed deliverable and the exact machine is not.
+
+The ranker's learned weights are interpretable by construction and can be checked
+against expectation:
+
+| Utility term | Learned | Generative truth |
+|---|---|---|
+| `−distance / 5` | +0.99 | 1.00 |
+| `log(1 + 2·risk)` | +0.79 | 1.00 |
+| `same_bank` | +0.60 | log 2 = 0.69 |
+  | `crew_prior` | +0.29 | — |
+| `crew_prior` | +0.29 | — |
+
+### 4. Mule detection — supporting machinery
+
+Not a deliverable of SIH26184; it earns its place by identifying the crew (the
+strongest non-distance signal in the location model) and by naming freeze targets.
+All rows scored on the **same held-out nodes**:
+
+| Model | F1 | AUC | PR-AUC | Precision | Recall |
+|---|---|---|---|---|---|
+| Majority class | 0.3303 | — | — | 0.1979 | 1.0000 |
+| Best single feature (`account_age_days`) | 0.8009 | 0.9252 | 0.7661 | 0.7042 | 0.9283 |
+| Logistic regression (no graph) | 0.8139 | 0.9478 | 0.9046 | 0.7549 | 0.8829 |
+| Random forest (no graph) | 0.9065 | 0.9552 | 0.9267 | 0.9146 | 0.8986 |
+| **GraphSAGE GNN** | **0.9381** | **0.9605** | **0.9389** | **0.9791** | 0.9003 |
+
+**+0.032 F1 over the best non-graph model on identical features**, and the real gain
+is precision (0.979 vs 0.915) — which is what matters when an investigation team has a
+fixed daily alert budget.
+
+### 5. System performance
+
+| Requirement | Target | Achieved |
+|---|---|---|
+| Per-complaint graph build | < 500 ms | **~2 ms** ✅ |
+| Full national graph build (startup) | < 1200 ms | **~670 ms** ✅ |
+| End-to-end inference | < 200 ms | **~15 ms** ✅ |
+| Automated test coverage | 100% | **237 / 237** ✅ |
+
+Reproduce with:
 
 ```bash
-python scripts/evaluate_baselines.py
+python scripts/evaluate_baselines.py     # baseline tables
+python engine/train_xgb.py               # zone, ranking and countdown metrics
 ```
 
 ---
 
 ## 🔍 Honest Evaluation
 
-Three properties of the dataset are load-bearing, and each fixes a specific way an
-earlier version of this project was measuring nothing:
+Three properties of the dataset are load-bearing, each fixing a way an earlier version
+of this project was measuring nothing:
 
 **1. The label is not derivable from any feature.** Mule status is assigned to an
-account *before any transaction exists*, from a behavioural archetype. Features are then
-measured from simulated activity. Previously a mule was defined as "an account that
-received money", and non-mules were written `total_received = 0` — so the rule
-`total_received > 0` scored **F1 = 1.0000**, and the GNN's 0.9996 was measuring a copy
-of its own input. `tests/test_phase1.py::test_label_is_not_a_copy_of_a_feature` now
-fails the build if any single feature reproduces the label above F1 0.95.
+account *before any transaction exists*, from a behavioural archetype; features are
+then measured from simulated activity. Previously a mule was defined as "an account
+that received money" and non-mules were written `total_received = 0`, so the rule
+`total_received > 0` scored **F1 = 1.0000** — the GNN's reported 0.9996 was measuring a
+copy of its own input. `tests/test_phase1.py::test_label_is_not_a_copy_of_a_feature`
+now fails the build if any single feature reproduces the label above F1 0.95.
 
 **2. The classes deliberately overlap.** The ledger contains ordinary banking traffic —
-salary credits, merchant settlements, remittances — so legitimate accounts receive money
-too. The `transit_business` archetype (payment aggregators, trading firms) forwards
-almost everything it receives within minutes, exactly like a mule. The best single
-feature now reaches only F1 0.79.
+salary credits, merchant settlements, remittances — so legitimate accounts receive
+money too. The `transit_business` archetype (payment aggregators, trading firms)
+forwards almost everything it receives within minutes, exactly like a mule. The best
+single feature now reaches only F1 0.80.
 
 **3. Ground truth lives in the data, not in the feature builder.** The cashout ATM is
 *sampled* from a behavioural choice model (distance decay × surveillance risk × bank
@@ -203,20 +243,25 @@ affinity × the syndicate's established cashout points) and written to the ledge
 Previously the label was `argmin(distance)` while distance was feature #67 — the model
 was asked to find the nearest ATM while holding the distance to it.
 
-Additionally: XGBoost splits **by complaint**, never by row, so no laundering chain
+Additionally: models are split **by complaint**, never by row, so no laundering chain
 straddles train and test; ATM priors are computed only from the earliest 50% of
-complaints, which are then excluded from training and evaluation entirely; and 2% label
-noise reflects imperfect bank reporting.
+complaints, which are then excluded from training and evaluation; baselines are scored
+on the **same held-out nodes** as the GNN; and 2% label noise reflects imperfect bank
+reporting.
 
 ### Known limitations
 
 - All data is **synthetically generated**. The behavioural archetypes are informed by
   published mule typologies, not fitted to real bank data.
+- **Mule prevalence in this dataset is ~20%; in a real bank population it is well under
+  1%.** At realistic prevalence, F1 stops being the right metric and Precision@K
+  against a fixed alert budget becomes the operative question.
 - Micro-freeze and the SMS gateway are **simulated**; NPCI/CBS integration is a
   deployment step. WhatsApp dispatch opens a real message.
 - A live-ingested complaint has its laundering chain **synthesised at ingestion** from
   real graph accounts in the victim's city. The GNN embeddings, ATM directory and
   inference path are genuine; only the bank/NPCI transaction feed is simulated.
+- We have **not** run a field trial, so we claim no fund-recovery-rate improvement.
 
 ---
 

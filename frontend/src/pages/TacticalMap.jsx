@@ -38,7 +38,7 @@ function atmIcon(rank, isSelected) {
   })
 }
 
-function TacticalLeafletMap({ terminal, atms, selectedAtmId, onSelectAtm, onTilesFailed }) {
+function TacticalLeafletMap({ terminal, atms, zone, selectedAtmId, onSelectAtm, onTilesFailed }) {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
   const layerRef = useRef(null)
@@ -134,9 +134,30 @@ function TacticalLeafletMap({ terminal, atms, selectedAtmId, onSelectAtm, onTile
       if (isSel) marker.openPopup()
     })
 
+    // The predicted SEARCH ZONE - the problem statement's actual deliverable.
+    // This used to be a fixed 600 m ring drawn around the top ATM, which showed
+    // nothing the model had computed. It is now the area the ranker's own
+    // probability distribution puts the withdrawal in.
+    if (zone && Number.isFinite(zone.lat) && Number.isFinite(zone.radius_km)) {
+      L.circle([zone.lat, zone.lon], {
+        radius: zone.radius_km * 1000,
+        color: '#ff8c42', fillColor: '#ff8c42',
+        fillOpacity: 0.10, weight: 2, dashArray: '8 6',
+      })
+        .bindPopup(
+          `<div style="font-family:'JetBrains Mono',monospace;font-size:11px">
+            <b style="color:#b45309">PREDICTED SEARCH ZONE</b><br/>
+            radius ${zone.radius_km.toFixed(2)} km<br/>
+            ${zone.atm_count} ATM(s) to cover<br/>
+            ${(zone.probability_mass * 100).toFixed(0)}% of predicted probability
+          </div>`
+        )
+        .addTo(layer)
+    }
+
     if (active && Number.isFinite(active.lat) && Number.isFinite(active.lon)) {
       L.circle([active.lat, active.lon], {
-        radius: 600, color: '#ff3b3b', fillColor: '#ff3b3b',
+        radius: 400, color: '#ff3b3b', fillColor: '#ff3b3b',
         fillOpacity: 0.14, weight: 2, dashArray: '6 6',
       }).addTo(layer)
 
@@ -146,15 +167,17 @@ function TacticalLeafletMap({ terminal, atms, selectedAtmId, onSelectAtm, onTile
         }).addTo(layer)
 
         // Frame both ends of the run rather than only the ATM.
-        map.fitBounds(
-          L.latLngBounds([[terminal.lat, terminal.lon], [active.lat, active.lon]]),
-          { padding: [70, 70], maxZoom: 15, animate: true }
-        )
+        const bounds = L.latLngBounds([[terminal.lat, terminal.lon],
+                                       [active.lat, active.lon]])
+        if (zone && Number.isFinite(zone.lat)) {
+          bounds.extend(L.latLng(zone.lat, zone.lon))
+        }
+        map.fitBounds(bounds, { padding: [70, 70], maxZoom: 15, animate: true })
       } else {
         map.flyTo([active.lat, active.lon], 14, { duration: 0.8 })
       }
     }
-  }, [terminal?.lat, terminal?.lon, terminal?.account, atms, selectedAtmId])
+  }, [terminal?.lat, terminal?.lon, terminal?.account, atms, zone, selectedAtmId])
 
   return <div ref={containerRef} className="h-full w-full" style={{ background: '#080a0a' }} />
 }
@@ -241,6 +264,7 @@ export default function TacticalMap() {
                 <TacticalLeafletMap
                   terminal={terminal}
                   atms={atms}
+                  zone={prediction?.search_zone}
                   selectedAtmId={selectedAtmId}
                   onSelectAtm={setSelectedAtmId}
                   onTilesFailed={onTilesFailed}
@@ -362,8 +386,33 @@ export default function TacticalMap() {
                 ))}
               </div>
 
+              {prediction.search_zone && (
+                <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-2.5">
+                  <div className="mono text-[10px] text-amber-300/90 uppercase tracking-wide">
+                    Predicted search zone
+                  </div>
+                  <div className="mono text-[15px] font-bold text-amber-200 mt-0.5">
+                    {prediction.search_zone.radius_km.toFixed(2)} km radius
+                  </div>
+                  <div className="mono text-[10px] text-zinc-400 mt-0.5">
+                    {prediction.search_zone.atm_count} ATM
+                    {prediction.search_zone.atm_count === 1 ? '' : 's'} to cover ·
+                    {' '}{(prediction.search_zone.probability_mass * 100).toFixed(0)}% probability mass
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-2 mt-3">
-                <Stat label="Cashout in" value={label} tone={urgencyTone} />
+                <Stat
+                  label="Cashout in"
+                  value={label}
+                  tone={urgencyTone}
+                  sub={
+                    prediction.time_to_cashout_low != null
+                      ? `${prediction.time_to_cashout_low.toFixed(0)}-${prediction.time_to_cashout_high.toFixed(0)} min band`
+                      : undefined
+                  }
+                />
                 <Stat
                   label="Interception conf."
                   value={`${((activeAtm?.confidence ?? prediction.interception_confidence) * 100).toFixed(1)}%`}

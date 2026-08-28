@@ -40,6 +40,10 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
+# Single source of truth for the crew-neighbourhood depth, shared with the
+# serving path so training and inference cannot drift apart.
+from xgb_model import CREW_HOPS
+
 ROOT = Path(__file__).parent.parent
 DATA_DIR = ROOT / "data"
 EMBEDDINGS_DIR = ROOT / "embeddings"
@@ -70,6 +74,18 @@ TABULAR_FEATURE_NAMES = [
 ]
 
 FEATURE_NAMES = [f"emb_{i}" for i in range(EMBEDDING_DIM)] + TABULAR_FEATURE_NAMES
+
+# Account-behaviour columns handed to the countdown regressor. Constant within a
+# candidate group, so they are inert for the conditional-logit ranker (anything
+# constant within a group cancels in a softmax) but directly informative for
+# "how long until the withdrawal".
+BEHAVIOUR_COLS = [
+    "median_dwell_seconds",
+    "account_age_days",
+    "passthrough_ratio",
+    "burst_out_5min",
+    "night_txn_ratio",
+]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -251,6 +267,7 @@ class FeatureBuilder:
         self._acct_atm_hist: dict = {}                    # account -> {atm_idx: count}
         self._graph = None                                # undirected money graph
         self._gnn_head = None                             # (weight, bias) of the GNN head
+        self._behaviour_lookup: dict = {}                 # account -> BEHAVIOUR_COLS values
         self.history_complaints: set = set()              # prior-only complaints
 
     def load(self) -> "FeatureBuilder":
@@ -278,6 +295,23 @@ class FeatureBuilder:
                 float(row_t.total_received),
                 str(bank),
             )
+
+        # ── 1b. Behavioural columns, for the countdown regressor ──────────────
+        # The generator's delay law is
+        #   22 + 1.9*travel_km + night_penalty(hour) + min(dwell_hours*2.2, 25) + noise
+        # so an account's dwell behaviour drives up to 25 of the ~45-minute mean.
+        # These columns are measured from the ledger and already feed the GNN;
+        # they simply never reached the regressor.
+        for col in BEHAVIOUR_COLS:
+            if col not in self.node_df.columns:
+                raise ValueError(
+                    f"node_features.csv is missing '{col}'. "
+                    "Regenerate: python scripts/generate_data.py"
+                )
+        beh = self.node_df.set_index("account_id")[BEHAVIOUR_COLS]
+        self._behaviour_lookup = dict(
+            zip(beh.index.astype(str), beh.to_numpy(dtype=np.float32))
+        )
 
         # ── 2. ATM coordinate arrays for vectorized distance ──────────────────
         self._atm_lats = self.atm_df["lat"].to_numpy()
@@ -507,21 +541,25 @@ class FeatureBuilder:
         """
         Count historical cashouts at each candidate ATM by the account's crew.
 
-        The crew is approximated by the account's 2-hop neighbourhood in the
-        money graph — the accounts it actually transacts with. This is the
+        The crew is approximated by the account's CREW_HOPS-hop neighbourhood in
+        the money graph — the accounts it actually transacts with. This is the
         feature the GNN embedding complements: the embedding says *who* this
         account moves money with, and this says *where those people cash out*.
+
+        CREW_HOPS is imported from xgb_model so the serving path expands exactly
+        the same neighbourhood; the two drifted apart once already (3 hops here,
+        2 at inference), which silently weakened the feature in production.
         """
         counts = np.zeros(len(cand_idx), dtype=np.float32)
         g = getattr(self, "_graph", None)
         if g is None or account not in g:
             return counts
 
-        # 3 hops: a terminal's crew-mates sit behind the accounts that fed it,
-        # so two hops frequently stops just short of the rest of the ring.
+        # A terminal's crew-mates sit behind the accounts that fed it, so two
+        # hops frequently stops just short of the rest of the ring.
         neigh = {account}
         frontier = {account}
-        for _ in range(3):
+        for _ in range(CREW_HOPS):
             nxt = set()
             for n in frontier:
                 nxt.update(g.neighbors(n))
@@ -607,7 +645,7 @@ class FeatureBuilder:
 
         return order, block
 
-    RANK_CONTEXT_DIM = 7
+    RANK_CONTEXT_DIM = 7 + len(BEHAVIOUR_COLS)   # 12
 
     def gnn_mule_probability(self, account: str) -> float:
         """
@@ -650,15 +688,21 @@ class FeatureBuilder:
         amount, depth, velocity, time of day — plus the account's GNN mule
         probability, in place of the full embedding.
         """
-        return np.array([
-            base_vec[64],    # stolen_amount
-            base_vec[65],    # hop_depth
-            base_vec[66],    # transaction_velocity
-            base_vec[68],    # hour_of_day
-            base_vec[70],    # day_of_week
-            base_vec[71],    # amount_after_split
-            self.gnn_mule_probability(account),
-        ], dtype=np.float32)
+        beh = self._behaviour_lookup.get(
+            account, np.zeros(len(BEHAVIOUR_COLS), dtype=np.float32)
+        )
+        return np.concatenate([
+            np.array([
+                base_vec[64],    # stolen_amount
+                base_vec[65],    # hop_depth
+                base_vec[66],    # transaction_velocity
+                base_vec[68],    # hour_of_day
+                base_vec[70],    # day_of_week
+                base_vec[71],    # amount_after_split
+                self.gnn_mule_probability(account),
+            ], dtype=np.float32),
+            beh.astype(np.float32),
+        ])
 
     def build_ranking_set(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, pd.DataFrame]:
         """
