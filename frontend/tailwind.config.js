@@ -28,12 +28,12 @@ export default {
         }
       },
       keyframes: {
-        pulseDot: { '0%,100%': { opacity: '1', transform: 'scale(1)' }, '50%': { opacity: '0.6', transform: 'scale(0.85)' } },
+        pulseDot: { '0%,100%': { opacity: '1' }, '50%': { opacity: '0.35' } },
         blink: { '0%,50%': { opacity: '1' }, '51%,100%': { opacity: '0.35' } },
-        drift: { '0%': { transform: 'translateY(4px)', opacity: '0' }, '10%': { opacity: '1' }, '90%': { opacity: '1' }, '100%': { transform: 'translateY(-4px)', opacity: '0' } },
+        drift: { '0%': { opacity: '0' }, '10%': { opacity: '1' }, '90%': { opacity: '1' }, '100%': { opacity: '0' } },
       },
       animation: {
-        'pulse-dot': 'pulseDot 1.4s ease-in-out infinite',
+        'pulse-dot': 'pulseDot 2s ease-in-out infinite',
         'blink': 'blink 1s step-end infinite',
       }
     },

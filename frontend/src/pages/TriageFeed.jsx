@@ -167,13 +167,15 @@ export default function TriageFeed({ complaints: liveComplaints, onSelect }) {
                   <div
                     key={c.ticket_id}
                     onClick={() => handleSelect(c)}
-                    className={`p-3 rounded border cursor-pointer transition ${
-                      isSel ? 'bg-ink-panel border-aegis-green/60 shadow-[0_0_12px_rgba(124,240,0,0.15)]' : 'bg-ink-surface/50 border-ink-border hover:bg-ink-panel'
+                    className={`p-3 rounded-lg border cursor-pointer select-none transition-colors duration-150 ${
+                      isSel
+                        ? 'bg-ink-panel border-aegis-green ring-1 ring-aegis-green/30'
+                        : 'bg-ink-surface/60 border-ink-border hover:bg-ink-panel hover:border-zinc-700'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full ${lvl.dot} animate-pulse-dot`} />
+                        <span className={`w-2 h-2 rounded-full ${lvl.dot}`} />
                         <span className="mono text-[12px] font-bold text-white">{c.ticket_id}</span>
                         <span className={`px-2 py-0.5 rounded text-[10px] mono border ${lvl.bg} ${lvl.color}`}>{lvl.label}</span>
                       </div>
@@ -227,8 +229,8 @@ export default function TriageFeed({ complaints: liveComplaints, onSelect }) {
                 <div className="mono text-[11px] font-bold text-zinc-300">TACTICAL INTERACTION ACTIONS:</div>
                 <div className="grid grid-cols-1 gap-2">
                   <button
-                    onClick={() => navigate(`/map?c=${selectedComplaint.ticket_id}`)}
-                    className="flex items-center justify-between p-2.5 rounded bg-ink-bg border border-ink-border hover:border-red-500/60 hover:bg-red-500/10 text-left transition group"
+                    onClick={() => navigate(`/map?c=${encodeURIComponent(selectedComplaint.ticket_id)}`)}
+                    className="flex items-center justify-between p-2.5 rounded bg-ink-bg border border-ink-border hover:border-red-500/60 hover:bg-red-500/10 text-left transition-colors duration-150 group"
                   >
                     <div className="flex items-center gap-2">
                       <MapPinned size={16} className="text-red-400" />
@@ -241,8 +243,8 @@ export default function TriageFeed({ complaints: liveComplaints, onSelect }) {
                   </button>
 
                   <button
-                    onClick={() => navigate(`/graph?c=${selectedComplaint.ticket_id}`)}
-                    className="flex items-center justify-between p-2.5 rounded bg-ink-bg border border-ink-border hover:border-blue-500/60 hover:bg-blue-500/10 text-left transition group"
+                    onClick={() => navigate(`/graph?c=${encodeURIComponent(selectedComplaint.ticket_id)}`)}
+                    className="flex items-center justify-between p-2.5 rounded bg-ink-bg border border-ink-border hover:border-blue-500/60 hover:bg-blue-500/10 text-left transition-colors duration-150 group"
                   >
                     <div className="flex items-center gap-2">
                       <GitBranch size={16} className="text-blue-400" />
@@ -255,8 +257,8 @@ export default function TriageFeed({ complaints: liveComplaints, onSelect }) {
                   </button>
 
                   <button
-                    onClick={() => navigate(`/intercept?c=${selectedComplaint.ticket_id}`)}
-                    className="flex items-center justify-between p-2.5 rounded bg-ink-bg border border-ink-border hover:border-aegis-green/60 hover:bg-aegis-green/10 text-left transition group"
+                    onClick={() => navigate(`/intercept?c=${encodeURIComponent(selectedComplaint.ticket_id)}`)}
+                    className="flex items-center justify-between p-2.5 rounded bg-ink-bg border border-ink-border hover:border-aegis-green/60 hover:bg-aegis-green/10 text-left transition-colors duration-150 group"
                   >
                     <div className="flex items-center gap-2">
                       <Zap size={16} className="text-aegis-green" />
