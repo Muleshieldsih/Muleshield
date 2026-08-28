@@ -1,225 +1,354 @@
-import { useEffect, useState, useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import ReactFlow, { Background, Controls, MiniMap } from 'reactflow'
+import { useEffect, useState, useMemo, useCallback } from 'react'
+import ReactFlow, { Background, Controls, MiniMap, MarkerType } from 'reactflow'
 import 'reactflow/dist/style.css'
-import { endpoints } from '../services/api'
+import { endpoints, describeError } from '../services/api'
+import useActiveComplaint from '../hooks/useActiveComplaint'
 import { Panel } from '../components/Shell'
+import { amountFmt, shortAccount } from '../utils/constants'
+import { AlertTriangle, Split, Target, Loader2, ServerCrash, Activity } from 'lucide-react'
 
-function buildLayout(nodes = [], edges = []) {
-  const layers = new Map()
+const NODE_COLOR = { victim: '#58a6ff', mule: '#ff8c42', terminal: '#ff3b3b' }
+const NODE_FILL = {
+  victim: 'rgba(88,166,255,0.12)',
+  mule: 'rgba(255,140,66,0.10)',
+  terminal: 'rgba(255,59,59,0.14)',
+}
+
+/** Colour ramp for a 0–1 GNN mule probability. */
+function riskColor(r) {
+  if (r >= 0.85) return '#ff3b3b'
+  if (r >= 0.5) return '#ff8c42'
+  if (r >= 0.2) return '#e8c547'
+  return '#7cf000'
+}
+
+/**
+ * Lay the DAG out left-to-right, one column per hop depth. Flagged accounts get
+ * a coloured ring so velocity / fund-splitting detections are visible on the
+ * canvas itself, not just in the side panel.
+ */
+function buildLayout(nodes = [], edges = [], anomalies = {}) {
+  const velocity = new Set(anomalies.velocity_flagged || [])
+  const split = new Set(anomalies.fund_split_flagged || [])
+
+  const byDepth = new Map()
   nodes.forEach(n => {
-    const d = n.hop_depth ?? (n.node_type === 'victim' ? 0 : n.node_type === 'terminal' ? 4 : 1)
-    if (!layers.has(d)) layers.set(d, [])
-    layers.get(d).push(n)
+    const d = n.hop_depth ?? 0
+    if (!byDepth.has(d)) byDepth.set(d, [])
+    byDepth.get(d).push(n)
   })
 
-  const xs = { 0: 60, 1: 280, 2: 500, 3: 720, 4: 940 }
+  const COL_W = 230
+  const ROW_H = 96
   const flowNodes = []
 
-  layers.forEach((arr, depth) => {
-    const x = xs[depth] ?? depth * 220 + 60
-    const gap = 86
-    const startY = 80
+  const depths = [...byDepth.keys()].sort((a, b) => a - b)
+  const tallest = Math.max(...depths.map(d => byDepth.get(d).length), 1)
+
+  depths.forEach((depth, col) => {
+    const arr = byDepth.get(depth)
+    // Centre each column vertically against the tallest one.
+    const offset = ((tallest - arr.length) * ROW_H) / 2
     arr.forEach((n, i) => {
-      const color = n.node_type === 'victim' ? '#58a6ff' : n.node_type === 'terminal' ? '#ff3b3b' : '#ff8c42'
-      const labelHeader = n.label ? n.label.split('\n')[0] : (n.node_type ? n.node_type.toUpperCase() : 'NODE')
-      const idTail = (n.id || '').slice(-6)
+      const type = n.node_type || 'mule'
+      const color = NODE_COLOR[type] || NODE_COLOR.mule
+      const risk = Number(n.risk_score) || 0
+      const flagged = velocity.has(n.id) || split.has(n.id)
+      const header = type === 'victim' ? 'VICTIM' : type === 'terminal' ? 'TERMINAL' : `HOP-${depth}`
 
       flowNodes.push({
         id: n.id,
-        position: { x, y: startY + i * gap },
-        data: { label: `${labelHeader}\n${idTail}` },
+        position: { x: 40 + col * COL_W, y: 40 + offset + i * ROW_H },
+        data: {
+          label: `${header} · ${n.bank || '—'}\n${shortAccount(n.id)}${
+            type === 'victim' ? '' : `\nGNN risk ${(risk * 100).toFixed(1)}%`
+          }`,
+        },
         style: {
-          background: n.node_type === 'terminal' ? 'rgba(255,59,59,0.14)' : n.node_type === 'victim' ? 'rgba(88,166,255,0.12)' : 'rgba(255,140,66,0.10)',
-          border: `1px solid ${color}66`,
+          background: NODE_FILL[type] || NODE_FILL.mule,
+          border: `1px solid ${color}88`,
+          outline: flagged ? '2px solid #ffd23f' : 'none',
+          outlineOffset: '2px',
           color: '#e6edf3',
           fontFamily: 'JetBrains Mono, monospace',
-          fontSize: '11px',
+          fontSize: '10px',
+          lineHeight: 1.5,
+          whiteSpace: 'pre-line',
+          textAlign: 'left',
           borderRadius: '8px',
           padding: '8px 10px',
-          width: 160,
-          boxShadow: n.node_type === 'terminal' ? '0 0 14px rgba(255,59,59,0.3)' : 'none'
-        }
+          width: 178,
+          boxShadow: type === 'terminal' ? '0 0 16px rgba(255,59,59,0.32)' : 'none',
+        },
       })
     })
   })
 
-  const flowEdges = (edges || []).map((e, idx) => ({
-    id: e.id || `edge-${idx}`,
+  const flowEdges = (edges || []).map((e, i) => ({
+    id: e.id || `edge-${i}`,
     source: e.source,
     target: e.target,
-    label: e.label || (e.amount ? `₹${Number(e.amount).toLocaleString('en-IN')}` : ''),
+    label: e.label || amountFmt(e.amount),
     animated: true,
+    markerEnd: { type: MarkerType.ArrowClosed, color: '#4b5563', width: 16, height: 16 },
     style: { stroke: '#3a4242', strokeWidth: 1.5 },
     labelStyle: { fontFamily: 'JetBrains Mono, monospace', fontSize: '10px', fill: '#9ca3af' },
-    labelBgStyle: { fill: '#0f1111', fillOpacity: 0.95 }
+    labelBgStyle: { fill: '#0f1111', fillOpacity: 0.95 },
+    labelBgPadding: [4, 2],
+    labelBgBorderRadius: 3,
   }))
 
   return { flowNodes, flowEdges }
 }
 
 export default function ForensicGraph() {
-  const [params] = useSearchParams()
-  const rawCid = params.get('c')
+  const { complaintId, resolving } = useActiveComplaint()
   const [data, setData] = useState(null)
   const [selected, setSelected] = useState(null)
-  const [activeTicket, setActiveTicket] = useState(rawCid || '')
+  const [topMules, setTopMules] = useState([])
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    const fetchGraph = async () => {
-      let targetId = rawCid || (typeof window !== 'undefined' ? localStorage.getItem('muleshield:selected') : '') || ''
-      if (!targetId) {
-        try {
-          const list = await endpoints.listComplaints()
-          if (list && list.length) {
-            targetId = list[0].ticket_id
-          }
-        } catch {
-          // ignore
-        }
-      }
-      if (!targetId) targetId = 'TKT-A1B2C3D4'
-      setActiveTicket(targetId)
+    if (resolving) return
+    if (!complaintId) { setError('No complaint selected.'); return }
 
-      try {
-        const d = await endpoints.getGraph(targetId)
+    let cancelled = false
+    setLoading(true)
+    setError('')
+
+    Promise.allSettled([
+      endpoints.getGraph(complaintId),
+      endpoints.getEmbeddings(complaintId, 5),
+    ]).then(([graphRes, embRes]) => {
+      if (cancelled) return
+
+      if (graphRes.status === 'fulfilled') {
+        const d = graphRes.value
         setData(d)
-        if (d?.nodes?.length) {
-          const terminal = d.nodes.find(n => n.node_type === 'terminal') || d.nodes[0]
-          setSelected(terminal)
-        }
-      } catch {
-        // Safe fallback DAG
-        const fallback = {
-          complaint_id: targetId,
-          node_count: 6,
-          edge_count: 5,
-          build_time_ms: 142,
-          nodes: [
-            { id: 'ACC-VICTIM-001', label: 'VICTIM\nRohan', node_type: 'victim', hop_depth: 0, bank: 'HDFC', amount: 120000, lat: 28.6, lon: 77.2, risk_score: 0 },
-            { id: 'ACC-HDFC-4821', label: 'HOP-1\nHDFC', node_type: 'mule', hop_depth: 1, bank: 'HDFC', amount: 60000, lat: 28.61, lon: 77.21, risk_score: 0.42 },
-            { id: 'ACC-SBI-9932', label: 'HOP-1\nSBI', node_type: 'mule', hop_depth: 1, bank: 'SBI', amount: 60000, lat: 28.62, lon: 77.22, risk_score: 0.51 },
-            { id: 'ACC-KOTAK-2211', label: 'HOP-2\nKotak', node_type: 'mule', hop_depth: 2, bank: 'Kotak', amount: 29500, lat: 28.615, lon: 77.215, risk_score: 0.78 },
-            { id: 'ACC-PNB-0041', label: 'TERMINAL\nPNB', node_type: 'terminal', hop_depth: 4, bank: 'PNB', amount: 29500, lat: 28.612, lon: 77.208, risk_score: 0.94 },
-            { id: 'ACC-UCO-8812', label: 'TERMINAL\nUCO', node_type: 'terminal', hop_depth: 4, bank: 'UCO', amount: 29500, lat: 28.63, lon: 77.23, risk_score: 0.87 },
-          ],
-          edges: [
-            { id: 'e1', source: 'ACC-VICTIM-001', target: 'ACC-HDFC-4821', label: '₹60,000', amount: 60000 },
-            { id: 'e2', source: 'ACC-VICTIM-001', target: 'ACC-SBI-9932', label: '₹60,000', amount: 60000 },
-            { id: 'e3', source: 'ACC-HDFC-4821', target: 'ACC-KOTAK-2211', label: '₹29,500', amount: 29500 },
-            { id: 'e4', source: 'ACC-KOTAK-2211', target: 'ACC-PNB-0041', label: '₹29,500', amount: 29500 },
-            { id: 'e5', source: 'ACC-SBI-9932', target: 'ACC-UCO-8812', label: '₹29,500', amount: 29500 },
-          ]
-        }
-        setData(fallback)
-        setSelected(fallback.nodes[4])
+        const terminal = d.nodes?.find(n => n.node_type === 'terminal')
+        setSelected(terminal || d.nodes?.[0] || null)
+      } else {
+        setData(null)
+        setError(describeError(graphRes.reason))
       }
-    }
-    fetchGraph()
-  }, [rawCid])
 
-  const { flowNodes, flowEdges } = useMemo(() => {
-    return data ? buildLayout(data.nodes, data.edges) : { flowNodes: [], flowEdges: [] }
+      setTopMules(embRes.status === 'fulfilled' ? (embRes.value.top_mules || []) : [])
+      setLoading(false)
+    })
+
+    return () => { cancelled = true }
+  }, [complaintId, resolving])
+
+  const anomalies = data?.anomalies || {}
+  const { flowNodes, flowEdges } = useMemo(
+    () => (data ? buildLayout(data.nodes, data.edges, anomalies) : { flowNodes: [], flowEdges: [] }),
+    [data, anomalies]
+  )
+
+  const onNodeClick = useCallback((_, node) => {
+    const found = data?.nodes?.find(n => n.id === node.id)
+    if (found) setSelected(found)
   }, [data])
 
-  const handleNodeClick = (_, n) => {
-    if (data?.nodes) {
-      const found = data.nodes.find(x => x.id === n.id)
-      if (found) setSelected(found)
-    }
-  }
+  const selectedFlags = useMemo(() => {
+    if (!selected) return []
+    const out = []
+    if ((anomalies.velocity_flagged || []).includes(selected.id)) out.push('VELOCITY')
+    if ((anomalies.fund_split_flagged || []).includes(selected.id)) out.push('FUND SPLIT')
+    if ((anomalies.terminal_leaves || []).includes(selected.id)) out.push('TERMINAL LEAF')
+    return out
+  }, [selected, anomalies])
+
+  const risk = Number(selected?.risk_score) || 0
 
   return (
     <div className="grid grid-cols-12 gap-3 p-3">
       <div className="col-span-12 lg:col-span-9">
         <Panel
-          title={`MONEY-FLOW DAG — ${activeTicket || data?.complaint_id || '—'}`}
-          right={data ? `${data.node_count || data.nodes?.length || 0} nodes · ${data.edge_count || data.edges?.length || 0} edges · ${data.build_time_ms || 182} ms` : ''}
+          title={`MONEY-FLOW DAG — ${complaintId || '—'}`}
+          right={
+            loading
+              ? 'building…'
+              : data
+              ? `${data.node_count} nodes · ${data.edge_count} edges · ${data.build_time_ms} ms`
+              : ''
+          }
         >
-          <div className="h-[64vh] bg-ink-bg">
-            <ReactFlow
-              nodes={flowNodes}
-              edges={flowEdges}
-              onNodeClick={handleNodeClick}
-              fitView
-              fitViewOptions={{ padding: 0.2 }}
-            >
-              <Background gap={16} size={1} color="#1e2323" />
-              <Controls />
-              <MiniMap style={{ background: '#0f1111', border: '1px solid #1e2323' }} maskColor="rgba(8,10,10,0.7)" />
-            </ReactFlow>
+          <div className="h-[64vh] bg-ink-bg relative">
+            {loading && (
+              <div className="absolute inset-0 grid place-items-center z-10 bg-ink-bg/70 mono text-[12px] text-zinc-400">
+                <span className="flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> Traversing transaction graph…</span>
+              </div>
+            )}
+
+            {!loading && error && (
+              <div className="absolute inset-0 grid place-items-center px-6 text-center mono text-[12px] text-zinc-400">
+                <div>
+                  <ServerCrash size={26} className="text-red-400 mx-auto mb-2" />
+                  <div className="text-red-300 font-bold">Graph unavailable</div>
+                  <div className="mt-1 text-zinc-500">{error}</div>
+                  <div className="mt-1 text-zinc-600">
+                    Complaints from the historical dataset always carry a ledger; a live complaint
+                    gets one at ingestion.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!error && (
+              <ReactFlow
+                nodes={flowNodes}
+                edges={flowEdges}
+                onNodeClick={onNodeClick}
+                fitView
+                fitViewOptions={{ padding: 0.18 }}
+                minZoom={0.2}
+                proOptions={{ hideAttribution: true }}
+              >
+                <Background gap={16} size={1} color="#1e2323" />
+                <Controls showInteractive={false} />
+                <MiniMap
+                  pannable
+                  zoomable
+                  style={{ background: '#0f1111', border: '1px solid #1e2323' }}
+                  maskColor="rgba(8,10,10,0.7)"
+                  nodeColor={n => NODE_COLOR[data?.nodes?.find(x => x.id === n.id)?.node_type] || '#ff8c42'}
+                />
+              </ReactFlow>
+            )}
           </div>
-          <div className="px-3 py-2 flex items-center gap-3 mono text-[11px] border-t border-ink-border bg-ink-surface/50">
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-[#58a6ff]" /> Victim Origin</span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-[#ff8c42]" /> Intermediate Mules</span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-[#ff3b3b]" /> Terminal Cashout</span>
-            <span className="ml-auto text-zinc-500">Click any node to inspect risk parameters</span>
+
+          <div className="px-3 py-2 flex flex-wrap items-center gap-x-3 gap-y-1 mono text-[11px] border-t border-ink-border bg-ink-surface/50">
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded" style={{ background: NODE_COLOR.victim }} /> Victim</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded" style={{ background: NODE_COLOR.mule }} /> Layering mule</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded" style={{ background: NODE_COLOR.terminal }} /> Terminal cashout</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded border-2 border-[#ffd23f]" /> Anomaly flagged</span>
+            <span className="ml-auto text-zinc-500">Click a node to inspect</span>
           </div>
         </Panel>
       </div>
 
       <div className="col-span-12 lg:col-span-3 space-y-3">
+        {/* ── Node inspector ─────────────────────────────────────────────── */}
         <div className="aegis-panel p-3">
           <div className="mono text-[11px] tracking-[0.14em] text-zinc-400 font-semibold uppercase">Node Inspector</div>
           {!selected ? (
-            <div className="mono text-[12px] text-zinc-500 mt-3">Select a node on the graph to inspect.</div>
+            <div className="mono text-[12px] text-zinc-500 mt-3">Select a node on the graph.</div>
           ) : (
             <div className="mt-3 space-y-2 mono text-[11px]">
               <div className="bg-ink-panel border border-ink-border rounded px-2.5 py-2">
-                <div className="text-zinc-400">Account ID</div>
-                <div className="text-white font-bold">{selected.id}</div>
-                <div className="text-zinc-400 mt-1">{selected.bank || 'Bank'} · Hop {selected.hop_depth ?? '—'} · <span className="uppercase text-zinc-200">{selected.node_type}</span></div>
+                <div className="text-zinc-500">Account</div>
+                <div className="text-white font-bold break-all">{selected.id}</div>
+                <div className="text-zinc-400 mt-1">
+                  {selected.bank} · Hop {selected.hop_depth} ·{' '}
+                  <span className="uppercase" style={{ color: NODE_COLOR[selected.node_type] }}>
+                    {selected.node_type}
+                  </span>
+                </div>
               </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <div className="bg-ink-panel border border-ink-border rounded px-2.5 py-2">
-                  <div className="text-zinc-500">Amount</div>
-                  <div className="text-white font-semibold">₹{Number(selected.amount || 0).toLocaleString('en-IN')}</div>
+                  <div className="text-zinc-500">Amount In</div>
+                  <div className="text-white font-semibold">{amountFmt(selected.amount)}</div>
                 </div>
                 <div className="bg-ink-panel border border-ink-border rounded px-2.5 py-2">
-                  <div className="text-zinc-500">GNN Risk Score</div>
-                  <div className={`font-bold ${selected.risk_score > 0.8 ? 'text-red-400' : selected.risk_score > 0.5 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                    {(Number(selected.risk_score) || 0).toFixed(2)}
+                  <div className="text-zinc-500">GNN Mule Prob.</div>
+                  <div className="font-bold" style={{ color: riskColor(risk) }}>
+                    {(risk * 100).toFixed(1)}%
                   </div>
                 </div>
               </div>
-              <div className="bg-ink-panel border border-ink-border rounded px-2.5 py-2">
-                <div className="text-zinc-500">GPS Geolocation</div>
-                <div className="text-zinc-300">{selected.lat ? selected.lat.toFixed(4) : '28.6129'}°, {selected.lon ? selected.lon.toFixed(4) : '77.2089'}°</div>
-              </div>
+
               <div className="h-1.5 bg-ink-bg border border-ink-border rounded overflow-hidden">
                 <span
                   className="block h-full transition-all duration-300"
-                  style={{
-                    width: `${Math.round((selected.risk_score || 0) * 100)}%`,
-                    background: selected.risk_score > 0.8 ? '#ff3b3b' : selected.risk_score > 0.5 ? '#ff8c42' : '#7cf000'
-                  }}
+                  style={{ width: `${Math.round(risk * 100)}%`, background: riskColor(risk) }}
                 />
               </div>
-              <div className="flex gap-2 pt-1">
-                <span className="px-2 py-1 rounded border border-ink-border bg-ink-panel text-zinc-300 text-[10px]">
-                  Terminal: <span className="font-bold text-white">{selected.node_type === 'terminal' ? 'YES' : 'NO'}</span>
-                </span>
-                <span className="px-2 py-1 rounded border border-ink-border bg-ink-panel text-zinc-300 text-[10px]">
-                  GNN: <span className="font-bold text-aegis-green">{((selected.risk_score || 0) * 100).toFixed(1)}%</span>
-                </span>
+              <div className="text-[10px] text-zinc-600 leading-relaxed">
+                sigmoid(Wh + b) from the trained GraphSAGE classification head, applied to this
+                account's cached 64-d embedding.
               </div>
+
+              <div className="bg-ink-panel border border-ink-border rounded px-2.5 py-2">
+                <div className="text-zinc-500">GPS</div>
+                <div className="text-zinc-300">
+                  {Number(selected.lat).toFixed(4)}°, {Number(selected.lon).toFixed(4)}°
+                </div>
+              </div>
+
+              {selectedFlags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                  {selectedFlags.map(f => (
+                    <span key={f} className="px-2 py-1 rounded border border-amber-500/40 bg-amber-500/10 text-amber-300 text-[10px] font-bold">
+                      {f}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        <Panel title="VELOCITY & SPLIT ANOMALIES" right="GNN">
+        {/* ── Real anomaly detections ────────────────────────────────────── */}
+        <Panel title="GRAPH ANOMALIES" right="NetworkX">
           <div className="p-3 mono text-[11px] space-y-2">
-            <div className="flex justify-between bg-ink-panel border border-ink-border rounded px-2.5 py-1.5">
-              <span className="text-zinc-400">Velocity (&gt;2 / 5m)</span>
-              <span className="text-amber-400 font-bold">2 flagged</span>
+            {[
+              [AlertTriangle, 'text-amber-400', 'Velocity', anomalies.velocity_count ?? 0, anomalies.velocity_rule],
+              [Split, 'text-red-400', 'Fund splitting', anomalies.fund_split_count ?? 0, anomalies.fund_split_rule],
+              [Target, 'text-aegis-green', 'Terminal leaves', anomalies.terminal_count ?? 0, 'out-degree 0 = cashout candidate'],
+            ].map(([Icon, tone, label, count, rule]) => (
+              <div key={label} className="bg-ink-panel border border-ink-border rounded px-2.5 py-1.5">
+                <div className="flex justify-between items-center">
+                  <span className="text-zinc-300 flex items-center gap-1.5">
+                    <Icon size={12} className={tone} /> {label}
+                  </span>
+                  <span className={`${tone} font-bold`}>{count} flagged</span>
+                </div>
+                {rule && <div className="text-[9px] text-zinc-600 mt-0.5">{rule}</div>}
+              </div>
+            ))}
+            <div className="text-[10px] text-zinc-600 pt-0.5 leading-relaxed">
+              Detected on this complaint's sub-graph using the same thresholds as
+              <span className="text-zinc-500"> engine/graph_engine.py</span>.
             </div>
-            <div className="flex justify-between bg-ink-panel border border-ink-border rounded px-2.5 py-1.5">
-              <span className="text-zinc-400">Fund split (1→3+)</span>
-              <span className="text-red-400 font-bold">1 flagged</span>
-            </div>
-            <div className="flex justify-between bg-ink-panel border border-ink-border rounded px-2.5 py-1.5">
-              <span className="text-zinc-400">Terminal leaves</span>
-              <span className="text-aegis-green font-bold">{data?.nodes?.filter(n => n.node_type === 'terminal').length || 2}</span>
+          </div>
+        </Panel>
+
+        {/* ── Highest-risk accounts ──────────────────────────────────────── */}
+        <Panel title="HIGHEST-RISK ACCOUNTS" right="GraphSAGE">
+          <div className="p-3 space-y-1.5 mono text-[11px]">
+            {topMules.length === 0 ? (
+              <div className="text-zinc-500 text-[11px]">No embedding data for this complaint.</div>
+            ) : (
+              topMules.map((m, i) => (
+                <button
+                  key={m.account_id}
+                  onClick={() => {
+                    const n = data?.nodes?.find(x => x.id === m.account_id)
+                    if (n) setSelected(n)
+                  }}
+                  className="w-full text-left bg-ink-panel border border-ink-border rounded px-2.5 py-1.5 hover:border-aegis-green/40 transition"
+                >
+                  <div className="flex justify-between items-center gap-2">
+                    <span className="text-zinc-300 truncate">
+                      <span className="text-zinc-600">{i + 1}.</span> {shortAccount(m.account_id)}
+                    </span>
+                    <span className="font-bold shrink-0" style={{ color: riskColor(m.risk_score) }}>
+                      {(m.risk_score * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="text-[9px] text-zinc-600 mt-0.5 flex justify-between">
+                    <span className="truncate">{m.bank}</span>
+                    <span>hop {m.hop_depth} · ‖h‖ {m.embedding_norm.toFixed(1)}</span>
+                  </div>
+                </button>
+              ))
+            )}
+            <div className="flex items-center gap-1.5 text-[10px] text-zinc-600 pt-0.5">
+              <Activity size={11} /> Ranked by trained mule probability
             </div>
           </div>
         </Panel>

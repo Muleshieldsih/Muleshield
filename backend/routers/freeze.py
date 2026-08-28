@@ -43,10 +43,17 @@ async def micro_freeze(request: FreezeRequest) -> FreezeResponse:
     freeze_ref = f"FRZ-{str(uuid.uuid4())[:8].upper()}"
     ts = datetime.now(timezone.utc).isoformat()
 
+    # The console dispatches a freeze against an account; the issuing bank is
+    # looked up from the account record so the caller never has to supply it.
+    bank = request.bank
+    if not bank or bank == "UNKNOWN":
+        node = state.get_node_feature(request.account_id) or {}
+        bank = str(node.get("bank_name", "UNKNOWN"))
+
     record = FreezeResponse(
         status="FROZEN",
         account=request.account_id,
-        bank=request.bank,
+        bank=bank,
         complaint_id=request.complaint_id,
         timestamp=ts,
         officer_id=request.officer_id,
@@ -56,7 +63,7 @@ async def micro_freeze(request: FreezeRequest) -> FreezeResponse:
     state.log_freeze(record.model_dump())
     logger.info(
         f"[FREEZE] {freeze_ref}: Account {request.account_id} "
-        f"({request.bank}) FROZEN by {request.officer_id}"
+        f"({bank}) FROZEN by {request.officer_id}"
     )
 
     # Broadcast freeze event to all connected dashboards
@@ -66,7 +73,7 @@ async def micro_freeze(request: FreezeRequest) -> FreezeResponse:
         "payload": {
             "freeze_reference": freeze_ref,
             "account": request.account_id,
-            "bank": request.bank,
+            "bank": bank,
             "timestamp": ts,
             "officer_id": request.officer_id,
         },

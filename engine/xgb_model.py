@@ -30,6 +30,7 @@ Inference output per complaint:
     }
 """
 
+import math
 import pickle
 from pathlib import Path
 from typing import Optional
@@ -49,6 +50,66 @@ _SPATIAL_SIGMA_SQ = _SPATIAL_SIGMA_KM ** 2
 def _gaussian_decay(dist_km: float) -> float:
     """Gaussian decay kernel: exp(−d² / 2σ²). Returns 1.0 at d=0."""
     return float(np.exp(-(dist_km ** 2) / (2 * _SPATIAL_SIGMA_SQ)))
+
+
+
+
+def _haversine_array(lat: float, lon: float, lats: np.ndarray, lons: np.ndarray) -> np.ndarray:
+    """Great-circle distance in km from one point to an array of points."""
+    r = 6371.0
+    p1 = math.radians(lat)
+    p2 = np.radians(lats)
+    dphi = np.radians(lats - lat)
+    dlam = np.radians(lons - lon)
+    a = np.sin(dphi / 2.0) ** 2 + math.cos(p1) * np.cos(p2) * np.sin(dlam / 2.0) ** 2
+    return 2 * r * np.arcsin(np.sqrt(np.clip(a, 0.0, 1.0)))
+
+
+
+
+class ConditionalLogitRanker:
+    """
+    Conditional-logit ranker over the ATM candidate set.
+
+    Where a cashout happens is a discrete choice among alternatives, and the
+    simulator — like the criminology it is drawn from — composes that choice
+    multiplicatively: proximity x surveillance risk x bank affinity x the crew's
+    established habits. Taking logs turns that product into a sum, which is
+    exactly a conditional logit:
+
+        P(atm_i | candidates) = softmax_i( w . log_features_i )
+
+    A gradient-boosted ranker had to approximate those products with axis-aligned
+    steps and consistently scored below a plain "nearest ATM" rule. This form
+    matches the generating process, trains in under a second, and its weights
+    read directly as elasticities an evaluator can sanity-check.
+    """
+
+    def __init__(self, n_features: int, k: int):
+        self.w = np.zeros(n_features, dtype=np.float64)
+        self.k = k
+
+    def fit(self, X: np.ndarray, y: np.ndarray, groups: np.ndarray,
+            epochs: int = 400, lr: float = 0.5) -> "ConditionalLogitRanker":
+        """Maximise the log-likelihood of the chosen ATM within each candidate set."""
+        order = np.argsort(groups, kind="stable")
+        Xs, ys = X[order].astype(np.float64), y[order]
+        n_groups = len(np.unique(groups))
+        Xg = Xs.reshape(n_groups, self.k, X.shape[1])
+        yg = ys.reshape(n_groups, self.k)
+
+        for _ in range(epochs):
+            u = Xg @ self.w
+            u -= u.max(axis=1, keepdims=True)
+            p = np.exp(u)
+            p /= p.sum(axis=1, keepdims=True)
+            grad = ((yg - p)[:, :, None] * Xg).sum(axis=(0, 1)) / n_groups
+            self.w += lr * grad
+        return self
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        """Utility score per candidate row (higher = more likely)."""
+        return np.asarray(X, dtype=np.float64) @ self.w
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -79,9 +140,15 @@ class MuleXGBPredictor:
         atm_ids: list[str],
         scaler,             # sklearn StandardScaler
         label_encoder=None, # sklearn LabelEncoder (encoded -> atm_ids index)
-        atm_lats: Optional[np.ndarray] = None,   # for spatial reranking
+        atm_lats: Optional[np.ndarray] = None,   # for candidate ranking
         atm_lons: Optional[np.ndarray] = None,
         atm_risk_scores: Optional[np.ndarray] = None,
+        atm_banks: Optional[np.ndarray] = None,
+        atm_fraud_counts: Optional[np.ndarray] = None,
+        atm_prior_counts: Optional[np.ndarray] = None,
+        acct_atm_hist: Optional[dict] = None,
+        graph_adj: Optional[dict] = None,
+        candidate_k: int = 25,
     ):
         self.classifier = classifier
         self.regressor = regressor
@@ -91,6 +158,41 @@ class MuleXGBPredictor:
         self.atm_lats = atm_lats
         self.atm_lons = atm_lons
         self.atm_risk_scores = atm_risk_scores
+        self.atm_banks = atm_banks
+        self.atm_fraud_counts = atm_fraud_counts
+        self.atm_prior_counts = atm_prior_counts
+        # account -> {atm_index: times cashed out there} over the history window
+        self.acct_atm_hist = acct_atm_hist or {}
+        # account -> set of graph neighbours, for reaching the account's crew
+        self.graph_adj = graph_adj or {}
+        self.candidate_k = candidate_k
+
+
+    # Column offsets inside the candidate block (see FeatureBuilder.candidate_block)
+    _C_DIST, _C_RISK, _C_SAME, _C_ATMP, _C_CREWP, _C_HAS = 0, 3, 5, 8, 9, 10
+
+    @staticmethod
+    def log_features(block: np.ndarray) -> np.ndarray:
+        """
+        Project the candidate block into the log space the logit operates in.
+
+        Each column is the logarithm of one multiplicative term in the choice
+        model, so a linear combination reproduces the product.
+        """
+        d = block[:, MuleXGBPredictor._C_DIST]
+        risk = block[:, MuleXGBPredictor._C_RISK]
+        same = block[:, MuleXGBPredictor._C_SAME]
+        atmp = block[:, MuleXGBPredictor._C_ATMP]
+        crewp = block[:, MuleXGBPredictor._C_CREWP]
+        has = block[:, MuleXGBPredictor._C_HAS]
+        return np.column_stack([
+            -d / 5.0,                  # log distance-decay
+            np.log1p(2.0 * risk),      # log surveillance-risk multiplier
+            same,                      # log bank-affinity multiplier
+            atmp,                      # log global ATM prior
+            crewp,                     # log crew prior
+            has,                       # crew has used this ATM before at all
+        ]).astype(np.float64)
 
     # ── Serialization ──────────────────────────────────────────────────────────
 
@@ -105,6 +207,12 @@ class MuleXGBPredictor:
             "atm_lats": self.atm_lats,
             "atm_lons": self.atm_lons,
             "atm_risk_scores": self.atm_risk_scores,
+            "atm_banks": self.atm_banks,
+            "atm_fraud_counts": self.atm_fraud_counts,
+            "atm_prior_counts": self.atm_prior_counts,
+            "acct_atm_hist": self.acct_atm_hist,
+            "graph_adj": self.graph_adj,
+            "candidate_k": self.candidate_k,
         }
         with open(path, "wb") as f:
             pickle.dump(bundle, f, protocol=pickle.HIGHEST_PROTOCOL)
@@ -123,6 +231,12 @@ class MuleXGBPredictor:
             atm_lats=bundle.get("atm_lats"),
             atm_lons=bundle.get("atm_lons"),
             atm_risk_scores=bundle.get("atm_risk_scores"),
+            atm_banks=bundle.get("atm_banks"),
+            atm_fraud_counts=bundle.get("atm_fraud_counts"),
+            atm_prior_counts=bundle.get("atm_prior_counts"),
+            acct_atm_hist=bundle.get("acct_atm_hist"),
+            graph_adj=bundle.get("graph_adj"),
+            candidate_k=bundle.get("candidate_k", 25),
         )
 
     # ── Bayesian Spatial Reranking ─────────────────────────────────────────────
@@ -171,73 +285,170 @@ class MuleXGBPredictor:
 
     # ── Inference ─────────────────────────────────────────────────────────────
 
+    def _crew_prior(self, account: Optional[str], cand_idx: np.ndarray) -> np.ndarray:
+        """Historical cashouts at each candidate by the account's 2-hop crew."""
+        counts = np.zeros(len(cand_idx), dtype=np.float32)
+        if not account or account not in self.graph_adj:
+            return counts
+
+        neigh = {account}
+        for n1 in self.graph_adj.get(account, ()):
+            neigh.add(n1)
+            for n2 in self.graph_adj.get(n1, ()):
+                neigh.add(n2)
+
+        pos = {int(a): j for j, a in enumerate(cand_idx)}
+        for acc in neigh:
+            for atm_i, c in self.acct_atm_hist.get(acc, {}).items():
+                j = pos.get(atm_i)
+                if j is not None:
+                    counts[j] += c
+        return counts
+
+    def _candidate_block(self, node_lat, node_lon, node_bank="UNKNOWN", account=None):
+        """
+        Build the K nearest ATM candidates and their ranking features.
+
+        Mirrors FeatureBuilder.candidate_block exactly — the two must stay in
+        step or inference features drift away from training features.
+        """
+        d = _haversine_array(node_lat, node_lon, self.atm_lats, self.atm_lons)
+        k = min(self.candidate_k, len(d))
+        order = np.argpartition(d, k - 1)[:k]
+        order = order[np.argsort(d[order])]
+
+        dk = d[order]
+        nearest = max(float(dk[0]), 1e-6)
+
+        risk = (self.atm_risk_scores[order] if self.atm_risk_scores is not None
+                else np.zeros(k, dtype=np.float32))
+        fraud = (self.atm_fraud_counts[order] if self.atm_fraud_counts is not None
+                 else np.zeros(k, dtype=np.float32))
+        same_bank = (
+            (self.atm_banks[order] == node_bank).astype(np.float32)
+            if self.atm_banks is not None else np.zeros(k, dtype=np.float32)
+        )
+        density = np.array([
+            float((_haversine_array(
+                float(self.atm_lats[i]), float(self.atm_lons[i]),
+                self.atm_lats, self.atm_lons) <= 3.0).sum())
+            for i in order
+        ], dtype=np.float32)
+
+        atm_prior = (self.atm_prior_counts[order]
+                     if self.atm_prior_counts is not None
+                     else np.zeros(k, dtype=np.float32))
+        crew_prior = self._crew_prior(account, order)
+
+        block = np.column_stack([
+            dk.astype(np.float32),
+            np.arange(k, dtype=np.float32),
+            (dk / nearest).astype(np.float32),
+            risk.astype(np.float32),
+            np.log1p(fraud).astype(np.float32),
+            same_bank,
+            density,
+            np.exp(-dk / 5.0).astype(np.float32),
+            np.log1p(atm_prior).astype(np.float32),
+            np.log1p(crew_prior).astype(np.float32),
+            (crew_prior > 0).astype(np.float32),
+            np.full(k, float((crew_prior > 0).any()), dtype=np.float32),
+        ]).astype(np.float32)
+
+        return order, block
+
     def predict(
         self,
         X: np.ndarray,
         top_k: int = 3,
         node_lat: Optional[float] = None,
         node_lon: Optional[float] = None,
+        node_bank: str = "UNKNOWN",
+        account: Optional[str] = None,
+        gnn_mule_prob: float = 0.0,
     ) -> dict:
         """
-        Run full inference on a single feature vector or a batch.
+        Rank the reachable ATMs for one terminal account and estimate the delay.
 
-        Args:
-            X:         np.ndarray of shape (80,) or (N, 80)
-            top_k:     Number of top ATM predictions to return
-            node_lat:  Optional — terminal node latitude for spatial reranking
-            node_lon:  Optional — terminal node longitude for spatial reranking
+        `X` is the 80-dim base vector (64-dim GNN embedding + 16 tabular). The
+        K nearest ATMs are scored individually and ranked; confidences are the
+        normalised scores across that candidate set.
 
-        Returns:
-            Single prediction dict (if X is 1-D) or list of dicts (if 2-D)
+        This replaces a 953-way softmax over the entire national ATM directory.
+        With roughly five training examples per class that model scored below a
+        plain "nearest ATM" rule; ranking a local candidate set is learnable and
+        matches how the decision is actually made.
         """
-        single = X.ndim == 1
-        if single:
-            X = X.reshape(1, -1)
+        X = np.asarray(X, dtype=np.float32)
+        if X.ndim == 2:
+            X = X[0]
 
-        X_scaled = self.scaler.transform(X)
+        # Accept the full 80-dim vector for API compatibility and reduce it to
+        # the 7-dim ranker context. Must mirror FeatureBuilder.rank_context.
+        if X.shape[0] >= 80:
+            X = np.array([
+                X[64], X[65], X[66], X[68], X[70], X[71],
+                float(gnn_mule_prob),
+            ], dtype=np.float32)
 
-        # ATM class probabilities [N, num_classes]
-        atm_probs = self.classifier.predict_proba(X_scaled)
+        if node_lat is None or node_lon is None or self.atm_lats is None:
+            raise ValueError(
+                "predict() needs node_lat/node_lon to build the ATM candidate set."
+            )
 
-        # Time-to-cashout regression [N]
-        time_preds = self.regressor.predict(X_scaled)
+        cand_idx, block = self._candidate_block(node_lat, node_lon, node_bank, account)
+        rows = np.hstack([
+            np.repeat(X[None, :], len(cand_idx), axis=0),
+            block,
+        ]).astype(np.float32)
 
-        results = []
-        for i in range(len(X)):
-            probs = atm_probs[i]
+        # The logit consumes only the log-space candidate terms; the softmax
+        # over the candidate set is the model's own choice probability, so the
+        # confidences shown to an operator are calibrated by construction.
+        raw = self.classifier.predict(self.log_features(block))
+        shifted = raw - float(np.max(raw))
+        exp = np.exp(shifted)
+        conf = exp / exp.sum() if exp.sum() > 0 else np.full(len(raw), 1.0 / len(raw))
+        scores = raw
 
-            # Apply Bayesian spatial prior if coordinates provided
-            if node_lat is not None and node_lon is not None:
-                probs = self._apply_spatial_prior(probs, node_lat, node_lon)
-            elif self.atm_lats is not None:
-                # Try to read lat/lon from the feature vector (dims 72/73 → node_x/y/z)
-                # Fall back gracefully if feature dim doesn't support this
-                pass
+        rank_order = np.argsort(scores)[::-1][:top_k]
+        top = [
+            {
+                "atm_id": self.atm_ids[int(cand_idx[i])],
+                "confidence": round(float(conf[i]), 4),
+                "rank": r + 1,
+            }
+            for r, i in enumerate(rank_order)
+        ]
 
-            top_k_enc = np.argsort(probs)[::-1][:top_k]
+        # The regressor is trained on the base vector plus the winning
+        # candidate's block, so the countdown reflects the ATM being dispatched to.
+        best_row = self.scaler.transform(rows[int(rank_order[0])].reshape(1, -1))
+        minutes = float(self.regressor.predict(best_row)[0])
 
-            # Decode encoded class -> original ATM index -> atm_ids
-            top3 = []
-            for rank, enc_idx in enumerate(top_k_enc):
-                if self.label_encoder is not None:
-                    orig_idx = int(self.label_encoder.classes_[enc_idx])
-                else:
-                    orig_idx = int(enc_idx)
-                atm_id = self.atm_ids[orig_idx] if orig_idx < len(self.atm_ids) else f"ATM-{orig_idx:04d}"
-                top3.append({
-                    "atm_id": atm_id,
-                    "confidence": round(float(probs[enc_idx]), 4),
-                    "rank": rank + 1,
-                })
+        return {
+            "top3_atms": top,
+            "time_to_cashout_minutes": round(max(1.0, minutes), 2),
+            "interception_confidence": top[0]["confidence"] if top else 0.0,
+        }
 
-            results.append({
-                "top3_atms": top3,
-                "time_to_cashout_minutes": round(float(max(1.0, time_preds[i])), 2),
-                "interception_confidence": top3[0]["confidence"],
-            })
+    def predict_batch(self, X: np.ndarray, top_k: int = 3, **kwargs) -> list[dict]:
+        """
+        Predict for a batch of feature vectors.
 
-        return results[0] if single else results
-
-    def predict_batch(self, X: np.ndarray, top_k: int = 3) -> list[dict]:
-        """Predict for a batch of feature vectors."""
-        return self.predict(X, top_k=top_k) if X.ndim == 2 else [self.predict(X, top_k)]
+        Each row gets its own ATM candidate set, so this is a loop rather than a
+        single vectorised call. Pass per-row coordinates via `node_lats` /
+        `node_lons`, or a single shared pair via `node_lat` / `node_lon`.
+        """
+        rows = X if X.ndim == 2 else X.reshape(1, -1)
+        lats = kwargs.pop("node_lats", None)
+        lons = kwargs.pop("node_lons", None)
+        out = []
+        for i, row in enumerate(rows):
+            kw = dict(kwargs)
+            if lats is not None:
+                kw["node_lat"] = float(lats[i])
+            if lons is not None:
+                kw["node_lon"] = float(lons[i])
+            out.append(self.predict(row, top_k=top_k, **kw))
+        return out

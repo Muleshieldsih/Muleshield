@@ -56,20 +56,19 @@ async def get_embeddings(
             if acc and acc != victim_acc:
                 mule_accounts.add(acc)
 
-    # Score each mule by embedding L2 norm
-    scored: list[tuple[float, str]] = []
+    # Rank by the trained GraphSAGE mule probability. The L2 norm is retained
+    # as a secondary tie-breaker and reported for transparency.
+    scored: list[tuple[float, float, str]] = []
     for acc in mule_accounts:
         emb = state.embeddings.get(acc)
         if emb is not None:
-            norm = float(np.linalg.norm(emb))
-            scored.append((norm, acc))
+            scored.append((state.gnn_risk_score(acc), float(np.linalg.norm(emb)), acc))
 
-    # Sort descending by norm
-    scored.sort(key=lambda x: x[0], reverse=True)
+    scored.sort(key=lambda x: (x[0], x[1]), reverse=True)
     top_accounts = scored[:top_n]
 
     result_nodes: list[MuleNodeRisk] = []
-    for norm, acc in top_accounts:
+    for risk, norm, acc in top_accounts:
         emb = state.embeddings[acc]
         features = state.get_node_feature(acc) or {}
 
@@ -79,13 +78,14 @@ async def get_embeddings(
             {}
         )
         hop = int(acc_txn.get("hop_depth", 1))
-        bank = str(acc_txn.get("bank_name", features.get("bank", "Unknown")))
+        bank = str(features.get("bank_name") or acc_txn.get("bank_name") or "Unknown")
 
         result_nodes.append(MuleNodeRisk(
             account_id=acc,
             bank=bank,
             hop_depth=hop,
-            risk_score=round(norm, 4),
+            # Trained GraphSAGE mule probability, not the raw embedding norm.
+            risk_score=round(risk, 4),
             embedding_norm=round(norm, 4),
             embedding_preview=[round(float(v), 4) for v in emb[:8]],
         ))

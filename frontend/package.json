@@ -9,12 +9,13 @@
     "preview": "vite preview --port 5173"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.0.0",
+    "@fontsource/jetbrains-mono": "^5.0.0",
     "axios": "^1.7.2",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.400.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-leaflet": "^4.2.1",
     "react-router-dom": "^6.23.1",
     "reactflow": "^11.11.4"
   },

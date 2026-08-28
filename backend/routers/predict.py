@@ -86,10 +86,17 @@ async def predict_cashout(complaint_id: str) -> PredictionResponse:
 
     # ── XGBoost inference with Bayesian spatial reranking ────────────────────
     predictor = state.get_xgb_predictor()
+
+    # The ranker scores the ATMs reachable from the terminal account, so it
+    # needs the account itself: prior cashouts by the account's graph
+    # neighbourhood are one of the candidate features.
+    node_rec = state.get_node_feature(terminal_acc) or {}
     raw_result = predictor.predict(
         feature_vec,
         node_lat=node_lat,
         node_lon=node_lon,
+        node_bank=str(node_rec.get("bank_name", "UNKNOWN")),
+        account=terminal_acc,
     )
 
     elapsed_ms = round((time.time() - t0) * 1000, 2)
@@ -110,7 +117,7 @@ async def predict_cashout(complaint_id: str) -> PredictionResponse:
             confidence=pred["confidence"],
             lat=float(atm_meta.get("lat", 20.5937)),
             lon=float(atm_meta.get("long", 78.9629)),
-            bank=str(atm_meta.get("bank", "Unknown")),
+            bank=str(atm_meta.get("bank_name", atm_meta.get("bank", "Unknown"))),
             address=str(atm_meta.get("address", f"ATM {pred['atm_id']}")),
             historical_fraud_count=int(atm_meta.get("historical_fraud_count", 0)),
         ))

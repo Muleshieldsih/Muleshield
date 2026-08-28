@@ -17,7 +17,7 @@
 | **Category** | Software |
 | **Hackathon** | Smart India Hackathon 2026 (SIH 2026) |
 | **Workspace Folder** | `d:\SIH 2026\SIHPROJECT2\` |
-| **Stage** | 🔴 Active Development |
+| **Stage** | 🟢 Feature-complete — Phase 5 (pitch) remaining |
 
 ---
 
@@ -119,12 +119,12 @@ When Indian citizens report financial cyber-fraud via Helpline **1930** or **NCR
 
 - [x] ~~Decide: Cytoscape.js vs React Flow~~ → **React Flow chosen**
 - [x] ~~ML Model choice~~ → **Hybrid GraphSAGE + XGBoost chosen**
-- [ ] Finalize city scope for demo dataset (suggest: Delhi NCR + Mumbai)
+- [x] ~~Finalize city scope~~ → **Pan-India, 65+ cities** (78 in node features)
 - [ ] Decide: SMS alert mock (Twilio sandbox) vs static popup in UI
 - [ ] Confirm if offline map tiles are needed for demo venue
 - [ ] PPT template style: MHA official theme vs. modern dark SIH theme?
-- [ ] GraphSAGE: use 2-layer or 3-layer neighbourhood aggregation?
-- [ ] Embedding dimension: 64 or 128? (64 recommended for demo speed)
+- [x] ~~GraphSAGE layers~~ → **2-layer** (F1 0.9996)
+- [x] ~~Embedding dimension~~ → **64-dim**
 
 ---
 
@@ -137,21 +137,56 @@ When Indian citizens report financial cyber-fraud via Helpline **1930** or **NCR
 | 2026-08-28 | **Phase 2a Complete (47/47 tests):** Implemented `graph_engine.py` (NetworkX BFS & anomaly detection) and `gnn_model.py` / `train_gnn.py` (GraphSAGE 2-layer, 99.96% F1, 1.000 AUC). Implemented `embed.py` generating 20,468 64-dim embeddings in 1.2s. |
 | 2026-08-28 | **Phase 2b Complete (53/53 tests):** Implemented `feature_builder.py` (O(1) indexed 72-dim hybrid vectors), `xgb_model.py` (MuleXGBPredictor), and `train_xgb.py` (91.48% Top-3 ATM accuracy, 0.08 min MAE, 18.5ms latency). |
 | 2026-08-28 | **Pan-India Scale & GitHub Push:** Scaled dataset to 2,500 complaints, 22,864 multi-hop transactions, 1,000 ATMs across 65+ cities, and 20,468 account nodes. All 184 tests pass in 12.55s. Generated ML Architecture and Performance Matrix visual infographics, embedded in `README.md`, and pushed to `https://github.com/hotshot0104/SIH2026`. |
+| 2026-08-28 | **Phase 3 + 4 Complete (51/51 API tests):** FastAPI REST + WebSocket backend and the 4-screen React command console. |
+| 2026-08-28 | **Hardening Pass (235/235 tests):** Fixed the demo-critical defects — live-ingested complaints now build a real mule chain and run the full pipeline (were 404/422); micro-freeze POST was failing schema validation on every click and faking success client-side; velocity/fund-split panels were hardcoded and now read real `graph_engine` detections; node risk switched from embedding mean (~0) to the trained GraphSAGE head `sigmoid(Wh+b)`; the two bank-affinity features were dead constants, repaired and XGBoost retrained (98.46% Top-3); ATM addresses named random unrelated cities; removed `react-leaflet` (broke `npm install` on React 19); self-hosted fonts + basemap fallback for offline venues. |
+| 2026-08-29 | **Leakage Removal & Honest Re-baselining (237/237 tests):** Peer feedback that the model was "too accurate to be true" was correct. `total_received > 0` reproduced the mule label with F1=1.0000 - the label was a copy of a feature, and the 0.9996 GNN F1 measured nothing. The ATM label was `argmin(distance)` while distance was feature #67, and the countdown target was a closed-form line in two inputs (R2=0.9998). Rebuilt the generator: mule status fixed before any transaction exists, 29,998 legitimate transactions so classes overlap, cashout ATM sampled from a choice model, complaint-level splits, time-separated priors, 2% label noise. Honest results: GNN F1 0.9386 (vs RF 0.9031), ATM Top-3 0.5658 (vs distance 0.5526), countdown MAE 6.35 min (vs mean 9.41). Added `scripts/evaluate_baselines.py`. |
 
 ---
 
-## 🎯 Next Session Starting Point: **Phase 3 — FastAPI Real-Time Backend**
+## 🎯 Next Session Starting Point: **Phase 5 — Demo Script, PPT & Video**
 
-1. Create `backend/` package (`backend/main.py`, `backend/routers/`, `backend/schemas/`).
-2. Build REST Endpoints:
-   - `POST /api/v1/complaint/ingest` — Ingest 1930 incident tickets.
-   - `GET /api/v1/graph/{complaint_id}` — Return multi-hop graph nodes, edges, anomalies, and terminal accounts.
-   - `GET /api/v1/predict/cashout/{complaint_id}` — Run GNN embedding + XGBoost inference (Top-3 ATM ranking + countdown timer).
-   - `POST /api/v1/bank/micro-freeze` — Simulated NPCI / Banking freeze action.
-3. Implement WebSocket live alert channel (`/ws/alerts`) for real-time countdown pushes and law enforcement dispatch.
-4. Write `tests/test_phase3.py` and verify with pytest.
+Phases 1–4 complete, plus a hardening pass and a full leakage-removal rebuild.
+237/237 tests pass.
+
+1. **Rehearse the live demo path**: Ingest Complaint → Forensic Graph (real
+   anomalies) → Tactical Map (Top-3 ATMs) → Interception (freeze + dispatch).
+2. Build the 7-slide deck. **Lead with the baseline table, not the accuracy.**
+3. Record the 3-minute demo video.
+4. From a clean clone: `python -m pytest tests/ backend/tests/ -q` and
+   `cd frontend && npm run build`.
+
+### How to answer "is your model too accurate?"
+
+It was, and we fixed it. Say this plainly:
+
+- The first version reported 0.9996 GNN F1. `total_received > 0` scored
+  **F1 = 1.0000** on the same data — the label was a copy of a feature.
+- We rebuilt the generator so mule status is assigned **before any transaction
+  exists**, added ~30k legitimate transactions so the classes overlap, and made
+  the cashout ATM a **sampled choice** rather than `argmin(distance)`.
+- Honest numbers, each against its baseline:
+  | Task | Ours | Best naive baseline |
+  |---|---|---|
+  | Mule detection F1 | **0.9386** | 0.9031 (random forest, no graph) |
+  | ATM Top-3 | **0.5658** | 0.5526 (nearest 3 by distance) |
+  | Countdown MAE | **6.35 min** | 9.41 min (predict the mean) |
+- `tests/test_phase1.py::test_label_is_not_a_copy_of_a_feature` fails the build
+  if any single feature reproduces the label above F1 0.95.
+
+Run `python scripts/evaluate_baselines.py` live if challenged.
+
+### Known limitations to state before being asked
+- All data is synthetic; archetypes are informed by published mule typologies,
+  not fitted to real bank data.
+- Micro-freeze and SMS are simulated; WhatsApp dispatch is real.
+- A live-ingested complaint gets its chain synthesised from real graph accounts
+  in the victim's city — embeddings, ATM directory and inference are genuine,
+  only the bank/NPCI feed is simulated.
+- ATM Top-3 beats distance by ~1.3 points. Distance genuinely dominates where a
+  mule withdraws; the Bayes-optimal ranker only reaches ~0.58. The operational
+  value is narrowing 1,000 ATMs to 3 in under 15 ms.
 
 ---
 
-*Last updated: 2026-08-28 (Phase 1, 2a, 2b fully complete | 184/184 tests passed | Pushed to GitHub)*
+*Last updated: 2026-08-29 (Phases 1–4 + hardening + leakage removal | 237/237 tests passed)*
 

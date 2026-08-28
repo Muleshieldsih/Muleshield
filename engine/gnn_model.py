@@ -22,6 +22,16 @@ from torch_geometric.nn import SAGEConv
 
 # ── Feature columns used for GNN input (must match node_features.csv) ────────
 # 7 numeric columns (strings excluded: account_id, bank_name, city)
+# Behavioural features, every one of them measurable by a bank from its own
+# transaction log.
+#
+# `hop_depth` is deliberately absent. It records an account's position in a
+# traced fraud chain, so it is only ever non-zero for accounts already known to
+# be part of one — using it to decide whether an account is a mule assumes the
+# answer. It stays in node_features.csv for the money-flow visualisation.
+#
+# `total_received` is retained: legitimate accounts now receive money too, so it
+# no longer separates the classes on its own (best single-threshold F1 ≈ 0.42).
 FEATURE_COLS = [
     "lat",
     "long",
@@ -29,9 +39,17 @@ FEATURE_COLS = [
     "total_sent",
     "txn_count_24h",
     "avg_txn_amount",
-    "hop_depth",
+    "in_degree",
+    "out_degree",
+    "distinct_senders",
+    "distinct_receivers",
+    "median_dwell_seconds",     # credit -> next debit; mules forward fast
+    "passthrough_ratio",        # share of inflow forwarded on
+    "account_age_days",         # rented mule accounts are young
+    "night_txn_ratio",
+    "burst_out_5min",           # peak outgoing count in the velocity window
 ]
-IN_CHANNELS = len(FEATURE_COLS)   # 7
+IN_CHANNELS = len(FEATURE_COLS)   # 15
 HIDDEN_CHANNELS = 64
 OUT_CHANNELS = 64                  # embedding dimension
 NUM_LAYERS = 2

@@ -52,6 +52,7 @@ class ComplaintResponse(BaseModel):
     state: str
     complaint_timestamp: str
     status: str = "ACTIVE"
+    is_live: bool = False   # True for complaints ingested during this session
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -81,6 +82,18 @@ class GraphEdge(BaseModel):
     label: str              # e.g. "₹25,000"
 
 
+class GraphAnomalies(BaseModel):
+    """Anomalies detected on a complaint's sub-graph by the NetworkX engine."""
+    velocity_flagged: list[str] = []      # accounts breaching the velocity rule
+    fund_split_flagged: list[str] = []    # accounts dispersing 1-to-N evenly
+    terminal_leaves: list[str] = []       # leaf nodes = cashout candidates
+    velocity_count: int = 0
+    fund_split_count: int = 0
+    terminal_count: int = 0
+    velocity_rule: str = ""               # human-readable threshold, shown in UI
+    fund_split_rule: str = ""
+
+
 class GraphResponse(BaseModel):
     """Node-link graph data in React Flow format for GET /api/v1/graph/{id}"""
     complaint_id: str
@@ -89,6 +102,7 @@ class GraphResponse(BaseModel):
     node_count: int
     edge_count: int
     build_time_ms: float
+    anomalies: GraphAnomalies = GraphAnomalies()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -149,7 +163,7 @@ class FreezeRequest(BaseModel):
     """Payload for POST /api/v1/bank/micro-freeze"""
     account_id: str
     complaint_id: str
-    bank: str
+    bank: str = "UNKNOWN"       # resolved server-side from the account record
     officer_id: str = "OFFICER-001"
 
     model_config = {

@@ -11,7 +11,7 @@ GET  /api/v1/complaint/{id}    — Get a single complaint record
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from backend.models.schemas import ComplaintIngestRequest, ComplaintResponse
 from backend.websocket import manager
@@ -53,11 +53,21 @@ async def ingest_complaint(request: ComplaintIngestRequest) -> ComplaintResponse
 @router.get(
     "/list",
     response_model=list[ComplaintResponse],
-    summary="List all active complaints (newest first)",
+    summary="List active complaints (newest first)",
 )
-async def list_complaints() -> list[ComplaintResponse]:
-    """Returns all complaints sorted by timestamp descending."""
-    return [ComplaintResponse(**c) for c in state.get_all_complaints()]
+async def list_complaints(
+    limit: int = Query(default=50, ge=1, le=2500, description="Max complaints to return"),
+    offset: int = Query(default=0, ge=0, description="Number of complaints to skip"),
+) -> list[ComplaintResponse]:
+    """
+    Returns complaints sorted by timestamp descending.
+
+    Paginated: the national dataset holds thousands of tickets, and the triage
+    console only ever renders the live head of the queue. Callers that genuinely
+    need everything can page through with `offset`.
+    """
+    window = state.get_all_complaints()[offset: offset + limit]
+    return [ComplaintResponse(**c) for c in window]
 
 
 @router.get(

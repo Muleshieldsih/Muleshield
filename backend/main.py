@@ -127,6 +127,11 @@ async def websocket_feed(websocket: WebSocket):
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
+        pass
+    except Exception as e:  # network resets, abrupt client death, etc.
+        logger.warning(f"[WS] Connection closed unexpectedly: {e}")
+    finally:
+        # Always deregister — a leaked socket makes every later broadcast slower.
         manager.disconnect(websocket)
 
 

@@ -33,15 +33,15 @@ from sklearn.metrics import (
     mean_absolute_error,
     r2_score,
 )
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GroupShuffleSplit, train_test_split
 from sklearn.preprocessing import StandardScaler
-from xgboost import XGBClassifier, XGBRegressor
+from xgboost import XGBClassifier, XGBRanker, XGBRegressor
 
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT / "engine"))
 
 from feature_builder import FeatureBuilder, TOTAL_FEATURE_DIM, TABULAR_FEATURE_NAMES
-from xgb_model import MuleXGBPredictor
+from xgb_model import ConditionalLogitRanker, MuleXGBPredictor
 
 MODELS_DIR = ROOT / "models"
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
@@ -66,119 +66,133 @@ def train(
     Returns:
         dict with trained predictor and evaluation metrics.
     """
-    # ── Step 1: Build features ────────────────────────────────────────────────
+    # ── Step 1: Build the candidate-ranking set ───────────────────────────────
     if verbose:
-        print("[1/5] Building hybrid feature matrix v2 (GNN embeddings + spatial tabular)...")
+        print("[1/5] Building candidate-ranking matrix (GNN embedding + spatial + per-ATM)...")
     t0 = time.time()
     fb = FeatureBuilder()
     fb.load()
-    X, y_atm, y_time, meta_df = fb.build_training_set()
+    X, y, groups, meta_df = fb.build_ranking_set()
     elapsed = (time.time() - t0) * 1000
 
+    k = fb.CANDIDATE_K
     if verbose:
-        print(f"      X shape     : {X.shape}  ({TOTAL_FEATURE_DIM} features = 64 GNN + 16 tabular)")
-        print(f"      ATM classes : {len(set(y_atm))}")
-        print(f"      Time range  : {y_time.min():.1f} -- {y_time.max():.1f} min")
+        print(f"      X shape     : {X.shape}  "
+              f"({fb.RANK_CONTEXT_DIM} context + {fb.CANDIDATE_FEATURES} candidate)")
+        print(f"      Cashouts    : {len(meta_df):,}  x  {k} candidates each")
+        reach = meta_df["truth_in_candidates"].mean()
+        print(f"      Ground-truth ATM inside candidate set: {reach:.2%}")
         print(f"      Built in    : {elapsed:.0f}ms")
 
-    assert X.shape[1] == TOTAL_FEATURE_DIM, \
-        f"Feature dim mismatch: expected {TOTAL_FEATURE_DIM}, got {X.shape[1]}"
-
-    # ── Step 2: Train/test split ──────────────────────────────────────────────
+    # ── Step 2: Split by COMPLAINT ────────────────────────────────────────────
+    #
+    # One complaint yields several terminal cashouts sharing a syndicate, a
+    # region and upstream accounts. A row-level split scatters those siblings
+    # across train and test, letting the model recognise a chain it has already
+    # seen. Grouping keeps every chain wholly on one side.
     if verbose:
-        print(f"\n[2/5] Splitting data ({int((1-test_size)*100)}% train / {int(test_size*100)}% test)...")
+        print(f"\n[2/5] Splitting by complaint ({int((1-test_size)*100)}/{int(test_size*100)})...")
 
-    # Only stratify if every class has >= 2 members (sklearn requirement)
-    class_counts = np.bincount(y_atm)
-    can_stratify = bool((class_counts >= 2).all()) and len(set(y_atm)) > 1
-    if not can_stratify and verbose:
-        rare = int((class_counts < 2).sum())
-        print(f"      Note: {rare} ATM class(es) have only 1 sample -- skipping stratification")
+    cid_of_group = dict(zip(meta_df["group_id"], meta_df["complaint_id"]))
+    row_complaint = np.array([cid_of_group[g] for g in groups])
 
-    X_train, X_test, y_atm_train, y_atm_test, y_time_train, y_time_test = train_test_split(
-        X, y_atm, y_time,
-        test_size=test_size,
-        random_state=seed,
-        stratify=y_atm if can_stratify else None,
-    )
+    gss = GroupShuffleSplit(n_splits=1, test_size=test_size, random_state=seed)
+    train_idx, test_idx = next(gss.split(X, y, groups=row_complaint))
+
+    X_train, X_test = X[train_idx], X[test_idx]
+    y_train, y_test = y[train_idx], y[test_idx]
+    g_train, g_test = groups[train_idx], groups[test_idx]
+
     if verbose:
-        print(f"      Train: {len(X_train)} | Test: {len(X_test)}")
+        overlap = set(row_complaint[train_idx]) & set(row_complaint[test_idx])
+        print(f"      Train: {len(X_train):,} rows / {len(set(g_train)):,} cashouts")
+        print(f"      Test : {len(X_test):,} rows / {len(set(g_test)):,} cashouts")
+        print(f"      Complaint overlap between splits: {len(overlap)} (must be 0)")
 
-    # ── Step 3a: Encode ATM labels to contiguous 0..N-1 for XGBoost ─────────
-    # CRITICAL: Fit LabelEncoder on training labels ONLY so they are dense.
-    # If we fit on all labels, rare test-only classes create gaps in training.
-    from sklearn.preprocessing import LabelEncoder
-    le_train = LabelEncoder()
-    y_atm_train_enc = le_train.fit_transform(y_atm_train)  # always contiguous
-    num_classes = len(le_train.classes_)
-    if verbose:
-        print(f"      ATM classes in train: {num_classes}")
-
-    # For test evaluation: only keep samples whose label appears in training
-    test_mask_known = np.isin(y_atm_test, le_train.classes_)
-    n_unknown = int((~test_mask_known).sum())
-    if verbose and n_unknown > 0:
-        print(f"      Note: {n_unknown} test samples have unseen ATM class -- excluded from metrics")
-    y_atm_test_enc = le_train.transform(y_atm_test[test_mask_known])
-
-    # Also build a full LabelEncoder over all labels for inference (saved in predictor)
-    le_full = LabelEncoder()
-    le_full.fit(y_atm)
-
-    # ── Step 3: Scale features ────────────────────────────────────────────────
+    # ── Step 3: Scale ─────────────────────────────────────────────────────────
     if verbose:
         print("\n[3/5] Normalizing features with StandardScaler...")
     scaler = StandardScaler()
     X_train_s = scaler.fit_transform(X_train)
-    X_test_s  = scaler.transform(X_test)
-    # Subset of test features for known-class metrics
-    X_test_s_known = X_test_s[test_mask_known]
+    X_test_s = scaler.transform(X_test)
 
-    # ── Step 4: Train ATM Classifier ─────────────────────────────────────────
+    # ── Step 4: Fit the conditional-logit ATM ranker ──────────────────────────
     if verbose:
-        print(f"\n[4/5] Training XGBClassifier (ATM prediction, {n_estimators} trees)...")
+        print("\n[4/5] Fitting ConditionalLogitRanker (discrete choice over candidates)...")
 
-    clf = XGBClassifier(
-        n_estimators=n_estimators,
-        max_depth=max_depth,
-        learning_rate=learning_rate,
-        subsample=0.85,
-        colsample_bytree=0.85,
-        min_child_weight=2,
-        eval_metric="mlogloss",
-        random_state=seed,
-        tree_method="hist",
-        verbosity=0,
-        n_jobs=-1,
-    )
+    # Rows must be contiguous per cashout for the group reshape.
+    tr_order = np.argsort(g_train, kind="stable")
+    te_order = np.argsort(g_test, kind="stable")
+    X_train, y_train, g_train = X_train[tr_order], y_train[tr_order], g_train[tr_order]
+    X_test, y_test, g_test = X_test[te_order], y_test[te_order], g_test[te_order]
+    X_train_s, X_test_s = X_train_s[tr_order], X_test_s[te_order]
 
+    C = fb.RANK_CONTEXT_DIM
+    log_train = MuleXGBPredictor.log_features(X_train[:, C:])
+    log_test = MuleXGBPredictor.log_features(X_test[:, C:])
+
+    clf = ConditionalLogitRanker(n_features=log_train.shape[1], k=k)
     t0 = time.time()
-    clf.fit(X_train_s, y_atm_train_enc)   # encoded labels guaranteed contiguous
+    clf.fit(log_train, y_train, g_train)
     clf_time = (time.time() - t0) * 1000
 
-    # ATM Classifier metrics (only on test samples with known training classes)
-    y_atm_pred_enc = clf.predict(X_test_s_known)
-    atm_acc = accuracy_score(y_atm_test_enc, y_atm_pred_enc)
-    atm_f1  = f1_score(y_atm_test_enc, y_atm_pred_enc, average="weighted", zero_division=0)
+    scores = clf.predict(log_test)
+
+    # ── Rank-based evaluation, per cashout ────────────────────────────────────
+    by_group: dict[int, list[tuple[float, int]]] = {}
+    for score, gid, label in zip(scores, g_test, y_test):
+        by_group.setdefault(int(gid), []).append((float(score), int(label)))
+
+    top1 = top3 = total = 0
+    for gid, items in by_group.items():
+        items.sort(key=lambda t: t[0], reverse=True)
+        total += 1
+        if items[0][1] == 1:
+            top1 += 1
+        if any(lbl == 1 for _, lbl in items[:3]):
+            top3 += 1
+
+    atm_acc = top1 / max(1, total)
+    top3_acc = top3 / max(1, total)
+
+    # Distance-only baseline over the same candidate sets.
+    dist_col = C
+    base_top1 = base_top3 = 0
+    for gid in by_group:
+        rows = np.where(g_test == gid)[0]
+        order = rows[np.argsort(X_test[rows, dist_col])]
+        labels = y_test[order]
+        if len(labels) and labels[0] == 1:
+            base_top1 += 1
+        if any(labels[:3] == 1):
+            base_top3 += 1
+    base_top1 /= max(1, total)
+    base_top3 /= max(1, total)
+
+    atm_f1 = atm_acc
 
     if verbose:
-        print(f"      Trained in  : {clf_time:.0f}ms")
-        print(f"      Test Acc    : {atm_acc:.4f}")
-        print(f"      Test F1 (W) : {atm_f1:.4f}")
+        print(f"      Fitted in   : {clf_time:.0f}ms")
+        print(f"      Top-1 Acc   : {atm_acc:.4f}   (distance-only baseline {base_top1:.4f})")
+        print(f"      Top-3 Acc   : {top3_acc:.4f}   (distance-only baseline {base_top3:.4f})")
+        print(f"      Lift over distance baseline: "
+              f"Top-1 {atm_acc - base_top1:+.4f} | Top-3 {top3_acc - base_top3:+.4f}")
+        names = ["-dist/5", "log(1+2*risk)", "same_bank", "atm_prior", "crew_prior", "crew_seen"]
+        print("      Learned utility weights (interpretable by construction):")
+        for nm, wv in zip(names, clf.w):
+            print(f"        {nm:<16}{wv:+.4f}")
 
-    # Top-3 accuracy
-    probs = clf.predict_proba(X_test_s_known)
-    top3_correct = sum(
-        1 for i, true in enumerate(y_atm_test_enc)
-        if true in np.argsort(probs[i])[::-1][:3]
-    )
-    top3_acc = top3_correct / max(1, len(y_atm_test_enc))
-    if verbose:
-        print(f"      Top-3 Acc   : {top3_acc:.4f}")
-
-    # ── Step 5: Train Time Regressor ─────────────────────────────────────────
+    # ── Step 5: Train the countdown regressor ─────────────────────────────────
+    # Trained on the TRUE candidate row so the delay is conditioned on the ATM
+    # actually withdrawn from.
     if verbose:
         print(f"\n[5/5] Training XGBRegressor (time-to-cashout, {n_estimators} trees)...")
+
+    time_of_group = dict(zip(meta_df["group_id"], meta_df["time_to_cashout_min"]))
+    pos_train = np.where(y_train == 1)[0]
+    pos_test = np.where(y_test == 1)[0]
+    yt_train = np.array([time_of_group[int(g)] for g in g_train[pos_train]], dtype=float)
+    yt_test = np.array([time_of_group[int(g)] for g in g_test[pos_test]], dtype=float)
 
     reg = XGBRegressor(
         n_estimators=n_estimators,
@@ -192,46 +206,48 @@ def train(
         verbosity=0,
         n_jobs=-1,
     )
-
     t0 = time.time()
-    reg.fit(
-        X_train_s, y_time_train,
-        eval_set=[(X_test_s, y_time_test)],
-        verbose=False,
-    )
+    reg.fit(X_train_s[pos_train], yt_train, verbose=False)
     reg_time = (time.time() - t0) * 1000
 
-    y_time_pred = reg.predict(X_test_s)
-    time_mae = mean_absolute_error(y_time_test, y_time_pred)
-    time_r2  = r2_score(y_time_test, y_time_pred)
+    y_time_pred = reg.predict(X_test_s[pos_test])
+    time_mae = mean_absolute_error(yt_test, y_time_pred)
+    time_r2 = r2_score(yt_test, y_time_pred)
+    baseline_mae = float(np.mean(np.abs(yt_test - yt_train.mean())))
 
     if verbose:
         print(f"      Trained in  : {reg_time:.0f}ms")
-        print(f"      Test MAE    : {time_mae:.2f} min")
+        print(f"      Test MAE    : {time_mae:.2f} min   (mean-baseline {baseline_mae:.2f} min)")
         print(f"      Test R2     : {time_r2:.4f}")
 
-    # ── Save (with ATM spatial arrays for Bayesian reranking) ────────────────
+    # ── Save ──────────────────────────────────────────────────────────────────
     atm_lats = fb.atm_df["lat"].to_numpy()
     atm_lons = fb.atm_df["long"].to_numpy()
-    # Risk scores: normalised historical_fraud_count (0-1)
-    if "risk_score" in fb.atm_df.columns:
-        atm_risk = fb.atm_df["risk_score"].to_numpy(dtype=float)
-    elif "historical_fraud_count" in fb.atm_df.columns:
-        raw = fb.atm_df["historical_fraud_count"].to_numpy(dtype=float)
-        max_raw = raw.max() if raw.max() > 0 else 1.0
-        atm_risk = raw / max_raw
-    else:
-        atm_risk = np.zeros(len(fb.atm_ids), dtype=float)
+    atm_risk = (fb.atm_df["cashout_risk_score"].to_numpy(dtype=float)
+                if "cashout_risk_score" in fb.atm_df.columns
+                else np.zeros(len(fb.atm_ids), dtype=float))
+    atm_fraud = (fb.atm_df["historical_fraud_count"].to_numpy(dtype=float)
+                 if "historical_fraud_count" in fb.atm_df.columns
+                 else np.zeros(len(fb.atm_ids), dtype=float))
+    atm_banks = (fb.atm_df["bank_name"].to_numpy(dtype=str)
+                 if "bank_name" in fb.atm_df.columns
+                 else np.array(["UNKNOWN"] * len(fb.atm_ids), dtype=str))
 
     predictor = MuleXGBPredictor(
-        classifier=clf,
+        classifier=clf,          # ConditionalLogitRanker
         regressor=reg,
         atm_ids=fb.atm_ids,
         scaler=scaler,
-        label_encoder=le_train,   # trained-label encoder; maps 0..N-1 -> ATM index
+        label_encoder=None,          # ranking model: no class encoding needed
         atm_lats=atm_lats,
         atm_lons=atm_lons,
         atm_risk_scores=atm_risk,
+        atm_banks=atm_banks,
+        atm_fraud_counts=atm_fraud,
+        atm_prior_counts=fb._atm_prior_count,
+        acct_atm_hist=fb._acct_atm_hist,
+        graph_adj={n: set(fb._graph.neighbors(n)) for n in fb._graph.nodes()},
+        candidate_k=k,
     )
     predictor.save(XGB_MODEL_PATH)
     if verbose:
@@ -242,10 +258,14 @@ def train(
         "atm_accuracy": atm_acc,
         "atm_f1_weighted": atm_f1,
         "top3_accuracy": top3_acc,
+        "baseline_top1": base_top1,
+        "baseline_top3": base_top3,
         "time_mae_minutes": time_mae,
+        "time_baseline_mae": baseline_mae,
         "time_r2": time_r2,
         "n_train": len(X_train),
         "n_test": len(X_test),
+        "meta_df": meta_df,
     }
 
 
@@ -253,13 +273,15 @@ def train(
 # END-TO-END INFERENCE SPEED TEST
 # ─────────────────────────────────────────────────────────────────────────────
 
-def benchmark_inference(predictor: MuleXGBPredictor, X_test: np.ndarray, n_runs: int = 100):
-    """Measure average single-sample inference latency."""
-    sample = X_test[0]
+def benchmark_inference(predictor: MuleXGBPredictor, X_test: np.ndarray,
+                        n_runs: int = 100, node_lat: float = 28.6139,
+                        node_lon: float = 77.2090):
+    """Measure average single-sample inference latency (candidate build + rank)."""
+    sample = X_test[0][:7]      # ranker context only; candidates are built inside
     latencies = []
     for _ in range(n_runs):
         t0 = time.time()
-        predictor.predict(sample)
+        predictor.predict(sample, node_lat=node_lat, node_lon=node_lon)
         latencies.append((time.time() - t0) * 1000)
     return np.mean(latencies), np.max(latencies)
 
@@ -288,22 +310,36 @@ if __name__ == "__main__":
     )
 
 
-    # Inference speed check
+    # Inference speed check — measured on the real path the API calls, which
+    # includes building the candidate set, not just a forward pass.
     print("\n[BENCHMARK] Measuring inference latency...")
     fb = FeatureBuilder().load()
-    X, _, _, _ = fb.build_training_set()
-    scaler = results["predictor"].scaler
-    X_s = scaler.transform(X)
+    X, _, _, _ = fb.build_ranking_set()
 
-    mean_ms, max_ms = benchmark_inference(results["predictor"], X_s)
+    mean_ms, max_ms = benchmark_inference(results["predictor"], X)
     print(f"  Mean inference : {mean_ms:.2f}ms")
     print(f"  Max  inference : {max_ms:.2f}ms")
     ac_met = "PASS" if mean_ms < 200 else "FAIL (AC: <200ms)"
     print(f"  AC <200ms      : {ac_met}")
 
-    print("\n" + "=" * 60)
-    print(f"  Top-3 ATM Acc  : {results['top3_accuracy']:.4f}")
-    print(f"  Time MAE       : {results['time_mae_minutes']:.2f} min  [AC: <5 min]")
-    mae_ac = "PASS" if results['time_mae_minutes'] <= 5.0 else "REVIEW"
-    print(f"  Time MAE AC    : {mae_ac}")
-    print("=" * 60)
+    # Every headline number is printed next to the naive alternative it has to
+    # beat. A score without its baseline says nothing about the model.
+    print("\n" + "=" * 66)
+    print("  RESULTS vs BASELINES")
+    print("=" * 66)
+    print(f"  Top-1 ATM      : {results['atm_accuracy']:.4f}"
+          f"   | distance-only {results['baseline_top1']:.4f}"
+          f"   | lift {results['atm_accuracy'] - results['baseline_top1']:+.4f}")
+    print(f"  Top-3 ATM      : {results['top3_accuracy']:.4f}"
+          f"   | distance-only {results['baseline_top3']:.4f}"
+          f"   | lift {results['top3_accuracy'] - results['baseline_top3']:+.4f}")
+    print(f"  Countdown MAE  : {results['time_mae_minutes']:.2f} min"
+          f" | mean-baseline {results['time_baseline_mae']:.2f} min"
+          f" | R2 {results['time_r2']:.4f}")
+
+    beats_dist = results['top3_accuracy'] > results['baseline_top3']
+    beats_mean = results['time_mae_minutes'] < results['time_baseline_mae']
+    print("-" * 66)
+    print(f"  Beats distance-only Top-3 : {'YES' if beats_dist else 'NO'}")
+    print(f"  Beats mean-countdown MAE  : {'YES' if beats_mean else 'NO'}")
+    print("=" * 66)
