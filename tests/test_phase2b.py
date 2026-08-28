@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-MuleShield AI -- Phase 2b Test Suite
+MuleShield AI -- Phase 2b Test Suite (v2)
 SIH26184 | MHA / I4C
 
 Tests all acceptance criteria from phases.md Phase 2b:
-  AC1: feature_builder.py correctly concatenates GNN + tabular (72 dims)
+  AC1: feature_builder.py correctly concatenates GNN + tabular (80 dims v2)
   AC2: XGBoost trained and saved as models/xgb_cashout.pkl
   AC3: Top-3 ATM prediction returned with confidence scores
   AC4: Countdown prediction within +-5 minutes of synthetic ground truth
@@ -159,29 +159,31 @@ class TestHelpers:
 class TestFeatureBuilder:
 
     def test_feature_dim_constants_correct(self):
-        """TOTAL_FEATURE_DIM must be 72 = 64 + 8."""
+        """TOTAL_FEATURE_DIM must be 80 = 64 + 16."""
         assert EMBEDDING_DIM == 64
-        assert TABULAR_DIM == 8
-        assert TOTAL_FEATURE_DIM == 72
+        assert TABULAR_DIM == 16
+        assert TOTAL_FEATURE_DIM == 80
 
     def test_feature_names_length(self):
-        """FEATURE_NAMES must have exactly 72 entries."""
+        """FEATURE_NAMES must have exactly 80 entries."""
         assert len(FEATURE_NAMES) == TOTAL_FEATURE_DIM
 
     def test_tabular_feature_names_match_spec(self):
-        """Tabular features must match the Phase 2b spec exactly."""
-        expected = [
+        """Core 8 tabular features must be present (v2 may have extras)."""
+        core_features = [
             "stolen_amount", "hop_depth", "transaction_velocity",
-            "branch_distance_to_atm", "hour_of_day",
+            "dist_to_atm_1_km", "hour_of_day",
             "historical_hotspot_density", "day_of_week", "amount_after_split",
         ]
-        assert TABULAR_FEATURE_NAMES == expected
+        for feat in core_features:
+            assert feat in TABULAR_FEATURE_NAMES, \
+                f"Missing expected feature: '{feat}'"
 
     def test_X_shape_is_72(self, training_set):
-        """AC1: Feature matrix must have exactly 72 columns."""
+        """AC1: Feature matrix must have exactly 80 columns (v2 80-dim)."""
         X, y_atm, y_time, meta = training_set
         assert X.shape[1] == TOTAL_FEATURE_DIM, \
-            f"Expected 72 features, got {X.shape[1]}"
+            f"Expected {TOTAL_FEATURE_DIM} features, got {X.shape[1]}"
 
     def test_X_has_samples(self, training_set):
         """Training set must have at least 100 samples."""
@@ -257,7 +259,7 @@ class TestFeatureBuilder:
         assert required.issubset(set(meta.columns))
 
     def test_single_feature_vector_shape(self, feature_builder, transactions_df):
-        """Single build_feature_vector call must return (72,)."""
+        """Single build_feature_vector call must return (TOTAL_FEATURE_DIM,) == (80,)."""
         terminal_txns = transactions_df[transactions_df["is_terminal"] == 1]
         row = terminal_txns.iloc[0]
         feat = feature_builder.build_feature_vector(

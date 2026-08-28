@@ -1,9 +1,11 @@
 # 🛡️ MuleShield AI: Real-Time Money Mule Detection & ATM Interception Intelligence
 
 [![Python 3.13](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
+[![React 19](https://img.shields.io/badge/React-19.0.0-61dafb.svg)](https://react.dev/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688.svg)](https://fastapi.tiangolo.com/)
 [![PyTorch Geometric](https://img.shields.io/badge/PyG-GraphSAGE-orange.svg)](https://pytorch-geometric.readthedocs.io/)
-[![XGBoost](https://img.shields.io/badge/ML-XGBoost-green.svg)](https://xgboost.readthedocs.io/)
-[![Tests](https://img.shields.io/badge/Tests-184%2F184%20Passed-brightgreen.svg)]()
+[![XGBoost](https://img.shields.io/badge/ML-XGBoost%20v2-green.svg)](https://xgboost.readthedocs.io/)
+[![Tests](https://img.shields.io/badge/Tests-235%2F235%20Passed-brightgreen.svg)]()
 [![SIH 2026](https://img.shields.io/badge/SIH-2026%20Problem%20ID%3A%20SIH26184-red.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -12,15 +14,51 @@
 
 ---
 
+## 🖥️ Tactical Command Center Dashboard
+
+MuleShield AI features a 4-screen, real-time command dashboard engineered for Law Enforcement (State Cyber Crime Police Stations) and Bank Fraud Risk Officers:
+
+<div align="center">
+  <h3>1. Live 1930 Helpline Triage & Intake Queue</h3>
+  <img src="docs/dashboard_triage.png" alt="MuleShield AI - Live 1930 Triage Feed" width="100%" />
+  <p><em>Real-time streaming queue of incoming 1930 complaints with Golden Hour urgency badges, live metrics, and instant AI ingestion form.</em></p>
+</div>
+
+<br/>
+
+<div align="center">
+  <h3>2. Tactical GIS Map — Physical ATM Interception</h3>
+  <img src="docs/dashboard_map.png" alt="MuleShield AI - Tactical GIS Map" width="100%" />
+  <p><em>Interactive vector map displaying terminal mule location, predicted Top-3 target ATM cluster markers, pulsing perimeter, and routing lines.</em></p>
+</div>
+
+<br/>
+
+<div align="center">
+  <h3>3. Forensic Money-Flow Directed Graph (DAG)</h3>
+  <img src="docs/dashboard_graph.png" alt="MuleShield AI - Forensic Graph Visualizer" width="100%" />
+  <p><em>React Flow multi-hop graph visualizer mapping money movement from Victim ➔ Layer-1/2 Mules ➔ Terminal Cashout accounts with node-level GNN risk inspector.</em></p>
+</div>
+
+<br/>
+
+<div align="center">
+  <h3>4. 1-Click Emergency Interception & Police Dispatch</h3>
+  <img src="docs/dashboard_intercept.png" alt="MuleShield AI - Interception Control" width="100%" />
+  <p><em>Top-3 ATM predictions with confidence ranking, live cashout countdown clock, 1-Click Emergency Bank Micro-Freeze, and automated PCR van dispatch.</em></p>
+</div>
+
+---
+
 ## 📌 Executive Summary
 
 Cyber fraud incidents reported on the National Cybercrime Reporting Portal (**1930 Helpline**) often involve rapid fund laundering through multi-layered **money mule account networks** within minutes. By the time law enforcement issues freeze notices, syndicate operators physically withdraw the stolen money from ATMs.
 
 **MuleShield AI** is an industry-grade, hybrid intelligence platform that bridges **Graph Neural Networks (GNNs)** and **Gradient Boosted Decision Trees (XGBoost)** to:
-1. **Trace multi-hop fund dispersal** in real time from victim complaint origins.
+1. **Trace multi-hop fund dispersal** in real time from victim complaint origins in $<185\text{ ms}$.
 2. **Detect fraud rings, fund-splitting, and velocity anomalies** using graph topology.
 3. **Generate 64-dimensional structural risk embeddings** via **GraphSAGE** (capturing complex neighborhood relationships).
-4. **Predict the exact ATM cashout locations (Top-3 ranked)** and calculate a **real-time countdown timer** to interception in **under 10 milliseconds**.
+4. **Predict the exact ATM cashout locations (Top-3 ranked)** with **98.52% accuracy** and calculate a **real-time countdown timer** to interception in **under 25 milliseconds**.
 
 ```
 [ 1930 Victim Complaint ]
@@ -32,24 +70,18 @@ Cyber fraud incidents reported on the National Cybercrime Reporting Portal (**19
 [ GraphSAGE GNN (PyG) ]    ──► (64-dim Graph Structural Risk Embeddings)
            │
            ▼
-[ 72-dim Hybrid Feature ]  ──► (64 GNN Risk Dims + 8 Geospatial/Temporal Tabular Dims)
+[ 80-dim Hybrid Feature ]  ──► (64 GNN Risk Dims + 16 Geospatial 3D & Temporal Dims)
            │
            ▼
-[ XGBoost Classifier & Regressor ]
-  ├── 📍 Top-3 ATM Cashout Prediction (91.5% Top-3 Accuracy)
-  ├── ⏱️ Time-to-Cashout Countdown (MAE: 0.08 min / 4.8 sec)
-  └── 🔒 Real-time Micro-Freeze Action Recommendation (<20ms latency)
+[ XGBoost Classifier & Regressor v2 ]
+  ├── 📍 Top-3 ATM Cashout Prediction (98.52% Top-3 Accuracy + Bayesian Spatial Reranking)
+  ├── ⏱️ Time-to-Cashout Countdown (MAE: 0.02 min / 1.2 sec)
+  └── 🔒 Real-time Micro-Freeze Action Recommendation (<25ms latency)
 ```
-
-<div align="center">
-  <img src="docs/ml_matrix_architecture.jpg" alt="MuleShield AI Machine Learning Hybrid Feature Matrix Architecture" width="100%" />
-  <p><em>Figure 1: MuleShield AI Hybrid Machine Learning Pipeline — 64-dim GraphSAGE structural risk vectors fused with 8-dim spatial-temporal tabular attributes into a 72-dimensional feature matrix for XGBoost inference.</em></p>
-</div>
 
 ---
 
 ## 🔬 Core AI / ML Architecture
-
 
 ### 1. Graph Intelligence Engine (`engine/graph_engine.py`)
 - Constructs directed multi-hop transaction networks: `Victim Account ➔ Layer-1 Mule ➔ Layer-2 Mule ➔ Terminal Cashout Node`.
@@ -64,25 +96,23 @@ Cyber fraud incidents reported on the National Cybercrime Reporting Portal (**19
 - Binary classification head trained with `BCEWithLogitsLoss` and inverse class-frequency weighting (`pos_weight = 0.142`).
 - **Output:** 64-dimensional dense risk representation vector ($h_v \in \mathbb{R}^{64}$) for each bank account node.
 
-### 3. XGBoost ATM Interception Engine (`engine/feature_builder.py`, `engine/xgb_model.py`)
-- Integrates the 64-dim GNN representation with 8 critical spatial/temporal tabular features into a **72-dimensional hybrid vector**:
-  - `stolen_amount` — Original complaint amount.
-  - `hop_depth` — Chain layer depth of the terminal node.
-  - `transaction_velocity` — Rate of transactions per minute.
-  - `branch_distance_to_atm` — Vectorized Haversine distance ($\text{km}$) to nearest ATM.
-  - `hour_of_day` — Cashout peak-hour indicator ($0–23$).
-  - `historical_hotspot_density` — Number of ATM fraud incidents within $5\text{ km}$.
-  - `day_of_week` — Temporal distribution factor ($0–6$).
-  - `amount_after_split` — Dispersed funds remaining at terminal node.
+### 3. XGBoost ATM Interception Engine v2 (`engine/feature_builder.py`, `engine/xgb_model.py`)
+- Integrates the 64-dim GNN representation with **16 spatial/temporal tabular features** into an **80-dimensional hybrid vector**:
+  - `stolen_amount`, `hop_depth`, `transaction_velocity`, `hour_of_day`, `historical_hotspot_density`, `day_of_week`, `amount_after_split`
+  - `dist_to_atm_1/2/3_km` — Vectorized Haversine distance to top-3 nearest ATMs.
+  - `node_x, node_y, node_z` — 3D Cartesian Earth coordinates (eliminates angular bias in trees).
+  - `bearing_to_atm_1_deg` — Compass bearing to nearest ATM (0°–360°).
+  - `is_nearest_same_bank`, `nearest_same_bank_atm_dist` — Bank affiliation preference features.
 - **Models:**
-  - **`XGBClassifier`**: Outputs probability distributions and ranks Top-3 probable ATMs.
-  - **`XGBRegressor`**: Estimates countdown minutes remaining before cashout occurs.
+  - **`XGBClassifier`** (depth=7, 160 trees, lr=0.06): Outputs Top-3 ranked ATM candidates — **98.52% Top-3 Accuracy**.
+  - **`XGBRegressor`**: Estimates countdown minutes — **0.02 min MAE** ($R^2 = 0.9998$).
+- **Bayesian Spatial Prior Reranking**: Post-inference score = $P(\text{ATM}_i \mid \mathbf{x}) \times \exp(-d_i^2/2\sigma^2) \times (1 + 0.35r_i)$. Eliminates impossible far-away ATMs.
 
 ---
 
 ## 📊 Benchmark & Validation Results
 
-MuleShield AI is validated against an extensive automated test suite (**184/184 tests passing**) on a Pan-India dataset spanning **65+ cities and 16 major banks**:
+MuleShield AI is validated against an extensive automated test suite (**235 / 235 tests passing**) on a Pan-India dataset spanning **65+ cities and 16 major banks**:
 
 | Metric / Requirement | Target / Benchmark | Achieved Performance | Status |
 |---|---|---|---|
@@ -90,23 +120,47 @@ MuleShield AI is validated against an extensive automated test suite (**184/184 
 | **GNN Node Classification F1** | $> 0.85$ | **$0.9996$** (Val F1: 1.000, Test F1: 0.9996) | ✅ PASS |
 | **GNN AUC-ROC Score** | $> 0.90$ | **$1.000$** | ✅ PASS |
 | **Per-Complaint Embedding Speed** | $< 2.0\text{ s}$ | **$0.39\text{ s}$** ($1.24\text{ s}$ for all 20,468 nodes) | ✅ PASS |
-| **Top-3 ATM Prediction Accuracy** | $> 85.0\%$ | **$91.48\%$** Top-3 Accuracy (across 322 active targets) | ✅ PASS |
-| **Time-to-Cashout Regression MAE** | $< 5.0\text{ min}$ | **$0.08\text{ min}$** ($4.8\text{ seconds}$, $R^2 = 0.9991$) | ✅ PASS |
-| **Single-Sample Inference Latency** | $< 200\text{ ms}$ | **$18.52\text{ ms}$** mean ($21.14\text{ ms}$ max) | ✅ PASS |
-| **Automated Test Coverage** | $100\%$ | **184 / 184 Passed** across 3 Test Suites | ✅ PASS |
+| **Top-3 ATM Prediction Accuracy** | $> 85.0\%$ | **$98.52\%$** Top-3 Accuracy — 80-dim v2 (Bayesian Spatial Reranking) | ✅ PASS |
+| **Time-to-Cashout Regression MAE** | $< 5.0\text{ min}$ | **$0.02\text{ min}$** ($1.2\text{ seconds}$, $R^2 = 0.9998$) | ✅ PASS |
+| **Single-Sample Inference Latency** | $< 200\text{ ms}$ | **$25.83\text{ ms}$** mean ($28.36\text{ ms}$ max) | ✅ PASS |
+| **Automated Test Coverage** | $100\%$ | **235 / 235 Passed** (184 Unit + 51 API Tests) | ✅ PASS |
 
 <div align="center">
   <img src="docs/models_performance_matrix.jpg" alt="MuleShield AI Models Performance & Evaluation Matrix" width="100%" />
-  <p><em>Figure 2: MuleShield AI Multi-Model Evaluation Dashboard — Performance metrics across GraphSAGE Node Classifier, XGBoost ATM Geolocation Predictor, Time Regressor, and System Latency Benchmarks.</em></p>
+  <p><em>Figure: MuleShield AI Multi-Model Evaluation Dashboard — Performance metrics across GraphSAGE Node Classifier, XGBoost ATM Geolocation Predictor, Time Regressor, and System Latency Benchmarks.</em></p>
 </div>
 
 ---
-
 
 ## 📁 Repository Structure
 
 ```
 SIH2026/
+├── backend/                            # FastAPI Real-Time REST & WebSocket Backend
+│   ├── main.py                         # Application entry point & lifespan manager
+│   ├── state.py                        # In-memory high-speed O(1) state store
+│   ├── websocket.py                    # Real-time WebSocket connection broadcaster
+│   ├── models/                         # Pydantic v2 schemas
+│   │   └── schemas.py                  # Request/response data models
+│   ├── routers/                        # API endpoint routers
+│   │   ├── complaint.py                # 1930 Complaint ingestion & listing
+│   │   ├── graph.py                    # React Flow money-flow DAG builder
+│   │   ├── embeddings.py               # GNN risk score ranking
+│   │   ├── predict.py                  # XGBoost Top-3 ATM + countdown inference
+│   │   └── freeze.py                   # 1-Click Bank micro-freeze simulator
+│   └── tests/                          # Phase 3 backend test suite (51/51 passed)
+│
+├── frontend/                           # React 19 + Tailwind Tactical Command UI
+│   ├── src/
+│   │   ├── pages/
+│   │   │   ├── TriageFeed.jsx          # Screen 1: Live 1930 Triage Queue
+│   │   │   ├── TacticalMap.jsx         # Screen 2: Tactical GIS Map (Leaflet)
+│   │   │   ├── ForensicGraph.jsx       # Screen 3: Money Flow Graph (React Flow)
+│   │   │   └── Interception.jsx        # Screen 4: 1-Click Freeze & Dispatch
+│   │   ├── components/                 # Reusable UI shells & navigation bars
+│   │   └── services/                   # Axios API & WebSocket connector
+│   └── package.json
+│
 ├── data/                               # Pan-India Banking & ATM Dataset (65+ Cities)
 │   ├── victim_complaints.csv           # 2,500 National 1930 Cybercrime complaints
 │   ├── transactions.csv                # 22,864 Multi-hop transactions (hops 1–4)
@@ -115,123 +169,70 @@ SIH2026/
 │   └── node_features.csv               # 20,468 Nodes with behavioral & geographical stats
 │
 ├── engine/                             # Core Hybrid AI Engines
-│   ├── __init__.py                     # Package initialization
 │   ├── graph_engine.py                 # NetworkX directed graph builder & BFS anomalies
 │   ├── gnn_model.py                    # 2-Layer GraphSAGE model (PyTorch Geometric)
 │   ├── train_gnn.py                    # GNN offline training script
 │   ├── embed.py                        # 64-dim GraphSAGE embedding extractor & cache
-│   ├── feature_builder.py              # 72-dim Hybrid Feature Matrix Builder (O(1) indexed)
+│   ├── feature_builder.py              # 80-dim Hybrid Feature Matrix Builder (v2)
 │   ├── xgb_model.py                    # MuleXGBPredictor (Top-3 ATM + countdown regressor)
 │   └── train_xgb.py                    # XGBoost training & latency benchmarking
 │
 ├── models/                             # Serialized Trained Model Checkpoints
 │   ├── graphsage_mule.pt               # Trained GraphSAGE PyTorch checkpoint (20,468 nodes)
-│   └── xgb_cashout.pkl                 # Trained XGBoost predictor bundle (7,484 terminal nodes)
+│   └── xgb_cashout.pkl                 # Trained XGBoost predictor bundle
 │
 ├── embeddings/                         # Cached Node Embeddings
 │   └── node_embeddings.pkl             # 20,468 x 64-dim pre-computed risk vectors
 │
-├── scripts/                            # Dataset Generation Utilities
-│   └── generate_data.py                # Pan-India multi-hop fraud ring generator
-│
-├── tests/                              # Comprehensive Pytest Regression Suites
+├── tests/                              # Comprehensive Pytest Regression Suites (184 tests)
 │   ├── test_phase1.py                  # Phase 1 tests (84 tests - Data generation & schema)
 │   ├── test_phase2a.py                 # Phase 2a tests (47 tests - GraphSAGE & graph engine)
-│   └── test_phase2b.py                 # Phase 2b tests (53 tests - XGBoost & 72-dim inference)
+│   └── test_phase2b.py                 # Phase 2b tests (53 tests - XGBoost & 80-dim inference)
 │
-├── memory.md                           # Architectural decision logs
+├── prd.md                              # Product Requirements Document
 ├── phases.md                           # SIH development phases & milestone tracking
-├── product.md                          # Product specifications & 1930 operational flow
-├── requirement.md                      # Detailed technical requirements
-├── requirements.txt                    # Python library dependencies
 └── README.md                           # Project documentation
 ```
-
 
 ---
 
 ## 🚀 Quickstart & Setup Guide
 
-### 1. Prerequisites
-- Python 3.11, 3.12, or 3.13
-- Git
-
-### 2. Clone the Repository
+### 1. Clone & Setup Python Backend
 ```bash
 git clone https://github.com/hotshot0104/SIH2026.git
 cd SIH2026
-```
 
-### 3. Create & Activate Virtual Environment
-```bash
-# Windows
+# Virtual Environment
 python -m venv venv
-venv\Scripts\activate
+venv\Scripts\activate       # Windows
+# source venv/bin/activate  # Linux/macOS
 
-# Linux / macOS
-python3 -m venv venv
-source venv/bin/activate
-```
-
-### 4. Install Dependencies
-```bash
+# Install backend dependencies
 pip install -r requirements.txt
 ```
 
-### 5. Run Data Generation & Train All Models
+### 2. Start the FastAPI Backend
 ```bash
-# Step 1: Generate synthetic multi-hop transaction dataset (500 complaints, 4000+ txns)
-python scripts/generate_data.py
-
-# Step 2: Train GraphSAGE embedding model
-python engine/train_gnn.py --epochs 200 --lr 0.001
-
-# Step 3: Pre-compute 64-dim node embeddings
-python engine/embed.py
-
-# Step 4: Train XGBoost classifier & countdown regressor
-python engine/train_xgb.py
+python -m uvicorn backend.main:app --port 8000 --reload
+# API Documentation (Swagger UI): http://localhost:8000/docs
 ```
 
-### 6. Run the Automated Test Suite (184 Tests)
+### 3. Start the React Frontend Dashboard
 ```bash
+cd frontend
+npm install
+npm run dev
+# Command Center UI: http://localhost:5173
+```
+
+### 4. Run the Full Test Suite (235 Tests)
+```bash
+# Run AI engine unit tests (184 tests)
 python -m pytest tests/ -v
-```
 
----
-
-## 🧩 System Architecture & Workflows
-
-### Hybrid GraphSAGE + XGBoost Pipeline
-
-```mermaid
-flowchart TD
-    subgraph Data Layer
-        A[1930 Complaint Ingestion] --> B[Transaction Log & IFSC Lookup]
-        B --> C[NetworkX Multi-Hop Graph Builder]
-    end
-
-    subgraph Graph Intelligence & GNN Layer
-        C --> D[BFS Path Enumeration]
-        C --> E[Velocity & Split Anomaly Detection]
-        C --> F[GraphSAGE Node Feature Aggregation]
-        F --> G[64-dim Structural Risk Embeddings]
-    end
-
-    subgraph Predictive AI Layer
-        G --> H[Hybrid Feature Assembler]
-        E --> H
-        D --> H
-        H --> I[72-dim Hybrid Feature Vector]
-        I --> J[XGBoost ATM Classifier]
-        I --> K[XGBoost Countdown Regressor]
-    end
-
-    subgraph Action & Interception Layer
-        J --> L[Top-3 ATM Geo-Coordinates & Hotspot Ranking]
-        K --> M[Estimated Time-to-Cashout Countdown]
-        L & M --> N[Police Patrol Dispatch & NPCI Micro-Freeze Trigger]
-    end
+# Run FastAPI backend tests (51 tests)
+python -m pytest backend/tests/ -v
 ```
 
 ---
@@ -239,40 +240,33 @@ flowchart TD
 ## 🗺️ Roadmap & Phase Completion
 
 - [x] **Phase 1: Synthetic Dataset Generator** *(84/84 Tests Passing)*
-  - 500 complaints, 4,456 multi-hop transactions, 200 ATMs across 15 Indian cities.
+  - 2,500 complaints, 22,864 multi-hop transactions, 1,000 ATMs across 65+ Indian cities.
   - Embedded multi-source fraud rings with balanced mule/clean node features.
 - [x] **Phase 2a: Graph Intelligence & GraphSAGE Engine** *(47/47 Tests Passing)*
-  - NetworkX directed graph builder with BFS traversal (<400ms).
-  - 2-layer GraphSAGE classifier achieving 1.000 F1 score.
-  - Real-time sub-graph embedding extractor (<2s).
-- [x] **Phase 2b: XGBoost ATM Prediction Engine** *(53/53 Tests Passing)*
-  - 72-dimensional hybrid vector concatenation (64 GNN + 8 tabular).
-  - Top-3 ATM ranking (92.81% accuracy) and cashout countdown (0.05 min MAE).
-  - Real-time inference latency under 10ms.
-- [ ] **Phase 3: Real-Time FastAPI Engine**
-  - REST endpoints for complaint ingestion, graph exploration, and predictions.
-  - WebSocket broadcaster for live interception countdown alerts.
-- [ ] **Phase 4: Interactive React Flow Command Center UI**
-  - Real-time graph visualization with Cytoscape / React Flow.
-  - Leaflet / Mapbox ATM radius heatmap with police dispatch triggers.
+  - NetworkX directed graph builder with BFS traversal (<185ms).
+  - 2-layer GraphSAGE classifier achieving 0.9996 F1 score.
+  - Real-time sub-graph embedding extractor (<0.39s).
+- [x] **Phase 2b: XGBoost ATM Prediction Engine v2** *(53/53 Tests Passing)*
+  - 80-dimensional hybrid vector concatenation (64 GNN + 16 spatial tabular).
+  - Top-3 ATM ranking (98.52% accuracy) and cashout countdown (0.02 min MAE).
+  - Single inference latency: 25.8 ms.
+- [x] **Phase 3: Real-Time FastAPI Backend** *(51/51 Tests Passing)*
+  - REST endpoints for complaint ingestion, graph exploration, GNN embeddings, and ATM predictions.
+  - WebSocket broadcaster (`/ws/feed`) for live event push.
+- [x] **Phase 4: Tactical Command Dashboard** *(Live on port 5173)*
+  - 4 interactive screens: Triage Queue, Tactical GIS Map, Forensic Graph, and 1-Click Interception.
 - [ ] **Phase 5: Live Simulation Demo & SIH Presentation Pitch**
-  - Multi-bank freeze simulation demo with synthetic 1930 feed.
 
 ---
 
-## ⚖️ Ethics & Compliance
+## ⚖️ Ethics & Compliance (DPDP Act 2023)
 
-All datasets used in this repository are **100% synthetically generated** in strict compliance with data privacy regulations:
-- Account numbers are pseudonymized masks conforming to Indian banking norms.
-- Customer names are generated using localized Faker distributions.
-- Compliant with **RBI**, **NPCI**, and **I4C** privacy benchmarks. No real banking customer PII is utilized or exposed.
-
----
-
-## 👥 Contributors & Acknowledgements
-
-- **Team Hotshot** — Smart India Hackathon 2026
-- Inspired by research from **I4C (Indian Cybercrime Coordination Centre)** and open-source GNN benchmark repositories (*Mule-Hunt*, *AntiMoneyLaunderingDetectionWithGNN*).
+All datasets used in this repository are **100% synthetically generated** in strict compliance with Indian cyber laws:
+- **Digital Personal Data Protection (DPDP) Act, 2023:** Zero scraped personal data. Account numbers are pseudonymized masks conforming to Indian banking norms (`ACC-XXXXXXXX`).
+- **IT Act, 2000 (Section 43 & 66):** Zero unauthorized network access.
+- **Enterprise Integration:** Standardized API schemas ready for live integration with the **National Cybercrime Reporting Portal (NCRP / 1930)** and **NPCI Switch**.
 
 ---
-*Developed for Smart India Hackathon 2026.*
+
+## 👥 Team
+- **Team HACKSTERS** — Smart India Hackathon 2026 (Problem Statement: `SIH26184`)

@@ -1,17 +1,21 @@
 # -*- coding: utf-8 -*-
 """
-MuleShield AI -- Phase 2b: XGBoost Training Script
+MuleShield AI -- Phase 2b: XGBoost Training Script (v2)
 SIH26184 | MHA / I4C
 
-Trains two XGBoost models on the 72-dim hybrid feature vector:
+Trains two XGBoost models on the 80-dim hybrid feature vector (v2):
   1. XGBClassifier  -- predicts nearest ATM (Top-3 with probabilities)
   2. XGBRegressor   -- predicts time-to-cashout (minutes)
 
-Class imbalance: scale_pos_weight handled internally by XGBoost.
+v2 Accuracy Upgrades:
+  - 80-dim feature vector (added 3D Cartesian, bearing, multi-ATM distances,
+    bank affinity features)
+  - Tuned hyperparameters: max_depth=7, n_estimators=160, lr=0.06
+  - ATM coordinate arrays saved into predictor for Bayesian spatial reranking
 
 Usage:
     python engine/train_xgb.py
-    python engine/train_xgb.py --seed 42 --n-estimators 300
+    python engine/train_xgb.py --seed 42 --n-estimators 160
 
 Output:
     models/xgb_cashout.pkl  (full MuleXGBPredictor bundle)
@@ -50,21 +54,21 @@ XGB_MODEL_PATH = MODELS_DIR / "xgb_cashout.pkl"
 
 def train(
     seed: int = 42,
-    n_estimators: int = 300,
-    max_depth: int = 6,
-    learning_rate: float = 0.05,
+    n_estimators: int = 160,
+    max_depth: int = 7,
+    learning_rate: float = 0.06,
     test_size: float = 0.20,
     verbose: bool = True,
 ) -> dict:
     """
-    Full Phase 2b training pipeline.
+    Full Phase 2b training pipeline (v2 — 80-dim features, tuned hyperparameters).
 
     Returns:
         dict with trained predictor and evaluation metrics.
     """
     # ── Step 1: Build features ────────────────────────────────────────────────
     if verbose:
-        print("[1/5] Building hybrid feature matrix (GNN embeddings + tabular)...")
+        print("[1/5] Building hybrid feature matrix v2 (GNN embeddings + spatial tabular)...")
     t0 = time.time()
     fb = FeatureBuilder()
     fb.load()
@@ -72,7 +76,7 @@ def train(
     elapsed = (time.time() - t0) * 1000
 
     if verbose:
-        print(f"      X shape     : {X.shape}  ({TOTAL_FEATURE_DIM} features = 64 GNN + 8 tabular)")
+        print(f"      X shape     : {X.shape}  ({TOTAL_FEATURE_DIM} features = 64 GNN + 16 tabular)")
         print(f"      ATM classes : {len(set(y_atm))}")
         print(f"      Time range  : {y_time.min():.1f} -- {y_time.max():.1f} min")
         print(f"      Built in    : {elapsed:.0f}ms")
@@ -138,8 +142,9 @@ def train(
         n_estimators=n_estimators,
         max_depth=max_depth,
         learning_rate=learning_rate,
-        subsample=0.8,
-        colsample_bytree=0.8,
+        subsample=0.85,
+        colsample_bytree=0.85,
+        min_child_weight=2,
         eval_metric="mlogloss",
         random_state=seed,
         tree_method="hist",
@@ -179,8 +184,9 @@ def train(
         n_estimators=n_estimators,
         max_depth=max_depth,
         learning_rate=learning_rate,
-        subsample=0.8,
-        colsample_bytree=0.8,
+        subsample=0.85,
+        colsample_bytree=0.85,
+        min_child_weight=2,
         random_state=seed,
         tree_method="hist",
         verbosity=0,
@@ -204,13 +210,28 @@ def train(
         print(f"      Test MAE    : {time_mae:.2f} min")
         print(f"      Test R2     : {time_r2:.4f}")
 
-    # ── Save ─────────────────────────────────────────────────────────────────
+    # ── Save (with ATM spatial arrays for Bayesian reranking) ────────────────
+    atm_lats = fb.atm_df["lat"].to_numpy()
+    atm_lons = fb.atm_df["long"].to_numpy()
+    # Risk scores: normalised historical_fraud_count (0-1)
+    if "risk_score" in fb.atm_df.columns:
+        atm_risk = fb.atm_df["risk_score"].to_numpy(dtype=float)
+    elif "historical_fraud_count" in fb.atm_df.columns:
+        raw = fb.atm_df["historical_fraud_count"].to_numpy(dtype=float)
+        max_raw = raw.max() if raw.max() > 0 else 1.0
+        atm_risk = raw / max_raw
+    else:
+        atm_risk = np.zeros(len(fb.atm_ids), dtype=float)
+
     predictor = MuleXGBPredictor(
         classifier=clf,
         regressor=reg,
         atm_ids=fb.atm_ids,
         scaler=scaler,
         label_encoder=le_train,   # trained-label encoder; maps 0..N-1 -> ATM index
+        atm_lats=atm_lats,
+        atm_lons=atm_lons,
+        atm_risk_scores=atm_risk,
     )
     predictor.save(XGB_MODEL_PATH)
     if verbose:
@@ -248,11 +269,11 @@ def benchmark_inference(predictor: MuleXGBPredictor, X_test: np.ndarray, n_runs:
 # ─────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="MuleShield AI -- Train XGBoost")
+    parser = argparse.ArgumentParser(description="MuleShield AI -- Train XGBoost v2")
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--n-estimators", type=int, default=100)
-    parser.add_argument("--max-depth", type=int, default=5)
-    parser.add_argument("--lr", type=float, default=0.08)
+    parser.add_argument("--n-estimators", type=int, default=160)
+    parser.add_argument("--max-depth", type=int, default=7)
+    parser.add_argument("--lr", type=float, default=0.06)
     args = parser.parse_args()
 
     print("=" * 60)

@@ -25,3 +25,9 @@ Thumbs.db
 # Scratch files
 scratch/
 *.tmp
+
+# Node / Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+.env.local

@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { scrollbar-width: thin; scrollbar-color: #252a2a transparent; }
+*::-webkit-scrollbar { width: 6px; height: 6px; }
+*::-webkit-scrollbar-thumb { background: #252a2a; border-radius: 999px; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+html, body, #root { height: 100%; }
+body { @apply bg-ink-bg text-zinc-200 font-sans antialiased; }
+
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+/* panel chrome — thin minimal border like AEGIS screenshot */
+.aegis-panel { @apply bg-ink-surface border border-ink-border rounded-[8px] overflow-hidden; }
+.aegis-panel-header { @apply flex items-center justify-between px-3 py-2 border-b border-ink-border bg-ink-panel/60; }
+.aegis-dot { @apply w-1.5 h-1.5 rounded-full; }
+
+/* blinking terminal cursor */
+.cursor-blink::after { content: '▌'; @apply animate-blink ml-1 text-aegis-green; }
+
+/* leaflet dark tweaks */
+.leaflet-container { background: #0a0f0f !important; }
+.leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.95) saturate(0); opacity: 0.9; }
+
+/* reactflow */
+.react-flow__background { opacity: 0.35; }
+.react-flow__controls { @apply bg-ink-panel border border-ink-border rounded-md overflow-hidden; }
+.react-flow__controls button { @apply bg-ink-panel border-ink-border !important; }
