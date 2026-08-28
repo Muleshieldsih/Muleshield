@@ -36,7 +36,10 @@ export function Topbar({ wsConnected, complaintId }) {
   )
 }
 
-export function Sidebar() {
+export function Sidebar({ complaintId }) {
+  const activeId = complaintId || (typeof window !== 'undefined' ? localStorage.getItem('muleshield:selected') : '') || ''
+  const linkWithCid = (path) => path === '/' ? '/' : (path + (activeId ? `?c=${encodeURIComponent(activeId)}` : ''))
+
   const item = (to, icon, label, sub) => (
     <NavLink
       to={to}
@@ -59,10 +62,10 @@ export function Sidebar() {
   return (
     <div className="w-[210px] shrink-0 border-r border-ink-border bg-ink-bg hidden md:flex flex-col">
       <div className="p-3 space-y-1.5">
-        {item('/', <Activity size={15} />, 'TRIAGE QUEUE', 'Live 1930 feed')}
-        {item('/map', <MapPinned size={15} />, 'TACTICAL MAP', 'ATM GPS routing')}
-        {item('/graph', <GitBranch size={15} />, 'MONEY FLOW', 'Forensic graph')}
-        {item('/intercept', <Zap size={15} />, 'INTERCEPTION', '1-Click freeze')}
+        {item(linkWithCid('/'), <Activity size={15} />, 'TRIAGE QUEUE', 'Live 1930 feed')}
+        {item(linkWithCid('/map'), <MapPinned size={15} />, 'TACTICAL MAP', 'ATM GPS routing')}
+        {item(linkWithCid('/graph'), <GitBranch size={15} />, 'MONEY FLOW', 'Forensic graph')}
+        {item(linkWithCid('/intercept'), <Zap size={15} />, 'INTERCEPTION', '1-Click freeze')}
       </div>
       <div className="mt-auto p-3 border-t border-ink-border">
         <div className="aegis-panel p-2.5 bg-ink-panel/40">

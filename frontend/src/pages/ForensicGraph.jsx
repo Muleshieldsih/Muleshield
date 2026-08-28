@@ -51,36 +51,56 @@ function buildLayout(nodes, edges){
 
 export default function ForensicGraph(){
   const [params]=useSearchParams()
-  const cid = params.get('c')
+  const rawCid = params.get('c')
   const [data,setData]=useState(null)
   const [selected,setSelected]=useState(null)
   const [err,setErr]=useState('')
+  const [activeTicket,setActiveTicket]=useState(rawCid||'')
 
   useEffect(()=>{
-    const id = cid || 'TKT-A1B2C3D4'
-    endpoints.getGraph(id).then(d=> setData(d)).catch(e=>{
-      setErr(e?.response?.data?.detail || e.message)
-      // fallback mock DAG
-      setData({
-        complaint_id:id, node_count:6, edge_count:5, build_time_ms:142,
-        nodes:[
-          {id:'ACC-VICTIM-001', label:'VICTIM\nRohan', node_type:'victim', hop_depth:0, bank:'HDFC', amount:120000, lat:28.6, lon:77.2, risk_score:0},
-          {id:'ACC-HDFC-4821', label:'HOP-1\nHDFC', node_type:'mule', hop_depth:1, bank:'HDFC', amount:60000, lat:28.61, lon:77.21, risk_score:0.42},
-          {id:'ACC-SBI-9932', label:'HOP-1\nSBI', node_type:'mule', hop_depth:1, bank:'SBI', amount:60000, lat:28.62, lon:77.22, risk_score:0.51},
-          {id:'ACC-KOTAK-2211', label:'HOP-2\nKotak', node_type:'mule', hop_depth:2, bank:'Kotak', amount:29500, lat:28.615, lon:77.215, risk_score:0.78},
-          {id:'ACC-PNB-0041', label:'TERMINAL\nPNB', node_type:'terminal', hop_depth:4, bank:'PNB', amount:29500, lat:28.612, lon:77.208, risk_score:0.94},
-          {id:'ACC-UCO-8812', label:'TERMINAL\nUCO', node_type:'terminal', hop_depth:4, bank:'UCO', amount:29500, lat:28.63, lon:77.23, risk_score:0.87},
-        ],
-        edges:[
-          {id:'e1', source:'ACC-VICTIM-001', target:'ACC-HDFC-4821', label:'₹60,000', amount:60000},
-          {id:'e2', source:'ACC-VICTIM-001', target:'ACC-SBI-9932', label:'₹60,000', amount:60000},
-          {id:'e3', source:'ACC-HDFC-4821', target:'ACC-KOTAK-2211', label:'₹29,500', amount:29500},
-          {id:'e4', source:'ACC-KOTAK-2211', target:'ACC-PNB-0041', label:'₹29,500', amount:29500},
-          {id:'e5', source:'ACC-SBI-9932', target:'ACC-UCO-8812', label:'₹29,500', amount:29500},
-        ]
-      })
-    })
-  },[cid])
+    const fetchGraph = async()=>{
+      let targetId = rawCid || localStorage.getItem('muleshield:selected') || ''
+      if(!targetId){
+        try{
+          const list = await endpoints.listComplaints()
+          if(list && list.length){
+            targetId = list[0].ticket_id
+          }
+        }catch{
+          // ignore
+        }
+      }
+      if(!targetId) targetId = 'TKT-A1B2C3D4'
+      setActiveTicket(targetId)
+
+      try{
+        const d = await endpoints.getGraph(targetId)
+        setData(d)
+      }catch(e){
+        setErr(e?.response?.data?.detail || e.message)
+        // fallback mock DAG
+        setData({
+          complaint_id: targetId, node_count: 6, edge_count: 5, build_time_ms: 142,
+          nodes: [
+            { id: 'ACC-VICTIM-001', label: 'VICTIM\nRohan', node_type: 'victim', hop_depth: 0, bank: 'HDFC', amount: 120000, lat: 28.6, lon: 77.2, risk_score: 0 },
+            { id: 'ACC-HDFC-4821', label: 'HOP-1\nHDFC', node_type: 'mule', hop_depth: 1, bank: 'HDFC', amount: 60000, lat: 28.61, lon: 77.21, risk_score: 0.42 },
+            { id: 'ACC-SBI-9932', label: 'HOP-1\nSBI', node_type: 'mule', hop_depth: 1, bank: 'SBI', amount: 60000, lat: 28.62, lon: 77.22, risk_score: 0.51 },
+            { id: 'ACC-KOTAK-2211', label: 'HOP-2\nKotak', node_type: 'mule', hop_depth: 2, bank: 'Kotak', amount: 29500, lat: 28.615, lon: 77.215, risk_score: 0.78 },
+            { id: 'ACC-PNB-0041', label: 'TERMINAL\nPNB', node_type: 'terminal', hop_depth: 4, bank: 'PNB', amount: 29500, lat: 28.612, lon: 77.208, risk_score: 0.94 },
+            { id: 'ACC-UCO-8812', label: 'TERMINAL\nUCO', node_type: 'terminal', hop_depth: 4, bank: 'UCO', amount: 29500, lat: 28.63, lon: 77.23, risk_score: 0.87 },
+          ],
+          edges: [
+            { id: 'e1', source: 'ACC-VICTIM-001', target: 'ACC-HDFC-4821', label: '₹60,000', amount: 60000 },
+            { id: 'e2', source: 'ACC-VICTIM-001', target: 'ACC-SBI-9932', label: '₹60,000', amount: 60000 },
+            { id: 'e3', source: 'ACC-HDFC-4821', target: 'ACC-KOTAK-2211', label: '₹29,500', amount: 29500 },
+            { id: 'e4', source: 'ACC-KOTAK-2211', target: 'ACC-PNB-0041', label: '₹29,500', amount: 29500 },
+            { id: 'e5', source: 'ACC-SBI-9932', target: 'ACC-UCO-8812', label: '₹29,500', amount: 29500 },
+          ]
+        })
+      }
+    }
+    fetchGraph()
+  },[rawCid])
 
   const { flowNodes, flowEdges } = useMemo(()=> data? buildLayout(data.nodes, data.edges): {flowNodes:[], flowEdges:[]}, [data])
 

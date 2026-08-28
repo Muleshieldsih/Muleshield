@@ -37,7 +37,7 @@ function Layout(){
     <div className="min-h-screen flex flex-col bg-ink-bg">
       <Topbar wsConnected={connected} complaintId={selected}/>
       <div className="flex flex-1 min-h-0">
-        <Sidebar/>
+        <Sidebar complaintId={selected}/>
         <div className="flex-1 min-w-0 bg-ink-bg">
           {/* mobile nav */}
           <div className="md:hidden flex gap-1 p-2 border-b border-ink-border overflow-auto">
