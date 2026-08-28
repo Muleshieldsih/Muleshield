@@ -126,8 +126,16 @@ MuleShield AI is validated against an extensive automated test suite (**235 / 23
 | **Automated Test Coverage** | $100\%$ | **235 / 235 Passed** (184 Unit + 51 API Tests) | ✅ PASS |
 
 <div align="center">
-  <img src="docs/models_performance_matrix.jpg" alt="MuleShield AI Models Performance & Evaluation Matrix" width="100%" />
-  <p><em>Figure: MuleShield AI Multi-Model Evaluation Dashboard — Performance metrics across GraphSAGE Node Classifier, XGBoost ATM Geolocation Predictor, Time Regressor, and System Latency Benchmarks.</em></p>
+  <h3>Machine Learning Performance Matrix & Validation</h3>
+  <img src="docs/model_matrix_full.png" alt="MuleShield AI Python-Computed Model Performance Matrix" width="100%" />
+  <p><em>Figure: Programmatic ML Evaluation Matrix generated via Python (scikit-learn & PyTorch) — GraphSAGE GNN Confusion Matrix (F1: 0.9993), ROC Curve (AUC: 1.000), XGBoost v2 Top-k Spatial Accuracy (Top-3: 98.52%), and Time Regressor Fit (R²: 0.9998).</em></p>
+</div>
+
+<br/>
+
+<div align="center">
+  <img src="docs/sih_performance_matrix_slide.png" alt="MuleShield AI Executive Performance Slide Card" width="100%" />
+  <p><em>Figure: Executive SIH Evaluation Summary Card (SIH26184 | MHA / I4C).</em></p>
 </div>
 
 ---
