@@ -4,6 +4,8 @@ import { endpoints, describeError } from '../services/api'
 import { amountFmt, amountShort, formatTicket, MODEL_STATS, FRAUD_TYPES, BANKS, CITIES } from '../utils/constants'
 import { timeAgo, useNow } from '../hooks/useCountdown'
 import { useToast } from '../components/Toast'
+import CaseTimeline from '../components/CaseTimeline'
+import AuditList from '../components/AuditList'
 import { Panel } from '../components/Shell'
 import {
   ShieldAlert, Plus, Search, MapPinned, GitBranch, Zap, ArrowUpRight,
@@ -473,6 +475,9 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
   const [noteOpen, setNoteOpen] = useState(false)
   const [noteText, setNoteText] = useState('')
   const [notes, setNotes] = useState([])
+  const [tab, setTab] = useState('Summary')
+  const [caseTxns, setCaseTxns] = useState([])
+  const [caseAudit, setCaseAudit] = useState([])
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState('ALL')
   const [statusFilter, setStatusFilter] = useState('OPEN')
@@ -571,6 +576,8 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
     try {
       const updated = await endpoints.updateCase(active.ticket_id, { ...patch, actor: officer })
       onCaseUpdated?.(updated)
+      endpoints.listAudit({ case_id: active.ticket_id, limit: 200 })
+        .then(setCaseAudit).catch(() => {})
       toast(message)
     } catch (err) {
       toast(describeError(err), 'error')
@@ -599,6 +606,8 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
       const rows = await endpoints.listNotes(active.ticket_id)
       setNotes(rows)
       onCaseUpdated?.({ ...active, note_count: rows.length })
+      endpoints.listAudit({ case_id: active.ticket_id, limit: 200 })
+        .then(setCaseAudit).catch(() => {})
       toast('Note added to the case file.')
     } catch (err) {
       toast(describeError(err), 'error')
@@ -617,11 +626,21 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
 
   const activeId = active?.ticket_id
   useEffect(() => {
-    if (!activeId) { setNotes([]); return }
+    if (!activeId) { setNotes([]); setCaseTxns([]); setCaseAudit([]); return }
     let cancelled = false
-    endpoints.listNotes(activeId)
-      .then(rows => { if (!cancelled) setNotes(rows) })
-      .catch(() => { if (!cancelled) setNotes([]) })
+    // The timeline and the activity log are built only from records that
+    // already exist -- the ledger and the audit trail. Nothing is generated to
+    // fill them out.
+    Promise.allSettled([
+      endpoints.listNotes(activeId),
+      endpoints.listTransactions(activeId),
+      endpoints.listAudit({ case_id: activeId, limit: 200 }),
+    ]).then(([n, t, a]) => {
+      if (cancelled) return
+      setNotes(n.status === 'fulfilled' ? n.value : [])
+      setCaseTxns(t.status === 'fulfilled' ? t.value : [])
+      setCaseAudit(a.status === 'fulfilled' ? a.value : [])
+    })
     return () => { cancelled = true }
   }, [activeId])
 
@@ -916,6 +935,40 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
                 </div>
               )}
 
+              <div className="flex items-center gap-1 border-b border-ink-border -mb-1">
+                {['Summary', 'Timeline', 'Activity'].map(t => (
+                  <button
+                    key={t}
+                    onClick={() => setTab(t)}
+                    aria-selected={tab === t}
+                    className={`px-2.5 py-1.5 text-[12px] border-b-2 -mb-px transition-colors ${
+                      tab === t
+                        ? 'border-aegis-green text-white'
+                        : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                    }`}
+                  >
+                    {t}
+                    {t === 'Activity' && caseAudit.length > 0 && (
+                      <span className="ml-1.5 text-zinc-600">{caseAudit.length}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {tab === 'Timeline' ? (
+                <div className="rounded border border-ink-border bg-ink-bg max-h-[46vh] overflow-y-auto">
+                  <CaseTimeline
+                    complaint={active}
+                    transactions={caseTxns}
+                    audit={caseAudit}
+                  />
+                </div>
+              ) : tab === 'Activity' ? (
+                <div className="rounded border border-ink-border bg-ink-bg max-h-[46vh] overflow-y-auto">
+                  <AuditList entries={caseAudit} />
+                </div>
+              ) : (
+              <>
               <CaseStory
                 complaint={active}
                 sev={activeSev}
@@ -974,6 +1027,8 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
                   </button>
                 ))}
               </div>
+              </>
+              )}
             </div>
           ) : (
             <div className="aegis-panel p-8 text-center text-zinc-500 text-[12.5px]">
@@ -981,24 +1036,24 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
             </div>
           )}
 
-          <Panel title="PIPELINE STATUS" right={health ? 'ONLINE' : 'OFFLINE'}>
+          <Panel title="System status" right={health ? 'Online' : 'Offline'}>
             <div className="p-3 grid grid-cols-2 gap-2 text-[11.5px]">
               {[
-                ['ATM Directory', health ? health.atm_directory_size.toLocaleString('en-IN') : '—'],
+                ['ATM directory', health ? health.atm_directory_size.toLocaleString('en-IN') : '—'],
                 // Was 'GNN Embeddings', the same health.embeddings_loaded figure
                 // the Graph Corpus card already shows at the top of this screen.
                 ['Ranked per case', `Top ${MODEL_STATS.operatingK}`],
-                ['WS Clients', health ? health.ws_connections : '—'],
-                ['API Version', health ? health.version : '—'],
+                ['Connected clients', health ? health.ws_connections : '—'],
+                ['API version', health ? health.version : '—'],
               ].map(([k, v]) => (
                 <div key={k} className="flex items-center justify-between bg-ink-panel border border-ink-border rounded px-2.5 py-1.5">
                   <span className="text-zinc-400">{k}</span>
-                  <span className="text-zinc-200 font-bold">{v}</span>
+                  <span className="mono tnum text-zinc-200">{v}</span>
                 </div>
               ))}
               <div className="col-span-2 flex items-center gap-1.5 text-[10px] text-zinc-500 pt-1">
                 <Radio size={11} className={health ? 'text-aegis-green' : 'text-zinc-600'} />
-                Figures read live from <span className="text-zinc-400">/health</span>
+                Read from <span className="text-zinc-400">/health</span>
               </div>
             </div>
           </Panel>

@@ -32,6 +32,9 @@ export default function Interception() {
   // the case: the one irreversible control on the screen was the only one
   // that asked nothing before acting.
   const [confirmFreeze, setConfirmFreeze] = useState(false)
+  // Set after a successful freeze, when the case has been moved on with it.
+  const [caseStatus, setCaseStatus] = useState('')
+  const [statusWarning, setStatusWarning] = useState('')
   const [phoneModal, setPhoneModal] = useState(false)
   const [patrolPhone, setPatrolPhone] = useState('9876543210')
 
@@ -46,6 +49,8 @@ export default function Interception() {
     setFreeze(null)
     setFreezeError('')
     setDispatchStatus('')
+    setCaseStatus('')
+    setStatusWarning('')
 
     Promise.allSettled([
       endpoints.predictCashout(complaintId),
@@ -95,6 +100,25 @@ export default function Interception() {
         officer_id: officer || 'OFFICER-001',
       })
       setFreeze(res)
+
+      // A freeze is an intervention on a live case, so the case has to say so.
+      // The account was held and the queue still showed the case as untouched;
+      // a colleague opening it would have had no way to know.
+      //
+      // This uses the existing PATCH endpoint -- no backend behaviour changes.
+      // "Intervention Required" rather than "Resolved": the money is held, the
+      // case is not finished.
+      try {
+        const updated = await endpoints.updateCase(complaintId, {
+          status: 'Intervention Required',
+          actor: officer || 'OFFICER-001',
+        })
+        setCaseStatus(updated.status)
+      } catch {
+        // The freeze itself succeeded. Failing to move the case is worth
+        // saying, but it must not read as a failed freeze.
+        setStatusWarning('Account frozen, but the case status could not be updated.')
+      }
     } catch (err) {
       setFreezeError(describeError(err))
     } finally {
@@ -136,14 +160,14 @@ export default function Interception() {
 
   const handleSMS = useCallback(() => {
     setDispatchOk(true)
-    setDispatchStatus(`SMS queued via gateway at ${new Date().toLocaleTimeString()} (simulated).`)
+    setDispatchStatus(`SMS queued at ${new Date().toLocaleTimeString()} (simulated).`)
   }, [])
 
   if (error) {
     return (
       <div className="p-3">
         <Panel title={`Intervention — ${formatTicket(complaintId)}`}>
-          <div className="p-10 text-center mono text-[12px]">
+          <div className="p-10 text-center text-[12.5px]">
             <ServerCrash size={26} className="text-red-400 mx-auto mb-2" />
             <div className="text-red-300 font-bold">Interception data unavailable</div>
             <div className="mt-1 text-zinc-500">{error}</div>
@@ -158,7 +182,7 @@ export default function Interception() {
       {/* ── Countdown + targets ──────────────────────────────────────────── */}
       <div className="col-span-12 lg:col-span-7 space-y-3">
         <div className="aegis-panel p-4">
-          <div className="flex items-center justify-between mono text-[11px] tracking-[0.14em] text-zinc-400 gap-2">
+          <div className="flex items-center justify-between text-[12px] text-zinc-400 gap-2">
             <span className="truncate">Intervention · {formatTicket(complaintId)}</span>
             {/* Reflects the actual inference state. This was previously a green
                 "LIVE" badge rendered unconditionally — it stayed lit while the
@@ -174,28 +198,28 @@ export default function Interception() {
           </div>
 
           {loading ? (
-            <div className="py-10 grid place-items-center mono text-[12px] text-zinc-400">
+            <div className="py-10 grid place-items-center text-[12.5px] text-zinc-400">
               <span className="flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> Running inference…</span>
             </div>
           ) : (
             <>
-              <div className={`mono text-[46px] font-bold tracking-tight text-center mt-2 ${urgentClass}`}>
+              <div className={`mono tnum text-[44px] font-semibold tracking-tight text-center mt-2 ${urgentClass}`}>
                 {label}
               </div>
-              <div className="text-center mono text-[11px] text-zinc-500">
+              <div className="text-center text-[11.5px] text-zinc-500">
                 {expired ? 'Predicted window elapsed' : 'Estimated time to cash-out'}
               </div>
 
-              <div className="text-center mono text-[12px] text-zinc-300 font-semibold mt-2">
+              <div className="text-center text-[12.5px] text-zinc-300 mt-2">
                 Terminal suspect: <span className="text-white font-bold">{prediction?.terminal_account || '—'}</span>
               </div>
               {activeAtm && (
-                <div className="text-center mono text-[11px] text-zinc-500 mt-0.5 px-4 truncate">
+                <div className="text-center text-[11.5px] text-zinc-500 mt-0.5 px-4 truncate">
                   Priority {activeAtm.rank}: <span className="text-red-400 font-bold">{activeAtm.atm_id}</span> · {activeAtm.address}
                 </div>
               )}
 
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2 mono text-[11px]">
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11.5px]">
                 {atms.map(a => {
                   const isSel = a.atm_id === activeAtm?.atm_id
                   return (
@@ -237,7 +261,7 @@ export default function Interception() {
             <button
               onClick={() => setConfirmFreeze(true)}
               disabled={!!freeze || freezing || !prediction}
-              className={`py-3.5 px-3 rounded-lg border mono text-[12px] flex flex-col items-center justify-center gap-1 font-bold transition ${
+              className={`py-3.5 px-3 rounded border text-[12.5px] flex flex-col items-center justify-center gap-1 font-medium transition-colors ${
                 freeze
                   ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
                   : 'bg-red-500 text-white border-red-600 hover:bg-red-600 active:scale-[0.99] disabled:opacity-50 '
@@ -253,10 +277,10 @@ export default function Interception() {
             <button
               onClick={() => setPhoneModal(true)}
               disabled={!activeAtm}
-              className="py-3.5 px-3 rounded-lg bg-white text-black mono text-[12px] flex flex-col items-center justify-center gap-1 font-bold hover:bg-zinc-200 active:scale-[0.99] disabled:opacity-50 transition"
+              className="py-3.5 px-3 rounded border border-ink-border bg-ink-bg text-zinc-200 text-[12.5px] flex flex-col items-center justify-center gap-1 font-medium hover:border-zinc-600 disabled:opacity-50 transition-colors"
             >
               <Radio size={18} />
-              <span>Dispatch field unit</span>
+              <span>Notify field unit</span>
               <span className="text-[10px] text-zinc-600 font-normal truncate max-w-full px-2">
                 {activeAtm ? `${activeAtm.atm_id} · ${activeAtm.bank}` : '—'}
               </span>
@@ -264,46 +288,58 @@ export default function Interception() {
           </div>
 
           {freeze && (
-            <div className="mx-3 mb-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-3 py-2 mono text-[11px] text-emerald-300 flex items-start gap-2">
+            <div className="mx-3 mb-3 bg-emerald-500/10 border border-emerald-500/30 rounded px-3 py-2 text-[11.5px] text-emerald-300 flex items-start gap-2">
               <CheckCircle2 size={15} className="text-emerald-400 shrink-0 mt-0.5" />
               <span>
                 <strong>Debit hold confirmed</strong> at{' '}
                 {new Date(freeze.timestamp).toLocaleTimeString()} — {freeze.account} ({freeze.bank})
                 <br />
-                Reference: <span className="font-bold text-white">{freeze.freeze_reference}</span> ·
+                Reference: <span className="mono font-semibold text-white">{freeze.freeze_reference}</span> ·
                 Officer {freeze.officer_id}
+                {caseStatus && (
+                  <>
+                    <br />
+                    Case moved to <span className="text-white">{caseStatus}</span>.
+                  </>
+                )}
+                {statusWarning && (
+                  <>
+                    <br />
+                    <span className="text-amber-300">{statusWarning}</span>
+                  </>
+                )}
               </span>
             </div>
           )}
 
           {freezeError && (
-            <div className="mx-3 mb-3 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 mono text-[11px] text-red-300 flex items-center gap-2">
+            <div className="mx-3 mb-3 bg-red-500/10 border border-red-500/30 rounded px-3 py-2 text-[11.5px] text-red-300 flex items-center gap-2">
               <AlertTriangle size={14} className="shrink-0" /> Freeze failed: {freezeError}
             </div>
           )}
 
           <div className="px-3 pb-3 flex flex-wrap items-center gap-3 mono text-[11px] border-t border-ink-border pt-3">
             <div className="flex items-center gap-1.5">
-              <span className="text-zinc-400">Officer ID:</span>
+              <span className="text-zinc-400">Officer</span>
               <input
                 value={officer}
                 onChange={e => setOfficer(e.target.value)}
                 className="bg-ink-panel border border-ink-border rounded px-2 py-1 w-24 outline-none text-zinc-200 focus:border-aegis-green font-bold"
               />
             </div>
-            <span className="ml-auto text-zinc-500">NPCI NACH / CBS hold · simulated</span>
+            <span className="ml-auto text-zinc-500">Simulated bank hold — no live NPCI or core-banking call is made</span>
           </div>
         </Panel>
       </div>
 
       {/* ── Dispatch preview ─────────────────────────────────────────────── */}
       <div className="col-span-12 lg:col-span-5 space-y-3">
-        <Panel title="Field dispatch" right="Nearest unit">
+        <Panel title="Field notification" right="Nearest unit">
           <div className="p-3 space-y-3">
             <div className="bg-ink-panel border border-ink-border rounded-lg p-3.5 mono text-[11px] leading-relaxed">
               <div className="text-zinc-400 font-semibold flex items-center justify-between pb-1.5 border-b border-ink-border">
-                <span>Destination: nearest police station / patrol unit</span>
-                <span className="text-red-400 font-bold">FLASH</span>
+                <span>To: nearest police station</span>
+                <span className="text-zinc-500">Priority</span>
               </div>
               <div className="text-zinc-300 mt-2 space-y-1">
                 <div className="text-red-400 font-semibold">Interception alert</div>
@@ -329,7 +365,7 @@ export default function Interception() {
                   disabled={!activeAtm}
                   className="flex-1 px-3 py-2 rounded-lg bg-[#25D366] text-black font-bold flex items-center justify-center gap-1.5 hover:bg-[#20bd5a] disabled:opacity-50 transition active:scale-[0.99]"
                 >
-                  <MessageCircle size={14} /> WhatsApp Alert
+                  <MessageCircle size={14} /> Send on WhatsApp
                 </button>
                 <button
                   onClick={handleSMS}
@@ -434,7 +470,7 @@ export default function Interception() {
           <div className="aegis-panel w-full max-w-md p-5 bg-ink-bg border-ink-border2 shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between pb-3 border-b border-ink-border">
               <div className="mono text-[13px] font-bold text-white flex items-center gap-2">
-                <Radio size={16} className="text-aegis-green" /> Dispatch Field Unit
+                <Radio size={16} className="text-aegis-green" /> Notify field unit
               </div>
               <button onClick={() => setPhoneModal(false)} className="text-zinc-400 hover:text-white mono text-[12px] px-1">✕</button>
             </div>
@@ -445,7 +481,7 @@ export default function Interception() {
                 <div><strong>Countdown:</strong> {label}</div>
               </div>
               <div>
-                <label className="block text-zinc-400 mb-1">Duty officer mobile (+91)</label>
+                <label className="block text-zinc-400 mb-1">Field officer mobile (+91)</label>
                 <div className="flex items-center gap-2 bg-ink-panel border border-ink-border rounded px-3 py-2">
                   <Phone size={14} className="text-zinc-500" />
                   <span className="text-zinc-500 font-bold">+91</span>
@@ -468,7 +504,7 @@ export default function Interception() {
                   onClick={() => { setPhoneModal(false); handleWhatsApp() }}
                   className="px-4 py-2 rounded bg-[#25D366] text-black font-bold flex items-center gap-1.5"
                 >
-                  <MessageCircle size={14} /> Send Alert
+                  <MessageCircle size={14} /> Send
                 </button>
               </div>
             </div>
