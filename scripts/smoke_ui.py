@@ -16,6 +16,7 @@ are exercised deliberately -- the freeze endpoint is simulated and the point is
 to learn whether the button actually works.
 """
 
+import re
 from pathlib import Path
 
 import requests
@@ -190,6 +191,42 @@ def walk(page, name: str, path: str) -> None:
         note(name, f"{len(console_errors) - before_err} console error(s) on this route")
 
 
+def selection_check(page, cid: str) -> None:
+    """
+    Selecting a different complaint must actually change the incident panel --
+    WITH a ?c= already in the address bar.
+
+    That qualifier is the whole test. A bug where the URL sync overwrote every
+    in-app selection made the queue unresponsive in normal use, and an earlier
+    version of this script missed it completely by loading a bare "/", where the
+    sync short-circuits and the fault cannot appear.
+    """
+    print(f"{NEWLINE}-- selection --")
+    page.goto(f"{APP}/?c={cid}", wait_until="networkidle", timeout=90_000)
+    page.wait_for_timeout(3500)
+
+    def shown():
+        m = re.search(r"SELECTED INCIDENT.*?(TKT-[A-Z0-9]+)",
+                      " ".join(page.inner_text("body").split()))
+        return m.group(1) if m else None
+
+    rows = [r for r in page.query_selector_all("button") if "TKT-" in (r.inner_text() or "")]
+    if len(rows) < 4:
+        note("selection", "too few queue rows to test selection")
+        return
+
+    seen, first = [], shown()
+    for i in (1, 2, 3):
+        rows[i].click()
+        page.wait_for_timeout(1600)
+        seen.append(shown())
+
+    print(f"  panel showed: {first} -> {' -> '.join(str(x) for x in seen)}")
+    if len(set(seen)) < len(seen) or any(x == first for x in seen):
+        note("selection", "clicking a row did NOT change the incident panel "
+                          "(URL/selection are fighting)")
+
+
 def main() -> None:
     from playwright.sync_api import sync_playwright
 
@@ -210,6 +247,8 @@ def main() -> None:
             ("intercept", f"/intercept?c={cid}"),
         ):
             walk(page, name, path)
+
+        selection_check(page, cid)
 
         print(f"{NEWLINE}-- deep links / edge cases --")
         for name, path in (

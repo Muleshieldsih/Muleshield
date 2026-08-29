@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, lazy, Suspense } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { Topbar, Sidebar, MobileNav } from './components/Shell'
@@ -116,20 +116,43 @@ function Layout() {
   const { connected } = useWebSocket(onWs)
 
   // ── Keep ?c= and the stored selection in step ──────────────────────────────
+  //
+  // One direction each way, and never both at once.
+  //
+  // This effect used to list `selected` as a dependency and overwrite it from
+  // the URL whenever the two disagreed. Since selecting a row set state but
+  // never touched the URL, every click re-ran this effect, found the stale ?c=
+  // disagreeing with the new selection, and set it straight back -- pinning the
+  // console to whichever complaint the URL named. The queue looked frozen: rows
+  // took focus but the incident panel never moved.
+  //
+  // It is invisible without a ?c= in the address bar, which is why it survived:
+  // the guard below short-circuits on a bare "/" and the bug only shows once a
+  // complaint has been selected once.
+  const lastUrlCid = useRef(null)
+
   useEffect(() => {
     const urlCid = new URLSearchParams(location.search).get('c')
-    if (urlCid && urlCid !== selected) {
+    if (urlCid && urlCid !== lastUrlCid.current) {
+      lastUrlCid.current = urlCid
       setSelected(urlCid)
       storeComplaintId(urlCid)
     }
-  }, [location.search, selected])
+  }, [location.search])
 
   useEffect(() => { storeComplaintId(selected) }, [selected])
 
   const handleSelect = useCallback((id) => {
-    setSelected(id)
+    lastUrlCid.current = id || null
+    setSelected(id || '')
     storeComplaintId(id)
-  }, [])
+    // The URL follows the selection rather than competing with it, so the
+    // current complaint survives a refresh and a copied link opens on it.
+    navigate(
+      window.location.pathname + (id ? `?c=${encodeURIComponent(id)}` : ''),
+      { replace: true },
+    )
+  }, [navigate])
 
   const handleIngested = useCallback((record) => {
     if (!record?.ticket_id) return
