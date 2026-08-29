@@ -226,9 +226,9 @@ export default function Interception() {
                     <button
                       key={a.atm_id}
                       onClick={() => setSelectedAtmId(a.atm_id)}
-                      className={`rounded-lg border p-2.5 text-left transition-all duration-150 ${
+                      className={`rounded border p-2.5 text-left transition-all duration-150 ${
                         isSel
-                          ? 'bg-ink-panel border-red-500 ring-1 ring-red-500/30'
+                          ? 'bg-ink-panel border-red-500/70'
                           : 'bg-ink-surface/60 border-ink-border hover:bg-ink-panel hover:border-zinc-700'
                       }`}
                     >
@@ -264,7 +264,7 @@ export default function Interception() {
               className={`py-3.5 px-3 rounded border text-[12.5px] flex flex-col items-center justify-center gap-1 font-medium transition-colors ${
                 freeze
                   ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                  : 'bg-red-500 text-white border-red-600 hover:bg-red-600 active:scale-[0.99] disabled:opacity-50 '
+                  : 'bg-red-500 text-white border-red-600 hover:bg-red-600 disabled:opacity-50 '
               }`}
             >
               {freezing ? <Loader2 size={18} className="animate-spin" /> : <ShieldCheck size={18} />}
@@ -336,7 +336,7 @@ export default function Interception() {
       <div className="col-span-12 lg:col-span-5 space-y-3">
         <Panel title="Field notification" right="Nearest unit">
           <div className="p-3 space-y-3">
-            <div className="bg-ink-panel border border-ink-border rounded-lg p-3.5 mono text-[11px] leading-relaxed">
+            <div className="bg-ink-panel border border-ink-border rounded p-3.5 mono text-[11px] leading-relaxed">
               <div className="text-zinc-400 font-semibold flex items-center justify-between pb-1.5 border-b border-ink-border">
                 <span>To: nearest police station</span>
                 <span className="text-zinc-500">Priority</span>
@@ -363,13 +363,13 @@ export default function Interception() {
                 <button
                   onClick={() => setPhoneModal(true)}
                   disabled={!activeAtm}
-                  className="flex-1 px-3 py-2 rounded-lg bg-[#25D366] text-black font-bold flex items-center justify-center gap-1.5 hover:bg-[#20bd5a] disabled:opacity-50 transition active:scale-[0.99]"
+                  className="flex-1 px-3 py-2 rounded bg-ink-panel border border-ink-border text-zinc-200 font-medium flex items-center justify-center gap-1.5 hover:border-zinc-600 disabled:opacity-50 transition"
                 >
                   <MessageCircle size={14} /> Send on WhatsApp
                 </button>
                 <button
                   onClick={handleSMS}
-                  className="px-3 py-2 rounded-lg bg-ink-bg border border-ink-border text-zinc-200 font-semibold hover:border-zinc-500 hover:text-white transition flex items-center gap-1.5"
+                  className="px-3 py-2 rounded bg-ink-bg border border-ink-border text-zinc-200 font-semibold hover:border-zinc-500 hover:text-white transition flex items-center gap-1.5"
                 >
                   <Send size={13} /> SMS
                 </button>
@@ -378,7 +378,7 @@ export default function Interception() {
 
             {dispatchStatus && (
               <div
-                className={`text-[11px] px-3 py-2 rounded-lg flex items-start gap-2 border ${
+                className={`text-[11px] px-3 py-2 rounded flex items-start gap-2 border ${
                   dispatchOk
                     ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
                     : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
@@ -466,8 +466,8 @@ export default function Interception() {
       )}
 
       {phoneModal && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 grid place-items-center p-4" onClick={() => setPhoneModal(false)}>
-          <div className="aegis-panel w-full max-w-md p-5 bg-ink-bg border-ink-border2 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/70 z-50 grid place-items-center p-4" onClick={() => setPhoneModal(false)}>
+          <div className="aegis-panel w-full max-w-md p-5 bg-ink-surface border-ink-border" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between pb-3 border-b border-ink-border">
               <div className="mono text-[13px] font-bold text-white flex items-center gap-2">
                 <Radio size={16} className="text-aegis-green" /> Notify field unit
@@ -475,7 +475,7 @@ export default function Interception() {
               <button onClick={() => setPhoneModal(false)} className="text-zinc-400 hover:text-white mono text-[12px] px-1">✕</button>
             </div>
             <div className="space-y-3 mt-4 mono text-[11px]">
-              <div className="bg-ink-panel border border-ink-border p-3 rounded-lg text-zinc-300 space-y-1">
+              <div className="bg-ink-panel border border-ink-border p-3 rounded text-zinc-300 space-y-1">
                 <div className="truncate"><strong>Priority {activeAtm?.rank}:</strong> {activeAtm?.atm_id}</div>
                 <div className="text-zinc-400 line-clamp-2">{activeAtm?.address}</div>
                 <div><strong>Countdown:</strong> {label}</div>
@@ -502,7 +502,7 @@ export default function Interception() {
                 </button>
                 <button
                   onClick={() => { setPhoneModal(false); handleWhatsApp() }}
-                  className="px-4 py-2 rounded bg-[#25D366] text-black font-bold flex items-center gap-1.5"
+                  className="px-4 py-2 rounded bg-ink-panel border border-ink-border text-zinc-200 font-medium flex items-center gap-1.5"
                 >
                   <MessageCircle size={14} /> Send
                 </button>

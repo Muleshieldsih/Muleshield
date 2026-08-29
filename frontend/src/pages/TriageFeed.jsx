@@ -189,9 +189,9 @@ const TriageRow = memo(function TriageRow({ c, isSelected, onSelect, now, bands 
   return (
     <button
       onClick={() => onSelect(c.ticket_id)}
-      className={`w-full text-left p-3 rounded-lg border transition-colors duration-150 relative overflow-hidden ${
+      className={`w-full text-left p-3 rounded border transition-colors duration-150 relative overflow-hidden ${
         isSelected
-          ? 'bg-ink-panel border-aegis-green ring-1 ring-aegis-green/30'
+          ? 'bg-ink-panel border-aegis-green/70'
           : sev.urgent
           ? 'bg-ink-surface/80 border-ink-border hover:bg-ink-panel hover:border-red-500/40'
           : 'bg-ink-surface/60 border-ink-border hover:bg-ink-panel hover:border-zinc-700'
@@ -282,13 +282,13 @@ const IngestModal = memo(function IngestModal({ isOpen, onClose, onSuccess }) {
   const field = 'w-full bg-ink-panel border border-ink-border rounded px-3 py-2 text-white outline-none focus:border-aegis-green transition-colors'
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 grid place-items-center p-4" onClick={onClose}>
-      <div className="aegis-panel w-full max-w-lg p-5 bg-ink-bg border-ink-border2 shadow-2xl" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/70 z-50 grid place-items-center p-4" onClick={onClose}>
+      <div className="aegis-panel w-full max-w-lg p-5 bg-ink-surface border-ink-border" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between pb-3 border-b border-ink-border">
           <div className="text-[13px] font-semibold text-white flex items-center gap-2">
             <Plus size={16} className="text-aegis-green" /> Add a 1930 case
           </div>
-          <button onClick={onClose} className="text-zinc-400 hover:text-white text-[12px] px-1">✕</button>
+          <button onClick={onClose} aria-label="Close" className="text-zinc-400 hover:text-white text-[12px] px-1">✕</button>
         </div>
 
         <form onSubmit={submit} className="space-y-3 mt-4 text-[12px]">
@@ -391,7 +391,7 @@ const CaseStory = memo(function CaseStory({ complaint, sev, prediction, loading,
   const mins = prediction ? Math.max(1, Math.round(prediction.time_to_cashout_minutes)) : null
 
   return (
-    <div className="rounded-lg border border-ink-border bg-ink-bg/60 p-3 space-y-2.5">
+    <div className="rounded border border-ink-border bg-ink-bg/60 p-3 space-y-2.5">
       <div className="text-[11px] text-zinc-500 font-medium">
         Summary
       </div>
@@ -980,7 +980,7 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
 
               <div className="grid grid-cols-2 gap-2 text-[11.5px]">
                 <div className="bg-ink-bg p-2.5 rounded border border-ink-border">
-                  <div className="text-zinc-400">Stolen Amount</div>
+                  <div className="text-zinc-400">Stolen amount</div>
                   <div className="mono tnum text-[15px] font-semibold text-red-400 mt-0.5">{amountFmt(active.stolen_amount)}</div>
                 </div>
                 <div className="bg-ink-bg p-2.5 rounded border border-ink-border">
@@ -1020,7 +1020,7 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
                       <Icon size={16} className={`${iconColor} shrink-0`} />
                       <div className="min-w-0">
                         <div className="text-[12.5px] font-medium text-zinc-100 truncate">{title}</div>
-                        <div className="mono text-[10px] text-zinc-400 truncate">{sub}</div>
+                        <div className="text-[11px] text-zinc-500 truncate">{sub}</div>
                       </div>
                     </div>
                     <ArrowUpRight size={14} className="text-zinc-500 group-hover:text-white shrink-0" />

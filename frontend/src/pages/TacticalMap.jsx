@@ -354,7 +354,7 @@ export default function TacticalMap() {
                 <button
                   key={a.atm_id}
                   onClick={() => setSelectedAtmId(a.atm_id)}
-                  className={`w-full text-left p-3 rounded-lg border transition-all duration-150 ${
+                  className={`w-full text-left p-3 rounded border transition-all duration-150 ${
                     isSel
                       ? 'bg-ink-panel border-red-500/70'
                       : 'bg-ink-surface/60 border-ink-border hover:bg-ink-panel hover:border-zinc-700'
@@ -424,7 +424,7 @@ export default function TacticalMap() {
               </div>
 
               {prediction.search_zone && (
-                <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-2.5">
+                <div className="mt-3 rounded border border-amber-500/40 bg-amber-500/10 p-2.5">
                   <div className="text-[11px] text-zinc-400">
                     Search zone
                   </div>

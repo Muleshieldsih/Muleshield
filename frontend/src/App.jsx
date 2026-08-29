@@ -17,17 +17,17 @@ const ModelPerformance = lazy(() => import('./pages/ModelPerformance'))
 function NotFound({ onHome }) {
   return (
     <div className="p-10 grid place-items-center text-center">
-      <div className="mono">
-        <div className="text-[13px] text-zinc-300 font-bold">Screen not found</div>
+      <div>
+        <div className="text-[13px] text-zinc-200 font-semibold">Screen not found</div>
         <div className="text-[11px] text-zinc-500 mt-1.5">
-          <span className="text-zinc-400">{window.location.pathname}</span> is not a console route.
+          <span className="mono text-zinc-400">{window.location.pathname}</span> is not a route in this console.
         </div>
         <button
           onClick={onHome}
-          className="mt-4 px-3 py-1.5 rounded border border-aegis-green/50 bg-ink-panel
-                     text-[11px] text-white hover:bg-ink-surface transition"
+          className="mt-4 px-3 py-1.5 rounded border border-ink-border bg-ink-panel
+                     text-[12px] text-zinc-200 hover:border-zinc-600 hover:text-white transition-colors"
         >
-          Back to triage queue
+          Back to cases
         </button>
       </div>
     </div>
@@ -36,9 +36,9 @@ function NotFound({ onHome }) {
 
 function RouteFallback() {
   return (
-    <div className="p-10 grid place-items-center mono text-[12px] text-zinc-500">
+    <div className="p-10 grid place-items-center text-[12.5px] text-zinc-500">
       <span className="flex items-center gap-2">
-        <Loader2 size={14} className="animate-spin" /> Loading module…
+        <Loader2 size={14} className="animate-spin" /> Loading…
       </span>
     </div>
   )
@@ -207,9 +207,9 @@ function Layout() {
           <MobileNav onNavigate={goTo} pathname={location.pathname} />
 
           {backendDown && (
-            <div className="m-3 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 mono text-[11px] text-red-300">
-              <span className="font-bold">BACKEND UNREACHABLE</span> — {loadError}. Start the API with
-              <span className="text-white"> python -m uvicorn backend.main:app --port 8000</span>
+            <div className="m-3 rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-[12px] text-red-300">
+              <span className="font-semibold">Cannot reach the service</span> — {loadError}. Start it with
+              <span className="mono text-white"> python -m uvicorn backend.main:app --port 8000</span>
             </div>
           )}
 

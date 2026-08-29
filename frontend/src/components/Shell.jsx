@@ -277,7 +277,7 @@ export function Stat({ label, value, tone = 'default', sub }) {
     info: 'text-blue-400',
   }
   return (
-    <div className="rounded-lg border border-ink-border bg-ink-panel px-2.5 py-2">
+    <div className="rounded border border-ink-border bg-ink-panel px-2.5 py-2">
       <div className="text-[11px] text-zinc-500">{label}</div>
       <div className={`mono tnum text-[16px] font-semibold mt-0.5 ${tones[tone] || tones.default}`}>{value}</div>
       {sub && <div className="text-[11px] text-zinc-500 mt-0.5">{sub}</div>}
