@@ -1,0 +1,123 @@
+export const FRAUD_TYPES = [
+  'UPI Fraud',
+  'Digital Arrest',
+  'Job Scam',
+  'Investment Scam',
+  'KYC Fraud',
+  'Romance Scam',
+  'Electricity Bill Scam',
+]
+
+export const BANKS = [
+  'State Bank of India',
+  'HDFC Bank',
+  'ICICI Bank',
+  'Axis Bank',
+  'Punjab National Bank',
+  'Bank of Baroda',
+  'Canara Bank',
+  'Kotak Mahindra Bank',
+  'Union Bank of India',
+  'Indian Bank',
+  'YES Bank',
+  'IndusInd Bank',
+]
+
+export const CITIES = [
+  'Delhi', 'Mumbai', 'Bengaluru', 'Hyderabad', 'Chennai', 'Kolkata',
+  'Pune', 'Jaipur', 'Lucknow', 'Gurgaon', 'Jamtara', 'Deoghar',
+]
+
+/** Benchmarked model figures — generated, never typed. */
+// These previously read 98.5% Top-3 / 1.2 s MAE / 0.9996 F1. Those numbers were
+// retracted by the leakage audit (OVERNIGHT_ML_AUDIT.md) and were still being
+// displayed in the console long after every document had been corrected. They
+// survived because they were hand-written here, so nothing tied them to a
+// trained model.
+//
+// Now they are not written here at all. model_stats.json is generated from
+// data/metrics.json, which only the training and evaluation scripts write:
+//
+//   python engine/train_gnn.py            -> detection
+//   python scripts/evaluate_baselines.py  -> detection_baselines
+//   python engine/train_xgb.py            -> location  (+ refreshes this file)
+//   python scripts/export_metrics.py      -> refresh without retraining
+//
+// Raw numbers live in the JSON; this module owns how they are displayed, so
+// there is exactly one place that decides what '87.4%' looks like.
+import stats from '../data/model_stats.json'
+
+export const MODEL_STATS = {
+  zoneContainment: pctFmt(stats.zoneContainment),
+  zoneBaseline: pctFmt(stats.zoneBaselineNearest3),
+  searchCost: `${Math.round(stats.zoneMedianAtms).toLocaleString('en-IN')} of ${stats.atmTotal.toLocaleString('en-IN')}`,
+  zoneRadius: `${stats.zoneMedianRadiusKm.toFixed(1)} km`,
+  countdownMae: `${stats.countdownMae.toFixed(1)} min`,
+  countdownBaseline: `${stats.countdownBaseline.toFixed(1)} min`,
+  gnnF1: stats.gnnF1.toFixed(4),
+  gnnBaseline: stats.gnnBaseline.toFixed(4),
+  gnnBaselineModel: stats.gnnBaselineModel,
+
+  // The operating point the product actually ships: K ranked candidate ATMs.
+  // These sat in model_stats.json unread, so the headline figure appeared
+  // nowhere in the console it describes.
+  //
+  // Deliberately no baseline beside top5Containment. The distance-only baseline
+  // is 0.7217 against our 0.7136 -- we do NOT beat distance-sorting at K=5, and
+  // a "vs" here would either be a false win or a bare loss with no room for the
+  // Bayes-ceiling context that explains it. The claim we make on screen is the
+  // search-space reduction, which is true and is the point of the system. The
+  // full comparison lives in README.md and OVERNIGHT_ML_AUDIT.md.
+  operatingK: stats.operatingK,
+  top5Containment: pctFmt(stats.top5Containment),
+  top5Reduction: pctFmt(stats.top5SearchReduction),
+  atmTotal: stats.atmTotal.toLocaleString('en-IN'),
+}
+
+export function amountFmt(n) {
+  const v = Number(n)
+  if (!Number.isFinite(v)) return '₹—'
+  return `₹${v.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
+}
+
+/** Compact Indian-format amount: ₹2.5L, ₹1.2Cr — for dense cards and tickers. */
+export function amountShort(n) {
+  const v = Number(n)
+  if (!Number.isFinite(v)) return '₹—'
+  if (v >= 1e7) return `₹${(v / 1e7).toFixed(2)}Cr`
+  if (v >= 1e5) return `₹${(v / 1e5).toFixed(2)}L`
+  if (v >= 1e3) return `₹${(v / 1e3).toFixed(0)}K`
+  return `₹${v.toFixed(0)}`
+}
+
+export function pctFmt(p) {
+  const v = Number(p)
+  return Number.isFinite(v) ? `${(v * 100).toFixed(1)}%` : '—'
+}
+
+/**
+ * A ticket id for display.
+ *
+ * Complaints from the seed dataset carry a raw UUID (Python's uuid.uuid4()),
+ * while complaints ingested live carry a short TKT-XXXXXXXX id
+ * (backend/state.py). Rendered side by side -- a 36-char UUID next to a
+ * 12-char ticket -- the pair reads as a data error rather than two valid
+ * formats, so both collapse to the same shape here.
+ *
+ * Display only. Routing, the API and localStorage always use the record's
+ * untouched ticket_id -- only what reaches the screen is reshaped.
+ */
+export function formatTicket(id) {
+  const s = String(id || '')
+  if (!s) return '—'
+  if (/^TKT-/i.test(s)) return s.toUpperCase()
+  const hex = s.replace(/-/g, '').slice(0, 8)
+  return hex ? `TKT-${hex.toUpperCase()}` : s
+}
+
+/** Shorten a long account number for dense table cells, keeping the tail. */
+export function shortAccount(id) {
+  const s = String(id || '')
+  if (s.length <= 14) return s
+  return `…${s.slice(-11)}`
+}

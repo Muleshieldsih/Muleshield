@@ -51,11 +51,11 @@
 
 | ID | Requirement | Priority |
 |---|---|---|
-| FR-03.1 | System shall predict the Top-3 most probable ATMs for cashout for a given complaint | 🔴 Must Have |
+| FR-03.1 | System shall predict a **search zone** (centroid, radius, ATMs inside) as the primary withdrawal-location forecast, and the **Top-3 most probable ATMs** inside it as the tactical drill-down | 🔴 Must Have |
 | FR-03.2 | Each ATM prediction shall include: ATM ID, bank name, GPS coordinates (lat/long), address, city | 🔴 Must Have |
 | FR-03.3 | System shall compute an interception confidence score (0.0–1.0) per predicted ATM | 🔴 Must Have |
 | FR-03.4 | System shall compute estimated time-to-cashout in minutes (regression output) | 🔴 Must Have |
-| FR-03.5 | XGBoost prediction shall use a **72-dimensional hybrid feature vector**: **64 GNN embedding dims** (from GraphSAGE) + **8 tabular dims** `[amount, hop_depth, transaction_velocity, branch_distance_to_atm, hour_of_day, historical_hotspot_density, day_of_week, amount_after_split]` | 🔴 Must Have |
+| FR-03.5 | The location forecast shall use an **80-dimensional hybrid feature vector** (**64 GNN embedding dims** from GraphSAGE + **16 spatial/temporal tabular dims**), reduced for ranking to a **24-column** row per ATM candidate (12 case-context + 12 candidate features). | 🔴 Must Have |
 | FR-03.6 | Prediction results shall be returned via `GET /api/v1/predict/cashout/{complaint_id}` | 🔴 Must Have |
 | FR-03.7 | XGBoost model inference time (after embeddings are loaded) shall not exceed 50ms per complaint | 🔴 Must Have |
 | FR-03.8 | End-to-end inference time (embedding lookup + XGBoost predict) shall not exceed 200ms | 🔴 Must Have |

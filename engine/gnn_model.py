@@ -4,7 +4,7 @@ MuleShield AI -- Phase 2a: GraphSAGE Model Definition
 SIH26184 | MHA / I4C
 
 Architecture: 2-layer GraphSAGE binary node classifier
-  in_channels   = 7   (numeric features from node_features.csv)
+  in_channels   = 15  (behavioural features measured from the ledger)
   hidden_channels = 64
   out_channels  = 64  (embedding dimension)
   num_layers    = 2
@@ -21,20 +21,97 @@ from torch_geometric.nn import SAGEConv
 
 
 # ── Feature columns used for GNN input (must match node_features.csv) ────────
-# 7 numeric columns (strings excluded: account_id, bank_name, city)
-FEATURE_COLS = [
-    "lat",
-    "long",
+# Behavioural features, every one of them measurable by a bank from its own
+# transaction log.
+#
+# `hop_depth` is deliberately absent. It records an account's position in a
+# traced fraud chain, so it is only ever non-zero for accounts already known to
+# be part of one — using it to decide whether an account is a mule assumes the
+# answer. It stays in node_features.csv for the money-flow visualisation.
+#
+# `total_received` is retained: legitimate accounts now receive money too, so it
+# no longer separates the classes on its own (best single-threshold F1 ≈ 0.42).
+# Chosen from measured signal, not habit. `scripts/feature_analysis.py` reports
+# each feature's standalone AUC and the feature-feature correlation heatmap; the
+# selection below follows directly from it.
+#
+# Dropped as exact or near-duplicates (zero information lost):
+#   in_degree         r = 1.000 with txn_count_24h  (the same column twice)
+#   distinct_senders  r = 0.991 with txn_count_24h
+#   out_degree        r = 0.996 with distinct_receivers
+#
+# Dropped as pure noise:
+#   lat, long         AUC 0.511 / 0.509 alone. Mules are spread across all 79
+#                     cities, so an account's coordinates say nothing about
+#                     whether it is one. They stay in node_features.csv for the
+#                     map, but feeding them here only adds variance.
+#
+# `hop_depth` remains excluded: it is non-zero only for accounts already known to
+# sit in a traced fraud chain, so using it assumes the answer.
+BASE_FEATURE_COLS = [
     "total_received",
     "total_sent",
     "txn_count_24h",
     "avg_txn_amount",
-    "hop_depth",
+    "distinct_receivers",
+    "median_dwell_seconds",     # credit -> next debit; mules forward fast
+    "passthrough_ratio",        # share of inflow forwarded on
+    "account_age_days",         # rented mule accounts are young  (AUC 0.772)
+    "night_txn_ratio",
+    "burst_out_5min",           # peak outgoing count in 5 min    (AUC 0.760)
 ]
-IN_CHANNELS = len(FEATURE_COLS)   # 7
+
+# Derived on the fly from the columns above. Each is a ratio or a log the raw
+# features cannot express to a model that only splits on axis-aligned thresholds,
+# and all are computable by a bank from its own ledger.
+DERIVED_FEATURE_COLS = [
+    "dwell_log",                # heavy right tail; the raw seconds span 5 orders
+    "activity_per_day",         # a young account moving constantly is the signal
+    "in_out_amount_ratio",      # sweep behaviour, amount-based not count-based
+    "avg_amount_per_credit",
+    "counterparty_concentration",
+]
+
+FEATURE_COLS = BASE_FEATURE_COLS + DERIVED_FEATURE_COLS
+
+
+def derive_features(df):
+    """
+    Add DERIVED_FEATURE_COLS to a node-features frame.
+
+    Applied identically at training and inference. Kept here rather than baked
+    into node_features.csv so the derivation lives next to the feature list it
+    belongs to, and cannot drift away from it.
+    """
+    import numpy as np
+
+    out = df.copy()
+    recv = out["total_received"].astype(float)
+    sent = out["total_sent"].astype(float)
+    ind = out["txn_count_24h"].astype(float)
+    outd = out["distinct_receivers"].astype(float)
+    age = out["account_age_days"].astype(float)
+
+    out["dwell_log"] = np.log1p(out["median_dwell_seconds"].astype(float))
+    # Per ACTIVE day, not per day since the account opened. Dividing by age
+    # made this 1/age for any account older than the 120-day observation
+    # window (corr 0.92 with 1/age), so it was an age proxy rather than an
+    # activity measure.
+    observed_days = np.minimum(age, OBSERVATION_WINDOW_DAYS)
+    out["activity_per_day"] = (ind + outd) / (observed_days + 1.0)
+    out["in_out_amount_ratio"] = sent / (recv + 1.0)
+    out["avg_amount_per_credit"] = recv / (ind + 1.0)
+    out["counterparty_concentration"] = ind / (outd + 1.0)
+    return out
+
+
+OBSERVATION_WINDOW_DAYS = 120.0   # ledger span the features are measured over
+
+IN_CHANNELS = len(FEATURE_COLS)   # 10 base + 5 derived
 HIDDEN_CHANNELS = 64
 OUT_CHANNELS = 64                  # embedding dimension
-NUM_LAYERS = 2
+NUM_LAYERS = 2                     # documentation only - depth is fixed by
+                                   # conv1/conv2 below, not driven by this
 
 
 class GraphSAGEMule(nn.Module):

@@ -281,9 +281,30 @@ class TestTransactions:
         assert transactions["txn_id"].is_unique, "txn_id must be unique"
 
     def test_hop_depth_range(self, transactions):
-        """hop_depth must be between 1 and MAX_HOP_DEPTH (4)."""
-        assert (transactions["hop_depth"] >= 1).all(), "hop_depth must be ≥ 1"
-        assert (transactions["hop_depth"] <= 4).all(), "hop_depth must be ≤ 4"
+        """
+        Laundering hops run 1..MAX_HOP_DEPTH; legitimate traffic sits at hop 0.
+
+        The ledger now carries ordinary banking activity alongside the fraud
+        chains, so that legitimate accounts also receive money and the mule
+        label stops being readable off a single column.
+        """
+        fraud = transactions[transactions["is_fraud"] == 1]
+        legit = transactions[transactions["is_fraud"] == 0]
+
+        assert (fraud["hop_depth"] >= 1).all(), "fraud hop_depth must be >= 1"
+        assert (fraud["hop_depth"] <= 4).all(), "fraud hop_depth must be <= 4"
+        assert (legit["hop_depth"] == 0).all(), "legitimate hop_depth must be 0"
+
+    def test_dataset_contains_legitimate_activity(self, transactions):
+        """
+        A meaningful share of the ledger must be non-fraud.
+
+        Without it every money-receiving account is a mule by construction and
+        `total_received > 0` classifies the dataset perfectly.
+        """
+        legit_share = (transactions["is_fraud"] == 0).mean()
+        assert legit_share > 0.25, \
+            f"Only {legit_share:.1%} of transactions are legitimate; the classes will not overlap"
 
     def test_all_hop_depths_present(self, transactions):
         """All layers 1–4 must appear in the data."""
@@ -330,7 +351,9 @@ class TestTransactions:
     def test_complaint_ids_match_complaints(self, transactions, complaints):
         """All complaint_ids in transactions must exist in complaints."""
         valid_ids = set(complaints["ticket_id"])
-        txn_ids = set(transactions["complaint_id"])
+        # Legitimate banking traffic belongs to no complaint and carries an
+        # empty complaint_id.
+        txn_ids = {c for c in transactions["complaint_id"] if str(c).strip()}
         unknown = txn_ids - valid_ids
         assert not unknown, f"Unknown complaint_ids in transactions: {list(unknown)[:5]}"
 
@@ -469,7 +492,8 @@ class TestGraphEdges:
         assert (graph_edges["amount"] > 0).all()
 
     def test_hop_depth_range(self, graph_edges):
-        assert (graph_edges["hop_depth"] >= 1).all()
+        # 0 = legitimate transfer, 1..4 = laundering hop
+        assert (graph_edges["hop_depth"] >= 0).all()
         assert (graph_edges["hop_depth"] <= 4).all()
 
     def test_is_terminal_binary(self, graph_edges):
@@ -540,12 +564,15 @@ class TestNodeFeatures:
     def test_total_sent_non_negative(self, node_features):
         assert (node_features["total_sent"] >= 0).all()
 
-    def test_txn_count_positive(self, node_features):
-        assert (node_features["txn_count_24h"] >= 1).all(), \
-            "txn_count_24h must be ≥ 1"
+    def test_txn_count_non_negative(self, node_features):
+        # A send-only account (a payer that never receives) legitimately has an
+        # incoming count of zero now that ordinary traffic is simulated.
+        assert (node_features["txn_count_24h"] >= 0).all(), \
+            "txn_count_24h must be >= 0"
+        assert node_features["txn_count_24h"].max() > 0, "No account received anything"
 
-    def test_avg_txn_amount_positive(self, node_features):
-        assert (node_features["avg_txn_amount"] > 0).all()
+    def test_avg_txn_amount_non_negative(self, node_features):
+        assert (node_features["avg_txn_amount"] >= 0).all()
 
     def test_hop_depth_range(self, node_features):
         assert (node_features["hop_depth"] >= 0).all()
@@ -558,15 +585,55 @@ class TestNodeFeatures:
     def test_feature_matrix_numeric_except_ids(self, node_features):
         """All non-ID, non-categorical columns must be numeric."""
         numeric_cols = ["lat", "long", "total_received", "total_sent",
-                        "txn_count_24h", "avg_txn_amount", "is_mule_label", "hop_depth"]
+                        "txn_count_24h", "avg_txn_amount", "is_mule_label", "hop_depth",
+                        "in_degree", "out_degree", "distinct_senders", "distinct_receivers",
+                        "median_dwell_seconds", "passthrough_ratio", "account_age_days",
+                        "night_txn_ratio", "burst_out_5min"]
         for col in numeric_cols:
             assert pd.api.types.is_numeric_dtype(node_features[col]), \
                 f"Column {col} must be numeric, got {node_features[col].dtype}"
 
+
+    def test_label_is_not_a_copy_of_a_feature(self, node_features):
+        """
+        Regression guard against label leakage.
+
+        A previous generator defined a mule as "received money" and then wrote
+        total_received = 0 onto every non-mule, so `total_received > 0` scored
+        F1 = 1.0 and the GNN's 0.9996 measured nothing. No single feature may
+        reproduce the label that closely again.
+        """
+        from sklearn.metrics import f1_score
+
+        y = node_features["is_mule_label"].values
+        candidates = [c for c in node_features.columns
+                      if c not in ("account_id", "bank_name", "city", "is_mule_label")
+                      and pd.api.types.is_numeric_dtype(node_features[c])]
+
+        worst_col, worst_f1 = None, 0.0
+        for col in candidates:
+            v = node_features[col].values.astype(float)
+            for t in np.unique(np.percentile(v, np.linspace(2, 98, 40))):
+                for pred in ((v > t).astype(int), (v <= t).astype(int)):
+                    if pred.sum() in (0, len(pred)):
+                        continue
+                    f1 = f1_score(y, pred)
+                    if f1 > worst_f1:
+                        worst_f1, worst_col = f1, col
+
+        assert worst_f1 < 0.95, (
+            f"Feature '{worst_col}' reproduces the label with F1={worst_f1:.4f} — "
+            "this is label leakage, the model would be measuring nothing"
+        )
+
     def test_pyg_feature_matrix_buildable(self, node_features):
         """Verify numeric features can form a valid tensor-like matrix."""
+        # Mirrors engine/gnn_model.FEATURE_COLS — behavioural only, no hop_depth
         feature_cols = ["lat", "long", "total_received", "total_sent",
-                        "txn_count_24h", "avg_txn_amount", "hop_depth"]
+                        "txn_count_24h", "avg_txn_amount", "in_degree", "out_degree",
+                        "distinct_senders", "distinct_receivers", "median_dwell_seconds",
+                        "passthrough_ratio", "account_age_days", "night_txn_ratio",
+                        "burst_out_5min"]
         matrix = node_features[feature_cols].values
         assert matrix.shape[0] > 0, "Feature matrix has 0 rows"
         assert matrix.shape[1] == len(feature_cols), "Wrong number of feature columns"
@@ -621,7 +688,7 @@ class TestFullPipeline:
         assert not missing, \
             f"{len(missing)} dst_accounts not in node_features: {list(missing)[:5]}"
 
-    def test_reproducibility(self, fake):
+    def test_reproducibility(self, fake, all_data):
         """Running generator twice with same seed yields structurally identical results.
 
         Note: uuid4() is cryptographically random and cannot be seeded,
@@ -632,13 +699,13 @@ class TestFullPipeline:
         f2.seed_instance(99)
         random.seed(99)
         np.random.seed(99)
-        df1 = generate_victim_complaints(50, f2)
+        df1 = generate_victim_complaints(50, f2, all_data[0]["registry"])
 
         f3 = Faker("en_IN")
         f3.seed_instance(99)
         random.seed(99)
         np.random.seed(99)
-        df2 = generate_victim_complaints(50, f3)
+        df2 = generate_victim_complaints(50, f3, all_data[0]["registry"])
 
         # Shape must be identical
         assert df1.shape == df2.shape, "Shape differs across runs"

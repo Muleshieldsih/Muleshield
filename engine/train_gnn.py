@@ -24,9 +24,13 @@ import torch
 import torch.nn.functional as F
 from sklearn.metrics import (
     accuracy_score,
+    average_precision_score,
     f1_score,
+    precision_score,
+    recall_score,
     roc_auc_score,
 )
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from torch_geometric.data import Data
 from torch_geometric.utils import from_networkx
@@ -36,7 +40,9 @@ import networkx as nx
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT / "engine"))
 
-from gnn_model import GraphSAGEMule, FEATURE_COLS, IN_CHANNELS, OUT_CHANNELS
+from gnn_model import (GraphSAGEMule, FEATURE_COLS, IN_CHANNELS, OUT_CHANNELS,
+                       derive_features)
+from metrics_io import write_metrics
 
 DATA_DIR = ROOT / "data"
 MODELS_DIR = ROOT / "models"
@@ -64,6 +70,8 @@ def load_pyg_data(
         - scaler:       Fitted StandardScaler for inference-time normalization
     """
     node_df = pd.read_csv(node_features_path)
+    # Ratios and logs the raw columns cannot express to an axis-aligned split.
+    node_df = derive_features(node_df)
     txn_df = pd.read_csv(transactions_path)
 
     # ── Build account_id -> integer index mapping ─────────────────────────────
@@ -94,29 +102,44 @@ def load_pyg_data(
         y_list.append(label)
 
     x_raw = np.array(x_list, dtype=np.float32)
-
-    # Normalize features (StandardScaler)
-    scaler = StandardScaler()
-    x_scaled = scaler.fit_transform(x_raw).astype(np.float32)
-
-    x_tensor = torch.tensor(x_scaled, dtype=torch.float)
     y_tensor = torch.tensor(y_list, dtype=torch.float)
 
+    # ── Split FIRST, so normalisation can be fitted on training nodes only ────
+    # Fitting the scaler over all N nodes lets validation and test feature
+    # distributions bleed into the transform. Stratified so the mule rate is the
+    # same in every split - it matters much more once prevalence is realistic.
+    N = len(y_list)
+    y_arr = np.asarray(y_list)
+    idx_all = np.arange(N)
+    train_idx, hold_idx = train_test_split(
+        idx_all, train_size=0.70, random_state=seed, stratify=y_arr
+    )
+    val_idx, test_idx = train_test_split(
+        hold_idx, train_size=0.50, random_state=seed, stratify=y_arr[hold_idx]
+    )
+
+    scaler = StandardScaler()
+    scaler.fit(x_raw[train_idx])
+    x_scaled = scaler.transform(x_raw).astype(np.float32)
+
+    x_tensor = torch.tensor(x_scaled, dtype=torch.float)
+
     # ── Build edge_index [2, E] ───────────────────────────────────────────────
+    #
+    # Both directions. SAGEConv aggregates over a node's INCOMING edges only, so
+    # a directed src->dst graph means an account never sees who it paid - only
+    # who paid it. Mule behaviour is defined by what an account does with money
+    # after receiving it, so the out-neighbourhood is at least as informative as
+    # the in-neighbourhood. Reverse edges are appended so message passing reaches
+    # both sides, with direction preserved as an edge feature.
     src_indices = [account_to_idx[s] for s in txn_df["src_account"]]
     dst_indices = [account_to_idx[d] for d in txn_df["dst_account"]]
-    edge_index = torch.tensor([src_indices, dst_indices], dtype=torch.long)
 
-    # ── Train / Val / Test masks (70 / 15 / 15) ───────────────────────────────
-    rng = np.random.default_rng(seed)
-    indices = rng.permutation(N)
-    n_train = int(0.70 * N)
-    n_val   = int(0.15 * N)
+    fwd = torch.tensor([src_indices, dst_indices], dtype=torch.long)
+    rev = torch.tensor([dst_indices, src_indices], dtype=torch.long)
+    edge_index = torch.cat([fwd, rev], dim=1)
 
-    train_idx = indices[:n_train]
-    val_idx   = indices[n_train : n_train + n_val]
-    test_idx  = indices[n_train + n_val:]
-
+    # ── Train / Val / Test masks (70 / 15 / 15, stratified above) ────────────
     train_mask = torch.zeros(N, dtype=torch.bool)
     val_mask   = torch.zeros(N, dtype=torch.bool)
     test_mask  = torch.zeros(N, dtype=torch.bool)
@@ -135,7 +158,9 @@ def load_pyg_data(
         num_nodes=N,
     )
 
-    return data, all_accounts, scaler
+    return data, all_accounts, scaler, {
+        "train": train_idx, "val": val_idx, "test": test_idx
+    }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -155,26 +180,60 @@ def train_epoch(model, data, optimizer, pos_weight: torch.Tensor) -> float:
 
 
 @torch.no_grad()
-def evaluate(model, data, mask) -> dict:
-    """Evaluate on a given mask. Returns loss, acc, f1, auc."""
+def evaluate(model, data, mask, threshold: float = 0.5,
+             pos_weight: torch.Tensor | None = None) -> dict:
+    """
+    Evaluate on a given mask.
+
+    `pos_weight` must be the SAME tensor used in training, otherwise the reported
+    loss is on a different scale from the training loss and cannot be compared to
+    it. A previous version recomputed it per-mask as n_pos/n_neg - the reciprocal
+    of the training weight - which made the printed val/test loss meaningless.
+    """
     model.eval()
     logits = model(data.x, data.edge_index).squeeze(-1)
     y_true = data.y[mask].numpy()
     y_prob = torch.sigmoid(logits[mask]).numpy()
-    y_pred = (y_prob >= 0.5).astype(int)
+    y_pred = (y_prob >= threshold).astype(int)
 
-    pos_weight = torch.tensor([y_true.sum() / max(1, (1 - y_true).sum())])
     loss_fn = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
     loss = float(loss_fn(logits[mask], data.y[mask]))
 
     f1 = f1_score(y_true, y_pred, zero_division=0)
     acc = accuracy_score(y_true, y_pred)
+    prec = precision_score(y_true, y_pred, zero_division=0)
+    rec = recall_score(y_true, y_pred, zero_division=0)
     try:
         auc = roc_auc_score(y_true, y_prob)
+        ap = average_precision_score(y_true, y_prob)
     except ValueError:
-        auc = 0.0
+        auc, ap = 0.0, 0.0
 
-    return {"loss": loss, "f1": f1, "acc": acc, "auc": auc}
+    return {"loss": loss, "f1": f1, "acc": acc, "auc": auc,
+            "precision": prec, "recall": rec, "pr_auc": ap}
+
+
+@torch.no_grad()
+def best_threshold(model, data, mask) -> float:
+    """
+    Choose the decision threshold that maximises F1 on the given mask.
+
+    The threshold was previously hardcoded at 0.5, which is only optimal when the
+    classes are balanced and the scores are calibrated. Neither holds here, so
+    this is the cheapest genuine gain available - and it is selected on
+    VALIDATION, never on test.
+    """
+    model.eval()
+    logits = model(data.x, data.edge_index).squeeze(-1)
+    y_true = data.y[mask].numpy()
+    y_prob = torch.sigmoid(logits[mask]).numpy()
+
+    best_t, best_f1 = 0.5, -1.0
+    for t in np.unique(np.quantile(y_prob, np.linspace(0.01, 0.99, 99))):
+        f1 = f1_score(y_true, (y_prob >= t).astype(int), zero_division=0)
+        if f1 > best_f1:
+            best_f1, best_t = f1, float(t)
+    return best_t
 
 
 def train(
@@ -196,12 +255,15 @@ def train(
     # Load data
     if verbose:
         print("[1/4] Loading graph data...")
-    data, account_ids, scaler = load_pyg_data(seed=seed)
+    data, account_ids, scaler, split_idx = load_pyg_data(seed=seed)
 
-    n_mule = int(data.y.sum().item())
-    n_clean = len(data.y) - n_mule
+    # Imbalance weighting must be measured on training labels alone; computing
+    # it over the full label vector reads validation and test class balance.
+    y_train = data.y[data.train_mask]
+    n_mule = int(y_train.sum().item())
+    n_clean = int(len(y_train) - n_mule)
     if verbose:
-        print(f"      Nodes: {len(data.y)} | Mules: {n_mule} | Clean: {n_clean}")
+        print(f"      Nodes: {len(data.y)} | Train mules: {n_mule} | Train clean: {n_clean}")
         print(f"      Edges: {data.edge_index.shape[1]}")
         print(f"      Train: {data.train_mask.sum()} | Val: {data.val_mask.sum()} | Test: {data.test_mask.sum()}")
 
@@ -230,7 +292,7 @@ def train(
 
     for epoch in range(1, epochs + 1):
         train_loss = train_epoch(model, data, optimizer, pos_weight)
-        val_metrics = evaluate(model, data, data.val_mask)
+        val_metrics = evaluate(model, data, data.val_mask, pos_weight=pos_weight)
         scheduler.step(val_metrics["f1"])
 
         if val_metrics["f1"] > best_val_f1:
@@ -257,7 +319,33 @@ def train(
     if best_state:
         model.load_state_dict(best_state)
 
-    test_metrics = evaluate(model, data, data.test_mask)
+    # ── Probability calibration on VALIDATION ─────────────────────────────────
+    # The raw sigmoid is badly calibrated: scores saturate, so the console shows
+    # "100.0% risk" for every account in a traced chain, which reads as fabricated
+    # even when the ranking is correct. Isotonic regression fitted on validation
+    # maps scores to frequencies that mean what they say. Fitted on validation
+    # only, so it never sees test.
+    from sklearn.isotonic import IsotonicRegression
+    model.eval()
+    with torch.no_grad():
+        _p_all = torch.sigmoid(model(data.x, data.edge_index).squeeze(-1)).numpy()
+    _va = data.val_mask.numpy()
+    calibrator = IsotonicRegression(out_of_bounds="clip", y_min=0.0, y_max=1.0)
+    calibrator.fit(_p_all[_va], data.y.numpy()[_va])
+
+    # Threshold is tuned on validation only, then frozen for the test report.
+    tuned_threshold = best_threshold(model, data, data.val_mask)
+    test_metrics = evaluate(model, data, data.test_mask,
+                            threshold=tuned_threshold, pos_weight=pos_weight)
+    test_at_half = evaluate(model, data, data.test_mask,
+                            threshold=0.5, pos_weight=pos_weight)
+    if verbose:
+        print(f"      Tuned threshold (val): {tuned_threshold:.4f}")
+        print(f"      Test F1 @0.5         : {test_at_half['f1']:.4f}")
+        print(f"      Test F1 @tuned       : {test_metrics['f1']:.4f}")
+        print(f"      Test precision/recall: {test_metrics['precision']:.4f}"
+              f" / {test_metrics['recall']:.4f}")
+        print(f"      Test PR-AUC          : {test_metrics['pr_auc']:.4f}")
     if verbose:
         print(f"\n  Best Val F1   : {best_val_f1:.4f}")
         print(f"  Test F1       : {test_metrics['f1']:.4f}")
@@ -273,11 +361,31 @@ def train(
         "scaler_scale": scaler.scale_.tolist(),
         "account_ids": account_ids,
         "feature_cols": FEATURE_COLS,
-        "hyperparams": {"epochs": epochs, "lr": lr, "dropout": dropout},
+        "hyperparams": {"epochs": epochs, "lr": lr, "dropout": dropout,
+                        "seed": seed, "threshold": tuned_threshold},
+        # The split is saved so scripts/evaluate_baselines.py can score every
+        # baseline on exactly these test nodes. Comparing a model measured on one
+        # split against baselines measured on another is not a comparison.
+        # Isotonic mapping from raw sigmoid to calibrated probability.
+        "calibration": {
+            "x": calibrator.X_thresholds_.tolist(),
+            "y": calibrator.y_thresholds_.tolist(),
+        },
+        "split": {
+            "train_idx": [int(i) for i in split_idx["train"]],
+            "val_idx": [int(i) for i in split_idx["val"]],
+            "test_idx": [int(i) for i in split_idx["test"]],
+        },
         "metrics": {
             "best_val_f1": best_val_f1,
+            "threshold": tuned_threshold,
             "test_f1": test_metrics["f1"],
+            "test_f1_at_0.5": test_at_half["f1"],
             "test_auc": test_metrics["auc"],
+            "test_pr_auc": test_metrics["pr_auc"],
+            "test_precision": test_metrics["precision"],
+            "test_recall": test_metrics["recall"],
+            "test_accuracy": test_metrics["acc"],
         },
     }, MODEL_PATH)
     if verbose:
@@ -322,3 +430,11 @@ if __name__ == "__main__":
     target_met = "PASS" if f1 >= 0.85 else "FAIL (target: F1 > 0.85)"
     print(f"  Final Test F1: {f1:.4f}  [{target_met}]")
     print("=" * 60)
+
+    # ── Publish to the ledger ────────────────────────────────────────────────
+    # The checkpoint already carries these; the ledger is what the deck card and
+    # the console read, so they land there too rather than being retyped.
+    ckpt_metrics = torch.load(MODEL_PATH, map_location="cpu",
+                              weights_only=False)["metrics"]
+    write_metrics("detection", ckpt_metrics, source="python engine/train_gnn.py")
+    print("\n  [OK] Wrote detection metrics to data/metrics.json")
