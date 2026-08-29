@@ -118,10 +118,10 @@ function severityOf(complaint, now, bands) {
 const GoldenHourClock = memo(function GoldenHourClock({ startedAt }) {
   const tick = useNow(1000)
   const left = Math.max(0, GOLDEN_HOUR_MIN * 60000 - (tick - startedAt))
-  if (left === 0) return <span>· expired</span>
+  if (left === 0) return <span>expired</span>
   const mm = String(Math.floor(left / 60000)).padStart(2, '0')
   const ss = String(Math.floor((left % 60000) / 1000)).padStart(2, '0')
-  return <span>· {mm}:{ss}</span>
+  return <span>{mm}:{ss}</span>
 })
 
 /** One badge, so a row and the selected-incident panel can never disagree. */
@@ -131,7 +131,9 @@ const SevBadge = memo(function SevBadge({ sev }) {
       className={`px-2 py-0.5 rounded text-[10px] mono border font-medium shrink-0 inline-flex items-center gap-1 ${sev.bg} ${sev.color}`}
     >
       {sev.label}
-      {sev.golden && sev.startedAt != null && <GoldenHourClock startedAt={sev.startedAt} />}
+      {sev.golden && sev.startedAt != null && (
+        <>· <GoldenHourClock startedAt={sev.startedAt} /></>
+      )}
     </span>
   )
 })
@@ -320,6 +322,119 @@ const IngestModal = memo(function IngestModal({ isOpen, onClose, onSuccess }) {
   )
 })
 
+/** "57, Gandhi Chowk, Kochi, Kerala - 133704 (Branch ATM)" -> "Kochi". */
+function townOf(address, fallback) {
+  const parts = String(address || '').split(',').map(t => t.trim())
+  return parts.length >= 3 ? parts[2] : fallback
+}
+
+/**
+ * The case in plain language, above the numbers.
+ *
+ * The console was legible to someone who already knew what a GraphSAGE
+ * embedding was and opaque to everyone else — which on an SIH jury is most of
+ * the room. A police officer or a policy official could read every figure on
+ * this screen and still not be able to say what had happened or what the system
+ * was recommending.
+ *
+ * So this states it as sentences: what was stolen, where the money went, where
+ * we expect it to be withdrawn, and how long there is to act. Nothing here is
+ * new information — it is the same prediction the tactical screens render,
+ * written for someone reading it for the first time. The technical detail stays
+ * directly underneath, unchanged, for the judges who want it.
+ */
+const CaseStory = memo(function CaseStory({ complaint, sev, prediction, loading, error, now }) {
+  const amount = amountFmt(complaint.stolen_amount)
+  const when = timeAgo(complaint.complaint_timestamp, now)
+  const scam = String(complaint.fraud_type || 'cyber fraud').toLowerCase()
+  // Fraud types are data, so the article has to be chosen rather than hardcoded:
+  // "a digital arrest" but "an investment scam".
+  const article = /^[aeiou]/.test(scam) ? 'an' : 'a'
+
+  const top = prediction?.ranked_candidates?.[0]
+  const nAtms = prediction?.ranked_candidates?.length ?? 0
+  const town = top ? townOf(top.address, complaint.city) : null
+  const mins = prediction ? Math.max(1, Math.round(prediction.time_to_cashout_minutes)) : null
+
+  return (
+    <div className="rounded-lg border border-ink-border bg-ink-bg/60 p-3 space-y-2.5">
+      <div className="mono text-[10px] uppercase tracking-[0.12em] text-zinc-500 font-semibold">
+        The case, in plain terms
+      </div>
+
+      <p className="text-[12.5px] leading-relaxed text-zinc-300">
+        <span className="text-white font-semibold">{amount}</span> was taken from{' '}
+        <span className="text-white font-semibold">{complaint.victim_name}</span> in{' '}
+        {complaint.city}, {complaint.state} — {article} {scam}, reported {when}.
+      </p>
+
+      {loading && (
+        <p className="text-[12.5px] leading-relaxed text-zinc-500 flex items-center gap-2">
+          <Loader2 size={12} className="animate-spin shrink-0" />
+          Tracing the money and forecasting the withdrawal…
+        </p>
+      )}
+
+      {!loading && prediction && (
+        <>
+          <p className="text-[12.5px] leading-relaxed text-zinc-300">
+            The money was moved through a chain of mule accounts and now sits in
+            account <span className="text-white font-semibold">{prediction.terminal_account}</span>.
+          </p>
+          {/* Tense matters. A complaint filed three days ago cannot have a
+              withdrawal "expected in 32 minutes" — that money left the system
+              long ago, and the sentence would contradict the closing line of
+              this same paragraph. The forecast is stated as a live expectation
+              only while the window is open, and as what the model placed at the
+              time otherwise. */}
+          {sev?.golden ? (
+            <p className="text-[12.5px] leading-relaxed text-zinc-300">
+              We expect a cash withdrawal in about{' '}
+              <span className="text-white font-semibold">{mins} minutes</span>, most likely at{' '}
+              <span className="text-white font-semibold">one of {nAtms} ATMs</span>
+              {town ? <> around {town}</> : null} — narrowed from{' '}
+              <span className="text-white font-semibold">{MODEL_STATS.atmTotal}</span> nationwide.
+            </p>
+          ) : (
+            <p className="text-[12.5px] leading-relaxed text-zinc-300">
+              On the evidence available, the model puts the withdrawal about{' '}
+              <span className="text-white font-semibold">{mins} minutes</span> after the
+              transfer, at <span className="text-white font-semibold">one of {nAtms} ATMs</span>
+              {town ? <> around {town}</> : null} — narrowed from{' '}
+              <span className="text-white font-semibold">{MODEL_STATS.atmTotal}</span> nationwide.
+            </p>
+          )}
+        </>
+      )}
+
+      {!loading && !prediction && (
+        <p className="text-[12.5px] leading-relaxed text-amber-400/90">
+          {/* Naming the cause matters: "could not be produced" reads as a model
+              failure when the usual reason is simply that the API is not up. */}
+          No withdrawal forecast — {error || 'the prediction service did not respond'}.
+        </p>
+      )}
+
+      {/* The one line that tells an officer whether to move. */}
+      <div className="pt-2 border-t border-ink-border">
+        {sev?.golden ? (
+          <p className="text-[12.5px] leading-relaxed text-red-300 font-semibold flex items-center gap-1.5">
+            <Radio size={12} className="animate-pulse-dot shrink-0" />
+            <span>
+              Police have <GoldenHourClock startedAt={sev.startedAt} /> of the golden hour left.
+            </span>
+          </p>
+        ) : (
+          <p className="text-[12.5px] leading-relaxed text-zinc-500">
+            The interception window for this complaint has closed. It is kept for
+            pattern analysis and to train the model.
+          </p>
+        )}
+      </div>
+    </div>
+  )
+})
+
 export default function TriageFeed({ complaints = [], selected, onSelect, onIngested, backendDown }) {
   const [dismissed, setDismissed] = useState(() => new Set())
   const [lastResolved, setLastResolved] = useState(null)
@@ -420,6 +535,31 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
   }, [lastResolved, onSelect])
 
   const activeSev = active ? severityOf(active, now, bands) : null
+
+  // The plain-language brief needs the forecast, which lives behind /predict.
+  // Fetched per selection and cancelled on change, so switching quickly through
+  // the queue cannot land an older response on a newer complaint.
+  const [prediction, setPrediction] = useState(null)
+  const [predicting, setPredicting] = useState(false)
+  const [predictError, setPredictError] = useState('')
+  const activeId = active?.ticket_id
+
+  useEffect(() => {
+    if (!activeId) { setPrediction(null); return }
+    let cancelled = false
+    setPredicting(true)
+    setPrediction(null)
+    setPredictError('')
+    endpoints.predictCashout(activeId)
+      .then(p => { if (!cancelled) setPrediction(p) })
+      .catch(err => {
+        if (cancelled) return
+        setPrediction(null)
+        setPredictError(describeError(err).toLowerCase())
+      })
+      .finally(() => { if (!cancelled) setPredicting(false) })
+    return () => { cancelled = true }
+  }, [activeId])
 
   const jump = (path) => {
     if (!active) return
@@ -575,6 +715,15 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
                 </button>
               </div>
 
+              <CaseStory
+                complaint={active}
+                sev={activeSev}
+                prediction={prediction}
+                loading={predicting}
+                error={predictError}
+                now={now}
+              />
+
               <div className="grid grid-cols-2 gap-2 text-[11px] mono">
                 <div className="bg-ink-bg p-2.5 rounded border border-ink-border">
                   <div className="text-zinc-400">Stolen Amount</div>
@@ -595,7 +744,7 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
                       console previously implied every complaint still had one. */}
                   <div className={`text-[10px] mt-0.5 ${activeSev?.golden ? 'text-red-400' : 'text-zinc-500'}`}>
                     {activeSev?.golden
-                      ? <>window open<GoldenHourClock startedAt={activeSev.startedAt} /></>
+                      ? <>window open · <GoldenHourClock startedAt={activeSev.startedAt} /> left</>
                       : 'window closed · historical record'}
                   </div>
                 </div>
