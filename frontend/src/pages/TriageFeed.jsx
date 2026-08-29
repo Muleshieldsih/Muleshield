@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useCallback, memo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { endpoints, describeError } from '../services/api'
-import { amountFmt, amountShort, FRAUD_TYPES, BANKS, CITIES } from '../utils/constants'
+import { amountFmt, amountShort, formatTicket, FRAUD_TYPES, BANKS, CITIES } from '../utils/constants'
 import { timeAgo, useNow } from '../hooks/useCountdown'
 import { Panel } from '../components/Shell'
 import {
@@ -60,7 +60,7 @@ const TriageRow = memo(function TriageRow({ c, isSelected, onSelect, now }) {
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <span className={`w-2 h-2 rounded-full shrink-0 ${sev.dot}`} />
-          <span className="mono text-[12px] font-bold text-white tracking-wide truncate">{c.ticket_id}</span>
+          <span className="mono text-[12px] font-bold text-white tracking-wide truncate">{formatTicket(c.ticket_id)}</span>
           {c.is_live && (
             <span className="px-1.5 py-0.5 rounded text-[9px] mono border border-aegis-green/40 bg-aegis-green/10 text-aegis-green font-bold shrink-0">
               LIVE
@@ -239,7 +239,9 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
       .filter(c => {
         if (filter !== 'ALL' && c.fraud_type !== filter) return false
         if (!needle) return true
-        return `${c.ticket_id} ${c.victim_name} ${c.city} ${c.state} ${c.fraud_type} ${c.victim_account}`
+        // Both the raw id and its displayed short form are searchable, so typing
+        // either what is on screen or the full underlying id finds the row.
+        return `${c.ticket_id} ${formatTicket(c.ticket_id)} ${c.victim_name} ${c.city} ${c.state} ${c.fraud_type} ${c.victim_account}`
           .toLowerCase().includes(needle)
       })
   }, [complaints, dismissed, q, filter, now])
@@ -380,7 +382,7 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
                       </span>
                     )}
                   </div>
-                  <div className="text-lg font-bold text-white mono mt-0.5 truncate">{active.ticket_id}</div>
+                  <div className="text-lg font-bold text-white mono mt-0.5 truncate">{formatTicket(active.ticket_id)}</div>
                   <div className="text-[12px] mono text-zinc-400 mt-1 truncate">
                     <span className="text-white font-medium">{active.victim_name}</span> · {active.victim_bank}
                   </div>

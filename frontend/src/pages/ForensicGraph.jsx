@@ -4,7 +4,7 @@ import 'reactflow/dist/style.css'
 import { endpoints, describeError } from '../services/api'
 import useActiveComplaint from '../hooks/useActiveComplaint'
 import { Panel } from '../components/Shell'
-import { amountFmt, shortAccount } from '../utils/constants'
+import { amountFmt, formatTicket, shortAccount } from '../utils/constants'
 import { AlertTriangle, Split, Target, Loader2, ServerCrash, Activity } from 'lucide-react'
 
 const NODE_COLOR = { victim: '#58a6ff', mule: '#ff8c42', terminal: '#ff3b3b' }
@@ -166,7 +166,7 @@ export default function ForensicGraph() {
     <div className="grid grid-cols-12 gap-3 p-3">
       <div className="col-span-12 lg:col-span-9">
         <Panel
-          title={`MONEY-FLOW DAG — ${complaintId || '—'}`}
+          title={`MONEY-FLOW DAG — ${formatTicket(complaintId)}`}
           right={
             loading
               ? 'building…'

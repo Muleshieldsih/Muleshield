@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { Shield, Activity, GitBranch, MapPinned, Zap, Radio, Circle, WifiOff } from 'lucide-react'
 import { useMemo } from 'react'
-import { amountShort, MODEL_STATS } from '../utils/constants'
+import { amountShort, formatTicket, MODEL_STATS } from '../utils/constants'
 import { timeAgo, useNow } from '../hooks/useCountdown'
 
 /** Compact city code for the ticker, derived from the city name itself. */
@@ -78,7 +78,7 @@ function SidebarStreamTicker({ complaints = [], onSelect, activeId, wsConnected 
               <button
                 key={c.ticket_id}
                 onClick={() => handleClick(c.ticket_id)}
-                title={`${c.ticket_id} — ${c.victim_name}, ${c.city}`}
+                title={`${formatTicket(c.ticket_id)} — ${c.victim_name}, ${c.city}`}
                 className={`w-full text-left p-1.5 rounded border transition-colors duration-100 flex items-center justify-between mono text-[10px] ${
                   isActive
                     ? 'bg-ink-panel border-aegis-green/60'
@@ -158,7 +158,7 @@ export function Topbar({ wsConnected, complaintId, backendDown, lastEvent }) {
 
         {complaintId && (
           <div className="hidden sm:block text-[11px] mono text-zinc-300 border border-aegis-green/40 rounded-full px-3 py-1 bg-aegis-green/10">
-            Active: <span className="font-bold text-white">{complaintId}</span>
+            Active: <span className="font-bold text-white">{formatTicket(complaintId)}</span>
           </div>
         )}
       </div>

@@ -5,7 +5,7 @@ import { endpoints, describeError } from '../services/api'
 import useActiveComplaint from '../hooks/useActiveComplaint'
 import { useCountdown } from '../hooks/useCountdown'
 import { Panel, Stat } from '../components/Shell'
-import { amountFmt } from '../utils/constants'
+import { amountFmt, formatTicket } from '../utils/constants'
 import { Navigation, MapPin, Loader2, ServerCrash, CloudOff } from 'lucide-react'
 
 const INDIA_CENTER = [22.9734, 78.6569]
@@ -247,7 +247,7 @@ export default function TacticalMap() {
     <div className="grid grid-cols-12 gap-3 p-3">
       <div className="col-span-12 lg:col-span-8">
         <Panel
-          title={`TACTICAL GIS — PRIORITY SEARCH LOCATIONS (${complaintId || '—'})`}
+          title={`TACTICAL GIS — PRIORITY SEARCH LOCATIONS (${formatTicket(complaintId)})`}
           right={loading ? 'predicting…' : prediction ? `${label} remaining` : ''}
         >
           <div className="h-[64vh] relative">

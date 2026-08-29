@@ -80,9 +80,24 @@ export function pctFmt(p) {
   return Number.isFinite(v) ? `${(v * 100).toFixed(1)}%` : '—'
 }
 
+/**
+ * A ticket id for display.
+ *
+ * Complaints from the seed dataset carry a raw UUID (Python's uuid.uuid4()),
+ * while complaints ingested live carry a short TKT-XXXXXXXX id
+ * (backend/state.py). Rendered side by side -- a 36-char UUID next to a
+ * 12-char ticket -- the pair reads as a data error rather than two valid
+ * formats, so both collapse to the same shape here.
+ *
+ * Display only. Routing, the API and localStorage always use the record's
+ * untouched ticket_id -- only what reaches the screen is reshaped.
+ */
 export function formatTicket(id) {
-  if (!id) return '—'
-  return String(id)
+  const s = String(id || '')
+  if (!s) return '—'
+  if (/^TKT-/i.test(s)) return s.toUpperCase()
+  const hex = s.replace(/-/g, '').slice(0, 8)
+  return hex ? `TKT-${hex.toUpperCase()}` : s
 }
 
 /** Shorten a long account number for dense table cells, keeping the tail. */

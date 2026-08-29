@@ -3,7 +3,7 @@ import { endpoints, describeError } from '../services/api'
 import useActiveComplaint from '../hooks/useActiveComplaint'
 import { useCountdown } from '../hooks/useCountdown'
 import { Panel, Stat } from '../components/Shell'
-import { amountFmt } from '../utils/constants'
+import { amountFmt, formatTicket } from '../utils/constants'
 import {
   ShieldCheck, Radio, MessageCircle, Send, CheckCircle2, Phone,
   Loader2, ServerCrash, AlertTriangle,
@@ -101,7 +101,7 @@ export default function Interception() {
     `Model rank share: ${((activeAtm?.confidence ?? 0) * 100).toFixed(1)}% (relative, not a certainty)`,
     `Time Remaining: ${label}`,
     `Suspect Mule Account: ${prediction?.terminal_account ?? '-'}`,
-    `1930 Ticket: ${complaintId ?? '-'}`,
+    `1930 Ticket: ${formatTicket(complaintId)}`,
     `Amount at risk: ${amountFmt(stolen)}`,
     '------------------------------',
     'Action Required: Search this location for an ATM cashout in progress.',
@@ -128,7 +128,7 @@ export default function Interception() {
   if (error) {
     return (
       <div className="p-3">
-        <Panel title={`INTERCEPTION CONTROL — ${complaintId || '—'}`}>
+        <Panel title={`INTERCEPTION CONTROL — ${formatTicket(complaintId)}`}>
           <div className="p-10 text-center mono text-[12px]">
             <ServerCrash size={26} className="text-red-400 mx-auto mb-2" />
             <div className="text-red-300 font-bold">Interception data unavailable</div>
