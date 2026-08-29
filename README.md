@@ -58,7 +58,7 @@ Cyber fraud incidents reported on the National Cybercrime Reporting Portal (**19
 1. **Trace multi-hop fund dispersal** in real time from victim complaint origins in $<185\text{ ms}$.
 2. **Detect fraud rings, fund-splitting, and velocity anomalies** using graph topology.
 3. **Generate 64-dimensional structural risk embeddings** via **GraphSAGE** (capturing complex neighborhood relationships).
-4. **Narrow 1,000 ATMs to a search zone containing the withdrawal 86.8% of the time** (a median of 7 machines), with a **countdown and prediction band**, in **under 15 ms** end-to-end.
+4. **Narrow 1,000 ATMs to a search zone containing the withdrawal 87.4% of the time** (a median of 8 machines), with a **countdown and prediction band**, in **under 5 ms** end-to-end.
 
 ```
 [ 1930 Victim Complaint ]
@@ -74,9 +74,9 @@ Cyber fraud incidents reported on the National Cybercrime Reporting Portal (**19
            │
            ▼
 [ XGBoost Classifier & Regressor v2 ]
-  ├── 📍 Search Zone (86.8% containment; 1,000 ATMs -> a median of 7)
+  ├── 📍 Search Zone (87.4% containment; 1,000 ATMs -> a median of 8)
   ├── 📍 Top-3 ATM Ranking (Conditional Logit over 25 reachable candidates)
-  ├── ⏱️ Time-to-Cashout Countdown (MAE: 6.14 min, R² 0.55, q05-q95 band)
+  ├── ⏱️ Time-to-Cashout Countdown (MAE: 11.8 min, R² 0.17, q05-q95 band)
   └── 🔒 Real-time Micro-Freeze Action Recommendation (<25ms latency)
 ```
 
@@ -105,8 +105,8 @@ Cyber fraud incidents reported on the National Cybercrime Reporting Portal (**19
   - `bearing_to_atm_1_deg` — Compass bearing to nearest ATM (0°–360°).
   - `is_nearest_same_bank`, `nearest_same_bank_atm_dist` — Bank affiliation preference features.
 - **Models:**
-  - **`ConditionalLogitRanker`**: ranks the 25 reachable ATMs per cashout — **Top-3 0.5658** vs a 0.5596 distance-only baseline, and aggregated into a **search zone with 86.8% containment** vs 76.5% for a nearest-3 centroid. Where a cashout happens is a *discrete choice among alternatives*, and the drivers compose multiplicatively, so in log space the choice is linear — which is exactly a conditional logit. A 953-way softmax over the national ATM directory saw ~5 examples per class and scored *below* a nearest-ATM rule; a gradient-boosted ranker had to approximate products with axis-aligned steps and also lost.
-  - **`XGBRegressor`**: Estimates countdown minutes — **6.14 min MAE** ($R^2 = 0.55$) against a 9.41 min mean-prediction baseline, with a q05-q95 band at 85.7% coverage.
+  - **`ConditionalLogitRanker`**: ranks the 25 reachable ATMs per cashout — **Top-3 0.5615** vs a 0.5485 distance-only baseline, and aggregated into a **search zone with 87.4% containment** vs 78.5% for a nearest-3 centroid. Where a cashout happens is a *discrete choice among alternatives*, and the drivers compose multiplicatively, so in log space the choice is linear — which is exactly a conditional logit. A 953-way softmax over the national ATM directory saw ~5 examples per class and scored *below* a nearest-ATM rule; a gradient-boosted ranker had to approximate products with axis-aligned steps and also lost.
+  - **`XGBRegressor`**: Estimates countdown minutes — **11.82 min MAE** ($R^2 = 0.17$) against a 14.98 min mean-prediction baseline, with a q05-q95 band at 77.2% coverage. The observable-conditioned ceiling is 9.38 min / $R^2$ 0.445 — the cashout regime is not fully knowable.
 - **Interpretable utility weights** (recovered from data, checkable against the generator):
 
   | Term | Learned | True |
@@ -126,8 +126,21 @@ to the naive baseline it has to beat** — a score without its baseline says not
 about a model, and an accuracy that looks too good usually is (see
 [Honest Evaluation](#-honest-evaluation)).
 
-Validated on a Pan-India dataset of **19,271 accounts**, **51,847 transactions**
-(21,849 laundering + 29,998 legitimate) and **1,000 ATMs**, with **237/237 tests passing**.
+Validated on a Pan-India dataset of **49,999 accounts**, **622,188 transactions**
+(22,201 laundering + 599,987 legitimate) and **1,000 ATMs**, with **237/237 tests passing**.
+
+<div align="center">
+  <img src="docs/sih_performance_matrix_slide.png" alt="MuleShield AI - validated performance summary" width="100%" />
+</div>
+
+<br/>
+
+<div align="center">
+  <img src="docs/model_matrix_full.png" alt="MuleShield AI - six-panel model performance matrix" width="100%" />
+  <p><em>Figure: evaluation matrix computed directly from the trained models by
+  <code>scripts/generate_model_matrix.py</code> (matplotlib + scikit-learn + PyTorch + XGBoost).
+  Every panel carries its baseline, and ceilings are drawn where one exists.</em></p>
+</div>
 
 ### 1. Withdrawal-location forecast — the deliverable
 
@@ -137,34 +150,37 @@ withdrawal happens inside it.
 
 | Zone centre | Contains the withdrawal | Median error |
 |---|---|---|
-| Centre on the mule's location | 72.1% | 6.26 km |
-| Nearest-3 ATM centroid | 76.5% | 5.32 km |
-| **Model search zone** | **86.8%** | **5.21 km** |
+| Centre on the mule's location | 75.2% | 6.39 km |
+| Nearest-3 ATM centroid | 78.5% | 5.68 km |
+| **Model search zone** | **87.4%** | **5.49 km** |
 
 *All three given the same radius, so the comparison is at equal search cost — a
 bigger zone always contains more, and rewarding that would measure zone size rather
 than skill.*
 
-**Search cost: 1,000 ATMs narrowed to a median of 7, inside a 9.4 km radius, in ~15 ms.**
+**Search cost: 1,000 ATMs narrowed to a median of 8, inside a 10.0 km radius, in ~4.5 ms.**
 
 ### 2. Time to cashout — "in Advance"
 
 | Model | MAE | R² |
 |---|---|---|
-| Predict the mean | 9.41 min | 0.00 |
-| **XGBoost regressor** | **6.14 min** | **0.55** |
+| Predict the mean | 14.98 min | 0.00 |
+| **XGBoost regressor** | **11.82 min** | **0.17** |
 
-Reported with a **q05–q95 band at 85.7% empirical coverage** (median width 23 min).
-The generator injects heavy-tailed noise with σ ≈ 6.8 min, which caps achievable MAE
-near 5.1 min and R² near 0.72 — so a point estimate alone would overstate what is
-knowable, and "expected in 24–48 min" is the honest form.
+Reported with a **q05–q95 band at 77.2% empirical coverage**. The delay is a
+two-regime mixture — a crew either has a runner already at the machine or has to
+travel — and which regime applies is a draw no model can observe, even knowing the
+crew's speed exactly. Conditioned on what *is* observable the ceiling is **9.38 min
+MAE / R² 0.445**, not 1.0, so a point estimate alone would overstate what is
+knowable and "expected in 25–45 min" is the honest form. This is the one component
+with meaningful headroom left.
 
 ### 3. Exact-ATM ranking — tactical drill-down
 
 | Model | Top-1 | Top-3 |
 |---|---|---|
-| Distance only (nearest / nearest 3) | 0.2790 | 0.5596 |
-| **Conditional-logit ranker** | 0.2618 | **0.5658** |
+| Distance only (nearest / nearest 3) | 0.2476 | 0.5485 |
+| **Conditional-logit ranker** | **0.2654** | **0.5615** |
 
 Distance genuinely dominates which machine is used: the Bayes-optimal ranker, given
 the true generative parameters, reaches only ≈0.58. We beat the distance rule on
@@ -190,15 +206,16 @@ All rows scored on the **same held-out nodes**:
 
 | Model | F1 | AUC | PR-AUC | Precision | Recall |
 |---|---|---|---|---|---|
-| Majority class | 0.3303 | — | — | 0.1979 | 1.0000 |
-| Best single feature (`account_age_days`) | 0.8009 | 0.9252 | 0.7661 | 0.7042 | 0.9283 |
-| Logistic regression (no graph) | 0.8139 | 0.9478 | 0.9046 | 0.7549 | 0.8829 |
-| Random forest (no graph) | 0.9065 | 0.9552 | 0.9267 | 0.9146 | 0.8986 |
-| **GraphSAGE GNN** | **0.9381** | **0.9605** | **0.9389** | **0.9791** | 0.9003 |
+| Majority class | 0.0574 | — | — | 0.0295 | 1.0000 |
+| Best single feature (`burst_out_5min`) | 0.5303 | 0.8936 | 0.3815 | 0.4922 | 0.5747 |
+| Logistic regression (no graph) | 0.8322 | 0.9519 | 0.8149 | 0.8458 | 0.8190 |
+| XGBoost (tabular, no graph) | 0.8462 | 0.9504 | 0.8285 | 0.8462 | 0.8462 |
+| Random forest (no graph) | 0.8463 | 0.9580 | 0.8391 | 0.8333 | 0.8597 |
+| **GraphSAGE GNN** | **0.8955** | **0.9639** | **0.8529** | **0.8995** | **0.8914** |
 
-**+0.032 F1 over the best non-graph model on identical features**, and the real gain
-is precision (0.979 vs 0.915) — which is what matters when an investigation team has a
-fixed daily alert budget.
+**+0.049 F1 over the best non-graph model on identical features**, all scored on the same
+held-out nodes. The label-noise ceiling is **0.927**, so this sits at 97% of what is
+attainable. FPR 0.0031, FNR 0.1086, 10,561 parameters.
 
 ### 5. System performance
 
@@ -206,14 +223,17 @@ fixed daily alert budget.
 |---|---|---|
 | Per-complaint graph build | < 500 ms | **~2 ms** ✅ |
 | Full national graph build (startup) | < 1200 ms | **~670 ms** ✅ |
-| End-to-end inference | < 200 ms | **~15 ms** ✅ |
+| End-to-end inference | < 200 ms | **~4.5 ms** ✅ |
 | Automated test coverage | 100% | **237 / 237** ✅ |
 
 Reproduce with:
 
 ```bash
-python scripts/evaluate_baselines.py     # baseline tables
-python engine/train_xgb.py               # zone, ranking and countdown metrics
+python scripts/evaluate_baselines.py       # baseline tables
+python engine/train_xgb.py                 # zone, ranking and countdown metrics
+python scripts/generate_model_matrix.py    # regenerates the two figures above
+python scripts/eda_report.py               # data-integrity evidence
+python scripts/feature_analysis.py         # feature signal ranking + heatmap
 ```
 
 ---
@@ -253,9 +273,9 @@ reporting.
 
 - All data is **synthetically generated**. The behavioural archetypes are informed by
   published mule typologies, not fitted to real bank data.
-- **Mule prevalence in this dataset is ~20%; in a real bank population it is well under
-  1%.** At realistic prevalence, F1 stops being the right metric and Precision@K
-  against a fixed alert budget becomes the operative question.
+- **Mule prevalence in this dataset is 2.95%; in a real bank population it is under 1%.**
+  At realistic prevalence, Precision@K against a fixed daily alert budget is the operative
+  metric rather than F1.
 - Micro-freeze and the SMS gateway are **simulated**; NPCI/CBS integration is a
   deployment step. WhatsApp dispatch opens a real message.
 - A live-ingested complaint has its laundering chain **synthesised at ingestion** from
@@ -377,11 +397,11 @@ python -m pytest backend/tests/ -v
   - Embedded multi-source fraud rings with balanced mule/clean node features.
 - [x] **Phase 2a: Graph Intelligence & GraphSAGE Engine** *(49/49 Tests Passing)*
   - NetworkX directed graph builder with BFS traversal (<185ms).
-  - 2-layer GraphSAGE classifier on 15 behavioural features (F1 0.9386).
+  - 2-layer GraphSAGE classifier on 15 behavioural features (F1 0.8955).
   - Real-time sub-graph embedding extractor (<0.39s).
 - [x] **Phase 2b: XGBoost ATM Prediction Engine v2** *(53/53 Tests Passing)*
   - 80-dim hybrid vector for the GNN stage; 19-dim context+candidate vector for the ATM ranker.
-  - Top-3 ATM ranking (0.5658) and cashout countdown (6.35 min MAE).
+  - Search zone (87.4% containment), Top-3 ATM ranking (0.5615), countdown (11.82 min MAE).
   - Single inference latency: 25.8 ms.
 - [x] **Phase 3: Real-Time FastAPI Backend** *(51/51 Tests Passing)*
   - REST endpoints for complaint ingestion, graph exploration, GNN embeddings, and ATM predictions.
