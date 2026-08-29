@@ -2,7 +2,25 @@
 """
 Drive every interactive control in the console and report what breaks.
 
-    python scripts/smoke_ui.py
+    python scripts/smoke_ui.py              # isolated (default)
+    python scripts/smoke_ui.py --attach     # against already-running servers
+
+By default this starts its OWN backend and frontend on their own ports, runs
+against those, and tears them down.
+
+That is not fastidiousness. The sweep clicks every control it can reach, which
+now includes the case-status dropdown, "Assign to me" and the account freeze --
+so running it against the demo backend left real cases reassigned, re-statused
+and carrying audit entries authored by a test. The audit trail is the one part
+of this system whose whole value is that it records what actually happened; a
+test writing into it is worse than a test that skips the control.
+
+The isolated backend loads the same CSVs into its own memory, so every
+destructive control is still genuinely exercised against real-shaped data. The
+mutations simply die with the process.
+
+--attach runs against whatever is already up, for iterating on the test itself.
+It WILL mutate that backend.
 
 Needs both servers up. Walks all four routes, clicks every button and link it
 can reach, fills every input, and records what a human click-through misses:
@@ -16,14 +34,27 @@ are exercised deliberately -- the freeze endpoint is simulated and the point is
 to learn whether the button actually works.
 """
 
+import argparse
+import os
 import re
+import socket
+import subprocess
+import sys
+import time
+from contextlib import contextmanager
 from pathlib import Path
 
 import requests
 
 ROOT = Path(__file__).resolve().parents[1]
+
+# Deliberately not 8000/4173. A run must never land on the demo by accident.
 API = "http://127.0.0.1:8000"
 APP = "http://127.0.0.1:4173"
+
+# Built to its own directory so the demo's dist/ is left alone -- the isolated
+# build points at the test backend and would otherwise be served to the demo.
+SMOKE_DIST = "dist-smoke"
 VIEWPORT = {"width": 1600, "height": 1000}
 
 console_errors: list[str] = []
@@ -35,6 +66,88 @@ IGNORE_REQ = ("favicon.ico", "tile.openstreetmap", "basemaps", ".png", ".jpg", "
 
 NAV = ("TRIAGE QUEUE", "TACTICAL MAP", "MONEY FLOW", "INTERCEPTION")
 NEWLINE = chr(10)
+
+
+def free_port() -> int:
+    """A port the OS says is free. Racy in principle, fine for a local run."""
+    with socket.socket() as sk:
+        sk.bind(("127.0.0.1", 0))
+        return sk.getsockname()[1]
+
+
+def wait_for(url: str, timeout: float = 180.0, what: str = "service") -> None:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            if requests.get(url, timeout=4).status_code < 500:
+                return
+        except requests.RequestException:
+            pass
+        time.sleep(1.5)
+    raise SystemExit(f"{what} did not come up at {url} within {timeout:.0f}s")
+
+
+@contextmanager
+def isolated_stack():
+    """
+    A backend and frontend of this run's own, on their own ports.
+
+    The backend re-reads the same CSVs into a fresh process, so the corpus is
+    identical and the destructive controls are exercised for real. Nothing it
+    writes outlives the context manager.
+    """
+    api_port, app_port = free_port(), free_port()
+    api = f"http://127.0.0.1:{api_port}"
+    app = f"http://127.0.0.1:{app_port}"
+    python = sys.executable
+    procs: list[subprocess.Popen] = []
+    quiet = {"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
+
+    try:
+        print(f"  starting isolated backend on :{api_port}")
+        procs.append(subprocess.Popen(
+            [python, "-m", "uvicorn", "backend.main:app",
+             "--host", "127.0.0.1", "--port", str(api_port)],
+            cwd=str(ROOT), **quiet,
+        ))
+        wait_for(f"{api}/health", what="isolated backend")
+
+        # The API base is inlined at build time, so the isolated frontend needs
+        # its own build. Into SMOKE_DIST, never dist/.
+        print(f"  building frontend against :{api_port}")
+        env = {**os.environ, "VITE_API_BASE_URL": api}
+        build = subprocess.run(
+            f"npm run build -- --outDir {SMOKE_DIST}",
+            cwd=str(ROOT / "frontend"), env=env, shell=True,
+            capture_output=True, text=True,
+        )
+        if build.returncode != 0:
+            raise SystemExit(f"isolated build failed:{NEWLINE}{build.stdout[-1500:]}{build.stderr[-1500:]}")
+
+        print(f"  serving on :{app_port}")
+        procs.append(subprocess.Popen(
+            f"npx vite preview --outDir {SMOKE_DIST} --port {app_port} --host 127.0.0.1",
+            cwd=str(ROOT / "frontend"), env=env, shell=True, **quiet,
+        ))
+        wait_for(app, what="isolated frontend")
+
+        yield api, app
+    finally:
+        for proc in reversed(procs):
+            try:
+                proc.terminate()
+                proc.wait(timeout=10)
+            except Exception:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+        # vite preview is spawned through a shell, so terminating the shell can
+        # leave the server holding its port. Close it explicitly.
+        if os.name == "nt":
+            subprocess.run(f'npx --no-install kill-port {app_port}', shell=True,
+                           capture_output=True)
+        print("  isolated stack stopped")
 
 
 def note(page_name: str, msg: str) -> None:
@@ -230,7 +343,84 @@ def selection_check(page, cid: str) -> None:
                           "(URL/selection are fighting)")
 
 
-def main() -> None:
+def intervention_check(page, cid: str) -> None:
+    """
+    Carry an account freeze all the way through, including the confirmation.
+
+    The generic sweep cannot do this. It clicks "Freeze account", a confirmation
+    dialog opens, and its modal handling clicks Cancel to escape -- so the most
+    destructive control in the product was opened and then dismissed, every run,
+    and reported as exercised. The audit trail is what caught it.
+
+    Safe to do for real because this runs against a throwaway backend.
+    """
+    print(f"{NEWLINE}-- intervention --")
+    page.goto(f"{APP}/intercept?c={cid}", wait_until="networkidle", timeout=90_000)
+    page.wait_for_timeout(6000)
+
+    body = lambda: " ".join(page.inner_text("body").split())
+    try:
+        page.get_by_role("button", name=re.compile("Freeze account")).first.click(timeout=8000)
+        page.wait_for_timeout(1200)
+    except Exception:
+        note("intervention", "the freeze control could not be reached")
+        return
+
+    if "Confirm freeze" not in body():
+        note("intervention", "freezing an account did not ask for confirmation")
+        return
+    print("  confirmation required before freezing: yes")
+
+    try:
+        page.get_by_role("button", name="Confirm freeze").first.click(timeout=8000)
+        page.wait_for_timeout(4000)
+    except Exception as e:
+        note("intervention", f"confirm failed: {str(e).split(NEWLINE)[0][:80]}")
+        return
+
+    after = body()
+    if "Debit hold confirmed" not in after:
+        note("intervention", "the freeze did not report success")
+        return
+    print("  freeze completed: yes")
+
+    if "Case moved to" in after:
+        print("  case state advanced with the freeze: yes")
+    else:
+        note("intervention", "the freeze did not move the case status")
+
+
+def exercised_report() -> list[str]:
+    """
+    What the sweep actually did, read back from the audit trail.
+
+    Isolation makes it cheap to stop testing the destructive controls without
+    noticing: nothing would break, and the sweep would still print clean. This
+    reads the backend's own record of what happened and names anything the run
+    failed to exercise, so a weakened test fails loudly.
+    """
+    try:
+        entries = requests.get(f"{API}/api/v1/audit", params={"limit": 500}, timeout=15).json()
+    except requests.RequestException as e:
+        return [f"could not read the audit trail: {e}"]
+
+    actions = " ".join(e.get("action", "").lower() for e in entries)
+    expected = {
+        "status change": "changed status",
+        "assignment": "assigned case",
+        "account freeze": "froze account",
+    }
+    missing = [name for name, needle in expected.items() if needle not in actions]
+
+    print(f"{NEWLINE}-- exercised (from the backend's own audit trail) --")
+    print(f"  {len(entries)} audit entries written by this run")
+    for name, needle in expected.items():
+        n = sum(1 for e in entries if needle in e.get("action", "").lower())
+        print(f"  {'OK ' if n else 'MISS'} {name}: {n}")
+    return missing
+
+
+def run_sweep() -> None:
     from playwright.sync_api import sync_playwright
 
     requests.get(f"{API}/health", timeout=10).raise_for_status()
@@ -252,6 +442,7 @@ def main() -> None:
             walk(page, name, path)
 
         selection_check(page, cid)
+        intervention_check(page, cid)
 
         print(f"{NEWLINE}-- deep links / edge cases --")
         for name, path in (
@@ -269,6 +460,9 @@ def main() -> None:
 
         browser.close()
 
+    for gap in exercised_report():
+        note("coverage", f"the sweep never exercised: {gap}")
+
     print(NEWLINE + "=" * 64)
     print(f"CONSOLE ERRORS ({len(console_errors)})")
     for e in dict.fromkeys(console_errors):
@@ -279,6 +473,31 @@ def main() -> None:
     print(f"{NEWLINE}FINDINGS ({len(findings)})")
     for f in findings:
         print(f"  - {f}")
+
+
+def main() -> None:
+    global API, APP
+
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument(
+        "--attach", action="store_true",
+        help="run against already-running servers instead of an isolated pair. "
+             "This WILL mutate that backend's case data.",
+    )
+    ap.add_argument("--api", default=API, help="backend URL when --attach")
+    ap.add_argument("--app", default=APP, help="frontend URL when --attach")
+    args = ap.parse_args()
+
+    if args.attach:
+        API, APP = args.api, args.app
+        print(f"-- attached to {API} (its case data WILL be modified) --")
+        run_sweep()
+        return
+
+    print("-- isolated run: own backend and frontend, discarded afterwards --")
+    with isolated_stack() as (api, app):
+        API, APP = api, app
+        run_sweep()
 
 
 if __name__ == "__main__":

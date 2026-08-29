@@ -50,3 +50,7 @@ data/graph_edges.csv
 *.mov
 data/_*.csv
 data/_*.npy
+
+# Isolated build used by scripts/smoke_ui.py. It points at a throwaway backend
+# port, so it must never be served to anyone.
+frontend/dist-smoke/
