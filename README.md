@@ -16,37 +16,56 @@
 
 ## 🖥️ Tactical Command Center Dashboard
 
-MuleShield AI features a 4-screen, real-time command dashboard engineered for Law Enforcement (State Cyber Crime Police Stations) and Bank Fraud Risk Officers:
+Four screens, captured from a **live run** against the real backend — `scripts/capture_screens.py`
+drives a headless browser over the running console, so what is below is what the system renders,
+not a mockup. Every figure on screen is read from `data/metrics.json`, which only the training and
+evaluation scripts write.
 
 <div align="center">
-  <h3>1. Live 1930 Helpline Triage & Intake Queue</h3>
-  <img src="docs/dashboard_triage.png" alt="MuleShield AI - Live 1930 Triage Feed" width="100%" />
-  <p><em>Real-time streaming queue of incoming 1930 complaints with Golden Hour urgency badges, live metrics, and instant AI ingestion form.</em></p>
+  <h3>1. 1930 Helpline Triage &amp; Intake Queue</h3>
+  <img src="docs/screens/01-triage-queue.png" alt="MuleShield AI — 1930 triage queue" width="100%" />
+  <p><em>Severity-ranked complaint queue with Golden-Hour badges, live pipeline status read from
+  <code>/health</code>, and one-click ingestion. The intake badge reads <strong>connected</strong>,
+  not "live" — the socket being open is not the same as complaints arriving, and offline there is no
+  NCRP feed pushing them.</em></p>
 </div>
 
 <br/>
 
 <div align="center">
-  <h3>2. Tactical GIS Map — Physical ATM Interception</h3>
-  <img src="docs/dashboard_map.png" alt="MuleShield AI - Tactical GIS Map" width="100%" />
-  <p><em>Interactive vector map displaying terminal mule location, predicted Top-3 target ATM cluster markers, pulsing perimeter, and routing lines.</em></p>
+  <h3>2. Tactical GIS — Priority Search Locations</h3>
+  <img src="docs/screens/02-priority-search-locations.png" alt="MuleShield AI — priority search locations" width="100%" />
+  <p><em>The <strong>Top-5 ranked candidate cash-out locations</strong> for the traced terminal
+  account, each with its relative score, distance from the mule and prior-incident count, plus the
+  aggregated search zone (here 7.72 km covering 5 ATMs at 84% probability mass). These are
+  <strong>prioritized candidates, not a predicted ATM</strong>.</em></p>
 </div>
 
 <br/>
 
 <div align="center">
-  <h3>3. Forensic Money-Flow Directed Graph (DAG)</h3>
-  <img src="docs/dashboard_graph.png" alt="MuleShield AI - Forensic Graph Visualizer" width="100%" />
-  <p><em>React Flow multi-hop graph visualizer mapping money movement from Victim ➔ Layer-1/2 Mules ➔ Terminal Cashout accounts with node-level GNN risk inspector.</em></p>
+  <h3>3. Forensic Money-Flow Graph (DAG)</h3>
+  <img src="docs/screens/03-money-flow-graph.png" alt="MuleShield AI — forensic money-flow graph" width="100%" />
+  <p><em>Victim ➔ layering mules ➔ terminal cash-out, with a per-node GraphSAGE risk inspector.
+  The mule probabilities shown are <code>sigmoid(Wh + b)</code> over the account's cached 64-d
+  embedding, passed through isotonic calibration — verified against held-out labels, see
+  <a href="OVERNIGHT_ML_AUDIT.md">§10b of the audit</a>.</em></p>
 </div>
 
 <br/>
 
 <div align="center">
-  <h3>4. 1-Click Emergency Interception & Police Dispatch</h3>
-  <img src="docs/dashboard_intercept.png" alt="MuleShield AI - Interception Control" width="100%" />
-  <p><em>Top-3 ATM predictions with confidence ranking, live cashout countdown clock, 1-Click Emergency Bank Micro-Freeze, and automated PCR van dispatch.</em></p>
+  <h3>4. Interception Control &amp; Police Dispatch</h3>
+  <img src="docs/screens/04-interception.png" alt="MuleShield AI — interception control" width="100%" />
+  <p><em>All five ranked candidates, the live cash-out countdown, 1-click bank micro-freeze and PCR
+  dispatch. The status badge tracks real inference state (ARMED / COMPUTING / STANDBY) rather than
+  being permanently lit, and the dispatch alert carries "a ranked candidate, not a confirmed
+  location".</em></p>
 </div>
+
+> **Regenerate:** start the backend and `npm run preview`, then
+> `python scripts/capture_screens.py`. The script resolves a complaint from the live queue rather
+> than pinning a ticket id, because a pinned id outlives the dataset it points at.
 
 ---
 
@@ -127,7 +146,7 @@ about a model, and an accuracy that looks too good usually is (see
 [Honest Evaluation](#-honest-evaluation)).
 
 Validated on a Pan-India dataset of **49,999 accounts**, **622,188 transactions**
-(22,201 laundering + 599,987 legitimate) and **1,000 ATMs**, with **237/237 tests passing**.
+(22,201 laundering + 599,987 legitimate) and **1,000 ATMs**, with **275/275 tests passing**.
 
 <div align="center">
   <img src="docs/sih_performance_matrix_slide.png" alt="MuleShield AI - validated performance summary" width="100%" />
@@ -175,17 +194,39 @@ MAE / R² 0.445**, not 1.0, so a point estimate alone would overstate what is
 knowable and "expected in 25–45 min" is the honest form. This is the one component
 with meaningful headroom left.
 
-### 3. Exact-ATM ranking — tactical drill-down
+### 3. Ranked candidate locations — the Top-K operating point
 
-| Model | Top-1 | Top-3 |
-|---|---|---|
-| Distance only (nearest / nearest 3) | 0.2476 | 0.5485 |
-| **Conditional-logit ranker** | **0.2654** | **0.5615** |
+The system returns the **K locations an investigator should search first**, ordered.
+Measured by `scripts/topk_curve.py` against the **shipped** checkpoint on the held-out
+complaints of the same seed-42 `GroupShuffleSplit` that training fits on — no retraining,
+no tuning, and a retrieval failure counts as a miss.
 
-Distance genuinely dominates which machine is used: the Bayes-optimal ranker, given
-the true generative parameters, reaches only ≈0.58. We beat the distance rule on
-Top-3 but not on Top-1, and we report both. This is precisely why the **zone** is the
-committed deliverable and the exact machine is not.
+| K | Containment | Distance-only | Search reduction |
+|---|---|---|---|
+| 1 | 0.2654 | 0.2476 | 99.90% |
+| 3 | 0.5615 | 0.5485 | 99.70% |
+| **5 (operating point)** | **0.7136** | 0.7217 | **99.50%** |
+| 8 | 0.8689 | 0.8689 | 99.20% |
+| 10 | 0.9175 | 0.9142 | 99.00% |
+
+*n = 618 held-out cash-outs · 1,000-ATM directory · 0.003 ms to rank.*
+
+> **Top-5 containment is 0.7136 — it is not 87.4%.** That figure is the adaptive search
+> zone at a median of 8 ATMs, a different operating point. A test asserts Top-5 < 0.80 so
+> the zone number cannot migrate into the Top-5 slot.
+
+**Retrieval never fails.** The true ATM is inside the 25-candidate pool in 618 of 618
+cases, so widening the pool cannot help and every miss is a ranking miss. But of the 177
+misses at K=5, **94.9% are unavoidable** — the true ATM sat outside the top-5 of the *true
+generative posterior*, i.e. the offender made a low-probability choice. Only **9 of 618
+(1.5%)** are genuine model error.
+
+**We do not claim the ranker beats distance.** It is statistically indistinguishable from
+distance-sorting at every K (paired McNemar over the same 618 cash-outs, no p < 0.05; at
+K=5 distance is ahead by 0.008). That is what a ceiling looks like, not a defect: Top-1
+equals the Bayes bound exactly and Top-5 sits 0.8 points under it. The defensible claim is
+the **pipeline narrowing 1,000 ATMs to 5**, not that the ranker outperforms a distance
+heuristic — because on this generator it does not.
 
 The ranker's learned weights are interpretable by construction and can be checked
 against expectation:
@@ -381,7 +422,7 @@ npm run dev
 
 ### 4. Run the Full Test Suite (237 Tests)
 ```bash
-# Run AI engine unit tests (186 tests)
+# Run AI engine unit tests (224 tests)
 python -m pytest tests/ -v
 
 # Run FastAPI backend tests (51 tests)
