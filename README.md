@@ -326,6 +326,11 @@ reporting.
 
 ---
 
+> **Working on this project?** Read [`PROJECT_NOTES.md`](PROJECT_NOTES.md)
+> first. It carries the outstanding checklist, the decisions that were made
+> deliberately and should not be "fixed", and the testing gotchas — including why
+> a passing build is not evidence the console works.
+
 ## 📁 Repository Structure
 
 ```
