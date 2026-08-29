@@ -13,6 +13,15 @@ export function readStoredComplaintId() {
   }
 }
 
+export function clearComplaintId() {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.removeItem(SELECTED_KEY)
+  } catch {
+    /* private browsing */
+  }
+}
+
 export function storeComplaintId(id) {
   if (typeof window === 'undefined' || !id) return
   try {
@@ -38,23 +47,46 @@ export default function useActiveComplaint() {
   useEffect(() => {
     let cancelled = false
 
+    const newestComplaint = async () => {
+      const list = await endpoints.listComplaints(1)
+      return list?.length ? list[0].ticket_id : ''
+    }
+
     const resolve = async () => {
       const known = urlCid || readStoredComplaintId()
-      if (known) {
-        if (!cancelled) {
-          setComplaintId(known)
-          setResolving(false)
-          storeComplaintId(known)
-        }
-        return
-      }
-
       setResolving(true)
+
       try {
-        const list = await endpoints.listComplaints(1)
-        if (!cancelled && list?.length) {
-          setComplaintId(list[0].ticket_id)
-          storeComplaintId(list[0].ticket_id)
+        if (known) {
+          // Verify it still exists before adopting it.
+          //
+          // A stored id outlives the data it points at: a ticket from a previous
+          // dataset, or one that was only ever in the removed demo fixtures, stays
+          // in localStorage forever. Trusting it blindly left every screen stuck on
+          // "complaint not found" while the live queue beside them was populated —
+          // which reads as a broken app rather than a stale selection.
+          try {
+            await endpoints.getComplaint(known)
+            if (!cancelled) {
+              setComplaintId(known)
+              storeComplaintId(known)
+            }
+            return
+          } catch (err) {
+            // Only a genuine 404 invalidates it. A network failure or a backend
+            // that is still booting must not discard a valid selection.
+            if (err?.response?.status !== 404) {
+              if (!cancelled) setComplaintId(known)
+              return
+            }
+            clearComplaintId()
+          }
+        }
+
+        const newest = await newestComplaint()
+        if (!cancelled && newest) {
+          setComplaintId(newest)
+          storeComplaintId(newest)
         }
       } catch {
         /* leave empty — the page renders its own disconnected state */

@@ -22,7 +22,7 @@ function RouteFallback() {
   )
 }
 import { endpoints } from './services/api'
-import { readStoredComplaintId, storeComplaintId } from './hooks/useActiveComplaint'
+import { clearComplaintId, readStoredComplaintId, storeComplaintId } from './hooks/useActiveComplaint'
 
 const QUEUE_LIMIT = 60
 
@@ -41,10 +41,42 @@ function Layout() {
   useEffect(() => {
     let cancelled = false
     endpoints.listComplaints(QUEUE_LIMIT)
-      .then(list => { if (!cancelled) { setComplaints(list || []); setLoadError('') } })
+      .then(async list => {
+        if (cancelled) return
+        setComplaints(list || [])
+        setLoadError('')
+
+        // Drop a stored selection that no longer exists.
+        //
+        // A ticket id in localStorage outlives the data it points at — a
+        // regenerated dataset, or one of the demo fixtures that were removed —
+        // and every screen then reports "complaint not found" while the live
+        // queue beside them is populated. Verified against the backend rather
+        // than against this page of the list, since a valid complaint can sit
+        // outside the first QUEUE_LIMIT rows.
+        const urlCid = new URLSearchParams(window.location.search).get('c')
+        const stored = urlCid || readStoredComplaintId()
+        if (!stored) return
+        if ((list || []).some(c => c.ticket_id === stored)) return
+        try {
+          await endpoints.getComplaint(stored)
+        } catch (err) {
+          if (err?.response?.status === 404 && !cancelled) {
+            clearComplaintId()
+            const fallback = list?.length ? list[0].ticket_id : ''
+            setSelected(fallback)
+            // The dead id must leave the URL as well, or the ?c= sync effect
+            // below immediately restores it and the screens stay stuck.
+            navigate(
+              window.location.pathname + (fallback ? `?c=${encodeURIComponent(fallback)}` : ''),
+              { replace: true },
+            )
+          }
+        }
+      })
       .catch(err => { if (!cancelled) setLoadError(err?.message || 'Backend unreachable') })
     return () => { cancelled = true }
-  }, [])
+  }, [navigate])
 
   // ── Live events ────────────────────────────────────────────────────────────
   const onWs = useCallback((msg) => {

@@ -200,16 +200,24 @@ export function Sidebar({ complaintId, complaints, onSelect, wsConnected }) {
       <div className="p-3 border-t border-ink-border shrink-0">
         <div className="aegis-panel p-2.5 bg-ink-panel/40">
           <div className="text-[10px] mono tracking-[0.12em] text-zinc-400 uppercase font-semibold">
-            Benchmarked Model SLA
+            Validated Performance
           </div>
+          {/* Each figure carries the naive baseline it beats — the console should
+              not state a number the deck would have to defend without one. */}
           <div className="text-[11px] mono text-aegis-green flex items-center gap-1.5 mt-1 font-bold">
-            <Radio size={12} className="animate-pulse-dot" /> {MODEL_STATS.top3Accuracy} Top-3 Accuracy
+            <Radio size={12} className="animate-pulse-dot" />
+            {MODEL_STATS.zoneContainment} zone containment
           </div>
-          <div className="text-[10px] mono text-zinc-500 mt-1">
+          <div className="text-[9px] mono text-zinc-600 mt-0.5">
+            vs {MODEL_STATS.zoneBaseline} nearest-3 · {MODEL_STATS.searchCost} ATMs
+          </div>
+          <div className="text-[10px] mono text-zinc-500 mt-1.5">
             Countdown MAE: <span className="text-zinc-300">{MODEL_STATS.countdownMae}</span>
+            <span className="text-zinc-600"> vs {MODEL_STATS.countdownBaseline}</span>
           </div>
           <div className="text-[10px] mono text-zinc-500">
-            GNN F1: <span className="text-zinc-300">{MODEL_STATS.gnnF1}</span>
+            Mule F1: <span className="text-zinc-300">{MODEL_STATS.gnnF1}</span>
+            <span className="text-zinc-600"> vs {MODEL_STATS.gnnBaseline}</span>
           </div>
         </div>
         <div className="text-[10px] mono text-zinc-600 mt-2 text-center">SIH26184 · MHA / I4C</div>

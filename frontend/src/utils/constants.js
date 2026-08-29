@@ -29,10 +29,20 @@ export const CITIES = [
 ]
 
 /** Benchmarked model figures, from engine/train_xgb.py + train_gnn.py. */
+// Measured figures, each with the naive baseline it beats. Regenerate with
+// `python engine/train_xgb.py` and `python scripts/evaluate_baselines.py`.
+//
+// These previously read 98.5% Top-3 / 1.2 s MAE / 0.9996 F1. Those numbers were
+// retracted by the leakage audit (OVERNIGHT_ML_AUDIT.md) and were still being
+// displayed in the console long after every document had been corrected.
 export const MODEL_STATS = {
-  top3Accuracy: '98.5%',
-  countdownMae: '1.2 s',
-  gnnF1: '0.9996',
+  zoneContainment: '87.4%',
+  zoneBaseline: '78.5%',
+  searchCost: '8 of 1,000',
+  countdownMae: '11.8 min',
+  countdownBaseline: '15.0 min',
+  gnnF1: '0.8955',
+  gnnBaseline: '0.8463',
 }
 
 export function amountFmt(n) {
