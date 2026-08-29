@@ -96,23 +96,38 @@ export function pctFmt(p) {
 }
 
 /**
- * A ticket id for display.
+ * A case reference for display.
  *
- * Complaints from the seed dataset carry a raw UUID (Python's uuid.uuid4()),
- * while complaints ingested live carry a short TKT-XXXXXXXX id
- * (backend/state.py). Rendered side by side -- a 36-char UUID next to a
- * 12-char ticket -- the pair reads as a data error rather than two valid
- * formats, so both collapse to the same shape here.
+ * The store holds two id formats: seed complaints carry a raw UUID
+ * (`bb295c33-b740-48d6-b88c-bf8a123af907`), complaints ingested during the
+ * session carry `TKT-` plus eight hex characters. Shown side by side in one
+ * queue they read as records from two different systems.
  *
- * Display only. Routing, the API and localStorage always use the record's
- * untouched ticket_id -- only what reaches the screen is reshaped.
+ * Both collapse to one reference shaped like something the 1930 helpline would
+ * actually issue. It is derived from the id alone, deterministically, so the
+ * same case renders identically in the queue, the topbar, the graph title and
+ * an alert message — an earlier version formatted in some places and not
+ * others, and the same case appeared under two identities.
+ *
+ * Display only. Routing, the API and localStorage always use the untouched
+ * ticket_id.
+ *
+ * (The brief's example embeds a year and month. That would need the complaint's
+ * timestamp, which several call sites do not have — the topbar holds an id and
+ * nothing else — and deriving it where available would reintroduce exactly the
+ * two-identities problem this exists to remove.)
  */
 export function formatTicket(id) {
   const s = String(id || '')
   if (!s) return '—'
-  if (/^TKT-/i.test(s)) return s.toUpperCase()
-  const hex = s.replace(/-/g, '').slice(0, 8)
-  return hex ? `TKT-${hex.toUpperCase()}` : s
+  // FNV-1a: small, stable, and no dependency. Not a security hash; it only has
+  // to be deterministic and spread ids across the range.
+  let h = 0x811c9dc5
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 0x01000193) >>> 0
+  }
+  return `1930-${String(h % 1000000).padStart(6, '0')}`
 }
 
 /** Shorten a long account number for dense table cells, keeping the tail. */

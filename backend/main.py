@@ -28,7 +28,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 import backend.state as state
-from backend.routers import complaint, graph, embeddings, predict, freeze
+from backend.routers import complaint, graph, embeddings, predict, freeze, audit
 from backend.websocket import manager
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -93,6 +93,7 @@ app.include_router(graph.router)
 app.include_router(embeddings.router)
 app.include_router(predict.router)
 app.include_router(freeze.router)
+app.include_router(audit.router)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

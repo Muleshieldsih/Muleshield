@@ -3,13 +3,41 @@ import { useNavigate } from 'react-router-dom'
 import { endpoints, describeError } from '../services/api'
 import { amountFmt, amountShort, formatTicket, MODEL_STATS, FRAUD_TYPES, BANKS, CITIES } from '../utils/constants'
 import { timeAgo, useNow } from '../hooks/useCountdown'
+import { useToast } from '../components/Toast'
 import { Panel } from '../components/Shell'
 import {
   ShieldAlert, Plus, Search, MapPinned, GitBranch, Zap, ArrowUpRight,
-  CheckCircle2, AlertTriangle, Loader2, Radio, RotateCcw,
+  CheckCircle2, AlertTriangle, Loader2, Radio, UserPlus, StickyNote,
 } from 'lucide-react'
 
 const GOLDEN_HOUR_MIN = 60
+
+// Mirrors CASE_STATUSES in backend/state.py. Kept in this order because it is
+// the order a case moves through, and the filter reads as a workflow.
+const STATUSES = [
+  'New', 'Under Review', 'Investigating', 'Intervention Required', 'Resolved', 'Closed',
+]
+
+// Muted by design. Status is context an analyst needs while scanning, not an
+// alarm -- risk is what should draw the eye, and two competing colour systems
+// in one row means neither is read.
+const STATUS_STYLE = {
+  'New': 'text-zinc-300 border-zinc-600/50 bg-zinc-500/10',
+  'Under Review': 'text-blue-300 border-blue-500/40 bg-blue-500/10',
+  'Investigating': 'text-blue-300 border-blue-500/40 bg-blue-500/10',
+  'Intervention Required': 'text-amber-300 border-amber-500/40 bg-amber-500/10',
+  'Resolved': 'text-emerald-300 border-emerald-500/40 bg-emerald-500/10',
+  'Closed': 'text-zinc-500 border-zinc-700 bg-zinc-500/5',
+}
+
+function StatusChip({ status }) {
+  const cls = STATUS_STYLE[status] || STATUS_STYLE.New
+  return (
+    <span className={`px-1.5 py-0.5 rounded border text-[10px] shrink-0 ${cls}`}>
+      {status}
+    </span>
+  )
+}
 
 // A queue of small complaints must not manufacture a HIGH VALUE row simply by
 // containing the largest of a set of small ones. Percentiles decide the
@@ -83,7 +111,7 @@ function severityOf(complaint, now, bands) {
   const ts = new Date(complaint.complaint_timestamp).getTime()
 
   if (mins < GOLDEN_HOUR_MIN && hasTrustedClock(complaint)) {
-    const open = { label: 'GOLDEN HOUR', golden: true, urgent: true, startedAt: ts }
+    const open = { label: 'Golden hour', golden: true, urgent: true, startedAt: ts }
     if (mins < 15) {
       return { ...open, weight: 5, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/30', dot: 'bg-red-500' }
     }
@@ -96,14 +124,14 @@ function severityOf(complaint, now, bands) {
   // Cold: the interception window closed. Rank by what is at stake instead.
   const cold = { golden: false, urgent: false, startedAt: null }
   if (amount >= bands.high) {
-    return { ...cold, weight: 2, label: 'HIGH VALUE', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/30', dot: 'bg-red-500' }
+    return { ...cold, weight: 2, label: 'High value', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/30', dot: 'bg-red-500' }
   }
   if (amount >= bands.mid) {
-    return { ...cold, weight: 1, label: 'ELEVATED', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/30', dot: 'bg-amber-500' }
+    return { ...cold, weight: 1, label: 'Elevated', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/30', dot: 'bg-amber-500' }
   }
   // Zinc rather than emerald: emerald is this console's "good / live" accent and
   // the majority of rows wearing it competed with the aegis-green LIVE chip.
-  return { ...cold, weight: 0, label: 'ROUTINE', color: 'text-zinc-400', bg: 'bg-zinc-500/10 border-zinc-600/30', dot: 'bg-zinc-600' }
+  return { ...cold, weight: 0, label: 'Routine', color: 'text-zinc-400', bg: 'bg-zinc-500/10 border-zinc-600/30', dot: 'bg-zinc-600' }
 }
 
 /**
@@ -128,7 +156,7 @@ const GoldenHourClock = memo(function GoldenHourClock({ startedAt }) {
 const SevBadge = memo(function SevBadge({ sev }) {
   return (
     <span
-      className={`px-2 py-0.5 rounded text-[10px] mono border font-medium shrink-0 inline-flex items-center gap-1 ${sev.bg} ${sev.color}`}
+      className={`px-1.5 py-0.5 rounded text-[10px] border shrink-0 inline-flex items-center gap-1 ${sev.bg} ${sev.color}`}
     >
       {sev.label}
       {sev.golden && sev.startedAt != null && (
@@ -170,26 +198,30 @@ const TriageRow = memo(function TriageRow({ c, isSelected, onSelect, now, bands 
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <span className={`w-2 h-2 rounded-full shrink-0 ${sev.dot}`} />
-          <span className="mono text-[12px] font-bold text-white tracking-wide truncate">{formatTicket(c.ticket_id)}</span>
+          <span className="mono tnum text-[12px] font-semibold text-zinc-100 truncate">{formatTicket(c.ticket_id)}</span>
           {c.is_live && (
-            <span className="px-1.5 py-0.5 rounded text-[9px] mono border border-aegis-green/40 bg-aegis-green/10 text-aegis-green font-bold shrink-0">
+            <span className="px-1.5 py-0.5 rounded text-[10px] border border-aegis-green/40 bg-aegis-green/10 text-aegis-green shrink-0">
               LIVE
             </span>
           )}
           <SevBadge sev={sev} />
+          <StatusChip status={c.status || 'New'} />
         </div>
-        <span className={`mono text-[13px] font-bold shrink-0 ${sev.urgent ? 'text-red-400' : 'text-aegis-green'}`}>
+        <span className={`mono tnum text-[13px] font-semibold shrink-0 ${sev.urgent ? 'text-red-400' : 'text-zinc-200'}`}>
           {amountFmt(c.stolen_amount)}
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 mt-2 text-[11px] mono text-zinc-400">
+      <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 mt-2 text-[11.5px] text-zinc-400">
         <div className="truncate">
           Victim: <span className="text-zinc-200 font-medium">{c.victim_name}</span>
         </div>
         <div className="text-right text-zinc-300 font-medium truncate">{c.city}, {c.state}</div>
         <div className="truncate">{c.victim_bank} · <span className="text-zinc-300">{c.fraud_type}</span></div>
-        <div className="text-right text-zinc-500">{timeAgo(c.complaint_timestamp, now)}</div>
+        <div className="text-right text-zinc-500">
+          {c.assignee ? <span className="text-zinc-400">{c.assignee} · </span> : null}
+          {timeAgo(c.complaint_timestamp, now)}
+        </div>
       </div>
 
       {/* Golden-hour burn-down. Drawn only while the window is genuinely open --
@@ -251,13 +283,13 @@ const IngestModal = memo(function IngestModal({ isOpen, onClose, onSuccess }) {
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 grid place-items-center p-4" onClick={onClose}>
       <div className="aegis-panel w-full max-w-lg p-5 bg-ink-bg border-ink-border2 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between pb-3 border-b border-ink-border">
-          <div className="mono text-[13px] font-bold text-white flex items-center gap-2">
-            <Plus size={16} className="text-aegis-green" /> Ingest 1930 Cybercrime Complaint
+          <div className="text-[13px] font-semibold text-white flex items-center gap-2">
+            <Plus size={16} className="text-aegis-green" /> Add a 1930 case
           </div>
-          <button onClick={onClose} className="text-zinc-400 hover:text-white mono text-[12px] px-1">✕</button>
+          <button onClick={onClose} className="text-zinc-400 hover:text-white text-[12px] px-1">✕</button>
         </div>
 
-        <form onSubmit={submit} className="space-y-3 mt-4 mono text-[11px]">
+        <form onSubmit={submit} className="space-y-3 mt-4 text-[12px]">
           <div>
             <label className="block text-zinc-400 mb-1">Victim Full Name</label>
             <input required type="text" placeholder="e.g. Ramesh Chandra" value={form.victim_name} onChange={set('victim_name')} className={field} />
@@ -313,7 +345,7 @@ const IngestModal = memo(function IngestModal({ isOpen, onClose, onSuccess }) {
             </button>
             <button type="submit" disabled={busy} className="px-4 py-2 rounded bg-aegis-green text-black font-bold hover:bg-emerald-400 disabled:opacity-50 flex items-center gap-2">
               {busy && <Loader2 size={13} className="animate-spin" />}
-              {busy ? 'Broadcasting…' : 'Ingest & Trigger AI'}
+              {busy ? 'Adding…' : 'Add case'}
             </button>
           </div>
         </form>
@@ -358,8 +390,8 @@ const CaseStory = memo(function CaseStory({ complaint, sev, prediction, loading,
 
   return (
     <div className="rounded-lg border border-ink-border bg-ink-bg/60 p-3 space-y-2.5">
-      <div className="mono text-[10px] uppercase tracking-[0.12em] text-zinc-500 font-semibold">
-        The case, in plain terms
+      <div className="text-[11px] text-zinc-500 font-medium">
+        Summary
       </div>
 
       <p className="text-[12.5px] leading-relaxed text-zinc-300">
@@ -435,14 +467,20 @@ const CaseStory = memo(function CaseStory({ complaint, sev, prediction, loading,
   )
 })
 
-export default function TriageFeed({ complaints = [], selected, onSelect, onIngested, backendDown }) {
+export default function TriageFeed({ complaints = [], selected, onSelect, onIngested, onCaseUpdated, backendDown }) {
   const [dismissed, setDismissed] = useState(() => new Set())
-  const [lastResolved, setLastResolved] = useState(null)
+  const [officer, setOfficer] = useState('AS-1042')
+  const [noteOpen, setNoteOpen] = useState(false)
+  const [noteText, setNoteText] = useState('')
+  const [notes, setNotes] = useState([])
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState('ALL')
+  const [statusFilter, setStatusFilter] = useState('OPEN')
+  const [page, setPage] = useState(0)
   const [modalOpen, setModalOpen] = useState(false)
   const [health, setHealth] = useState(null)
   const navigate = useNavigate()
+  const toast = useToast()
 
   // 15s is enough for relative timestamps and severity buckets. A 1s tick here
   // re-sorted the entire queue sixty times a minute for no visible benefit.
@@ -477,6 +515,9 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
     return scored
       .map(s => s.c)
       .filter(c => {
+        const st = c.status || 'New'
+        if (statusFilter === 'OPEN' && (st === 'Resolved' || st === 'Closed')) return false
+        else if (statusFilter !== 'OPEN' && statusFilter !== 'ALL' && st !== statusFilter) return false
         if (filter !== 'ALL' && c.fraud_type !== filter) return false
         if (!needle) return true
         // Both the raw id and its displayed short form are searchable, so typing
@@ -484,7 +525,7 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
         return `${c.ticket_id} ${formatTicket(c.ticket_id)} ${c.victim_name} ${c.city} ${c.state} ${c.fraud_type} ${c.victim_account}`
           .toLowerCase().includes(needle)
       })
-  }, [complaints, dismissed, q, filter, now, bands])
+  }, [complaints, dismissed, q, filter, statusFilter, now, bands])
 
   const active = useMemo(
     () => visible.find(c => c.ticket_id === selected) || visible[0] || null,
@@ -500,39 +541,89 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
     let highValue = 0
     let golden = 0
     let atRisk = 0
+    let needsAction = 0
     for (const c of visible) {
       const s = severityOf(c, now, bands)
       if (s.golden) golden++
       else if (s.weight === 2) highValue++
+      if (c.status === 'Intervention Required') needsAction++
       atRisk += Number(c.stolen_amount) || 0
     }
-    return { highValue, golden, atRisk }
+    return { highValue, golden, atRisk, needsAction: needsAction || golden }
   }, [visible, now, bands])
 
   // Resolving used to add the ticket to `dismissed` and stop, which dropped it
   // from `visible` but left `selected` pointing at it. The topbar "Active" pill
   // and all three tactical screens then kept naming a complaint the operator had
   // just cleared. The selection has to move with the queue.
-  const resolve = useCallback(() => {
-    if (!active) return
-    const id = active.ticket_id
-    const next = visible.find(c => c.ticket_id !== id)
-    setDismissed(prev => new Set(prev).add(id))
-    setLastResolved(id)
-    onSelect?.(next ? next.ticket_id : '')
-  }, [active, visible, onSelect])
+  // Case actions.
+  //
+  // "Resolve" used to add the ticket to a local `dismissed` set and stop. The
+  // case vanished from this analyst's screen and nothing else in the system
+  // knew: no status changed, no audit entry was written, and a colleague opening
+  // the same queue still saw it as untouched work. These now go to the server,
+  // which records who did what against which case.
+  const [busyAction, setBusyAction] = useState('')
 
-  // `dismissed` only ever grew, so a misclick cost a page reload to undo.
-  const undoResolve = useCallback(() => {
-    if (!lastResolved) return
-    setDismissed(prev => {
-      const nextSet = new Set(prev)
-      nextSet.delete(lastResolved)
-      return nextSet
-    })
-    onSelect?.(lastResolved)
-    setLastResolved(null)
-  }, [lastResolved, onSelect])
+  const applyUpdate = useCallback(async (patch, message) => {
+    if (!active) return
+    setBusyAction(patch.status || 'assign')
+    try {
+      const updated = await endpoints.updateCase(active.ticket_id, { ...patch, actor: officer })
+      onCaseUpdated?.(updated)
+      toast(message)
+    } catch (err) {
+      toast(describeError(err), 'error')
+    } finally {
+      setBusyAction('')
+    }
+  }, [active, officer, onCaseUpdated, toast])
+
+  const setStatus = useCallback(
+    (status) => applyUpdate({ status }, `Case ${formatTicket(active?.ticket_id)} moved to ${status}.`),
+    [applyUpdate, active],
+  )
+
+  const assignToMe = useCallback(
+    () => applyUpdate({ assignee: officer }, `Case assigned to ${officer}.`),
+    [applyUpdate, officer],
+  )
+
+  const submitNote = useCallback(async () => {
+    if (!active || !noteText.trim()) return
+    setBusyAction('note')
+    try {
+      await endpoints.addNote(active.ticket_id, { text: noteText.trim(), author: officer })
+      setNoteText('')
+      setNoteOpen(false)
+      const rows = await endpoints.listNotes(active.ticket_id)
+      setNotes(rows)
+      onCaseUpdated?.({ ...active, note_count: rows.length })
+      toast('Note added to the case file.')
+    } catch (err) {
+      toast(describeError(err), 'error')
+    } finally {
+      setBusyAction('')
+    }
+  }, [active, noteText, officer, onCaseUpdated, toast])
+
+  const PAGE_SIZE = 12
+  const pageCount = Math.max(1, Math.ceil(visible.length / PAGE_SIZE))
+  const safePage = Math.min(page, pageCount - 1)
+  const pageRows = useMemo(
+    () => visible.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE),
+    [visible, safePage],
+  )
+
+  const activeId = active?.ticket_id
+  useEffect(() => {
+    if (!activeId) { setNotes([]); return }
+    let cancelled = false
+    endpoints.listNotes(activeId)
+      .then(rows => { if (!cancelled) setNotes(rows) })
+      .catch(() => { if (!cancelled) setNotes([]) })
+    return () => { cancelled = true }
+  }, [activeId])
 
   const activeSev = active ? severityOf(active, now, bands) : null
 
@@ -542,7 +633,6 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
   const [prediction, setPrediction] = useState(null)
   const [predicting, setPredicting] = useState(false)
   const [predictError, setPredictError] = useState('')
-  const activeId = active?.ticket_id
 
   useEffect(() => {
     if (!activeId) { setPrediction(null); return }
@@ -570,41 +660,42 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
     <div className="p-4 space-y-4">
       {/* ── Command metrics ─────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="aegis-panel p-3 border-l-4 border-l-blue-500">
-          <div className="mono text-[11px] text-zinc-400 uppercase tracking-wider font-semibold">In View</div>
-          <div className="text-2xl font-bold text-white mt-1 mono">{visible.length}</div>
-          <div className="text-[11px] text-zinc-500 mt-1">
-            {/* This is the loaded page, not a queue depth — the label said
-                "Queue Depth" over a number that is really QUEUE_LIMIT. */}
-            {health ? `of ${health.active_complaints.toLocaleString('en-IN')} on national feed` : 'Feed total unavailable'}
+        <div className="aegis-panel p-3">
+          <div className="text-[11px] text-zinc-500">Active cases</div>
+          <div className="text-[20px] font-semibold text-white mt-0.5 mono tnum">{visible.length}</div>
+          <div className="text-[11px] text-zinc-500 mt-0.5">
+            {health ? `of ${health.active_complaints.toLocaleString('en-IN')} on the national feed` : 'Feed total unavailable'}
           </div>
         </div>
-        <div className="aegis-panel p-3 border-l-4 border-l-red-500">
-          <div className="mono text-[11px] text-zinc-400 uppercase tracking-wider font-semibold">High Value</div>
-          <div className="text-2xl font-bold text-red-400 mt-1 mono">{stats.highValue}</div>
+        <div className="aegis-panel p-3">
+          <div className="text-[11px] text-zinc-500">High-value cases</div>
+          <div className="text-[20px] font-semibold text-red-400 mt-0.5 mono tnum">{stats.highValue}</div>
           {/* States the rule and the calibrated cut, both computed from the rows
               on screen, so the number can be checked against the queue itself. */}
-          <div className="text-[11px] text-red-400/80 mt-1">
+          <div className="text-[11px] text-zinc-500 mt-0.5">
             ≥ {amountShort(bands.high)} · top {Math.round(bands.share * 100)}% by loss
           </div>
-          {stats.golden > 0 && (
-            <div className="text-[11px] text-aegis-green mt-0.5 flex items-center gap-1">
-              <Radio size={10} className="animate-pulse-dot" />
-              {stats.golden} inside the golden hour
-            </div>
-          )}
         </div>
-        <div className="aegis-panel p-3 border-l-4 border-l-emerald-500">
-          <div className="mono text-[11px] text-zinc-400 uppercase tracking-wider font-semibold">Funds At Risk</div>
-          <div className="text-2xl font-bold text-emerald-400 mt-1 mono">{amountShort(stats.atRisk)}</div>
-          <div className="text-[11px] text-emerald-400/80 mt-1">Across the visible queue</div>
+        <div className="aegis-panel p-3">
+          <div className="text-[11px] text-zinc-500">Amount at risk</div>
+          <div className="text-[20px] font-semibold text-zinc-100 mt-0.5 mono tnum">{amountShort(stats.atRisk)}</div>
+          <div className="text-[11px] text-zinc-500 mt-0.5">Across the cases shown</div>
         </div>
-        <div className="aegis-panel p-3 border-l-4 border-l-purple-500">
-          <div className="mono text-[11px] text-zinc-400 uppercase tracking-wider font-semibold">Graph Corpus</div>
-          <div className="text-2xl font-bold text-purple-400 mt-1 mono">
-            {health ? health.embeddings_loaded.toLocaleString('en-IN') : '—'}
+        <div className="aegis-panel p-3">
+          <div className="text-[11px] text-zinc-500">Requiring action</div>
+          <div className={`text-[20px] font-semibold mt-0.5 mono tnum ${
+            stats.needsAction ? 'text-amber-400' : 'text-zinc-100'
+          }`}>
+            {stats.needsAction}
           </div>
-          <div className="text-[11px] text-zinc-500 mt-1">64-d GraphSAGE embeddings</div>
+          {/* Replaces a "Graph corpus" card that showed the embedding count --
+              an implementation statistic that answered no question an analyst
+              has. This answers the one they open the console to ask. */}
+          <div className="text-[11px] text-zinc-500 mt-0.5">
+            {stats.golden > 0
+              ? `${stats.golden} inside the golden hour`
+              : 'Marked intervention required'}
+          </div>
         </div>
       </div>
 
@@ -615,29 +706,20 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2">
                 <ShieldAlert size={16} className="text-aegis-green" />
-                <span className="mono text-[12px] font-bold tracking-wider text-white">1930 TRIAGE QUEUE</span>
+                <span className="text-[13px] font-semibold text-white">Case queue</span>
                 {/* Says what the sort actually does. "SEVERITY RANKED" in red
                     implied every row carried a severity worth alarming about. */}
-                <span className="text-[10px] mono text-zinc-400 font-semibold bg-ink-bg border border-ink-border px-2 py-0.5 rounded flex items-center gap-1">
-                  <AlertTriangle size={11} /> GOLDEN HOUR FIRST, THEN LOSS
+                <span className="text-[11px] text-zinc-500 bg-ink-bg border border-ink-border px-2 py-0.5 rounded flex items-center gap-1">
+                  <AlertTriangle size={11} /> Sorted: open window, then loss
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                {lastResolved && (
-                  <button
-                    onClick={undoResolve}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-ink-border bg-ink-bg text-zinc-300 mono text-[11px] hover:text-white hover:border-zinc-600 transition"
-                    title={`Restore ${formatTicket(lastResolved)} to the queue`}
-                  >
-                    <RotateCcw size={12} /> Undo resolve
-                  </button>
-                )}
                 <button
                   onClick={() => setModalOpen(true)}
                   disabled={backendDown}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-aegis-green text-black mono text-[11px] font-bold hover:bg-emerald-400 disabled:opacity-40 transition"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-aegis-green text-black text-[12px] font-medium hover:bg-emerald-400 disabled:opacity-40 transition-colors"
                 >
-                  <Plus size={14} /> Ingest Complaint
+                  <Plus size={14} /> Add case
                 </button>
               </div>
             </div>
@@ -647,33 +729,44 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
                 <Search size={13} className="text-zinc-500 shrink-0" />
                 <input
                   type="text"
-                  placeholder="Search ticket, victim, city…"
+                  placeholder="Search case, victim, city…"
                   value={q}
                   onChange={e => setQ(e.target.value)}
-                  className="bg-transparent outline-none text-[12px] mono w-full text-zinc-200 placeholder:text-zinc-600"
+                  className="bg-transparent outline-none text-[12px] w-full text-zinc-200 placeholder:text-zinc-600"
                 />
               </div>
               <select
-                value={filter}
-                onChange={e => setFilter(e.target.value)}
-                className="bg-ink-bg border border-ink-border rounded px-2.5 py-1.5 text-[11px] mono text-zinc-300 outline-none"
+                value={statusFilter}
+                onChange={e => { setStatusFilter(e.target.value); setPage(0) }}
+                aria-label="Filter by status"
+                className="bg-ink-bg border border-ink-border rounded px-2.5 py-1.5 text-[11.5px] text-zinc-300 outline-none"
               >
-                <option value="ALL">All Fraud Types</option>
+                <option value="OPEN">Open cases</option>
+                <option value="ALL">All statuses</option>
+                {STATUSES.map(st => <option key={st} value={st}>{st}</option>)}
+              </select>
+              <select
+                value={filter}
+                onChange={e => { setFilter(e.target.value); setPage(0) }}
+                aria-label="Filter by fraud type"
+                className="bg-ink-bg border border-ink-border rounded px-2.5 py-1.5 text-[11.5px] text-zinc-300 outline-none"
+              >
+                <option value="ALL">All fraud types</option>
                 {FRAUD_TYPES.map(f => <option key={f} value={f}>{f}</option>)}
               </select>
             </div>
 
-            <div className="space-y-2 max-h-[58vh] overflow-y-auto pr-1">
+            <div className="space-y-2 min-h-[300px]">
               {visible.length === 0 ? (
-                <div className="p-8 text-center text-zinc-500 mono text-[12px] leading-relaxed">
+                <div className="p-8 text-center text-zinc-500 text-[12.5px] leading-relaxed">
                   {backendDown
-                    ? 'Backend unreachable — no live queue to display.'
+                    ? 'Cannot reach the service — no queue to display.'
                     : complaints.length === 0
-                    ? 'Queue is empty. Ingest a complaint to start the pipeline.'
-                    : 'No complaints match the current filter.'}
+                    ? 'No cases yet. Add one to start.'
+                    : 'No cases match the current filters.'}
                 </div>
               ) : (
-                visible.map(c => (
+                pageRows.map(c => (
                   <TriageRow
                     key={c.ticket_id}
                     c={c}
@@ -685,6 +778,39 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
                 ))
               )}
             </div>
+
+            {visible.length > 0 && (
+              <div className="flex items-center justify-between gap-2 pt-2.5 mt-2 border-t border-ink-border text-[11.5px]">
+                <span className="text-zinc-500">
+                  {safePage * PAGE_SIZE + 1}–{Math.min(visible.length, (safePage + 1) * PAGE_SIZE)}
+                  {' of '}{visible.length}
+                  {visible.length !== complaints.length && (
+                    <span className="text-zinc-600"> · filtered from {complaints.length}</span>
+                  )}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setPage(p => Math.max(0, p - 1))}
+                    disabled={safePage === 0}
+                    className="px-2 py-1 rounded border border-ink-border text-zinc-300 disabled:opacity-35
+                               disabled:cursor-not-allowed hover:border-zinc-600 transition-colors"
+                  >
+                    Previous
+                  </button>
+                  <span className="px-2 text-zinc-500 tabular-nums">
+                    {safePage + 1} / {pageCount}
+                  </span>
+                  <button
+                    onClick={() => setPage(p => Math.min(pageCount - 1, p + 1))}
+                    disabled={safePage >= pageCount - 1}
+                    className="px-2 py-1 rounded border border-ink-border text-zinc-300 disabled:opacity-35
+                               disabled:cursor-not-allowed hover:border-zinc-600 transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -694,26 +820,101 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
             <div className="aegis-panel p-4 space-y-4">
               <div className="border-b border-ink-border pb-3 flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="mono text-[10px] uppercase tracking-wider text-zinc-400 font-semibold flex items-center gap-2 flex-wrap">
-                    <span>Selected Incident</span>
+                  <div className="text-[11px] text-zinc-500 flex items-center gap-2 flex-wrap">
+                    <span>Selected case</span>
                     {/* Same component as the queue row, so the two can never
                         disagree about the same complaint. */}
                     {activeSev && <SevBadge sev={activeSev} />}
                   </div>
-                  <div className="text-lg font-bold text-white mono mt-0.5 truncate">{formatTicket(active.ticket_id)}</div>
-                  <div className="text-[12px] mono text-zinc-400 mt-1 truncate">
+                  <div className="text-[17px] font-semibold text-white mono tnum mt-0.5 truncate">{formatTicket(active.ticket_id)}</div>
+                  <div className="text-[12.5px] text-zinc-400 mt-1 truncate">
                     <span className="text-white font-medium">{active.victim_name}</span> · {active.victim_bank}
                   </div>
-                  <div className="text-[11px] mono text-zinc-500 truncate">{active.victim_account}</div>
+                  <div className="mono text-[11.5px] text-zinc-500 truncate">{active.victim_account}</div>
                 </div>
-                <button
-                  onClick={resolve}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 mono text-[11px] font-bold transition shrink-0"
-                  title="Remove from the active queue"
-                >
-                  <CheckCircle2 size={13} /> Resolve
-                </button>
+                <StatusChip status={active.status || 'New'} />
               </div>
+
+              {/* Case actions. Each one goes to the server and is recorded
+                  against the case with the analyst who did it. */}
+              <div className="flex flex-wrap items-center gap-1.5 pb-3 border-b border-ink-border">
+                <select
+                  value={active.status || 'New'}
+                  onChange={e => setStatus(e.target.value)}
+                  disabled={!!busyAction}
+                  aria-label="Case status"
+                  className="bg-ink-bg border border-ink-border rounded px-2 py-1.5 text-[11.5px]
+                             text-zinc-200 outline-none disabled:opacity-50"
+                >
+                  {STATUSES.map(st => <option key={st} value={st}>{st}</option>)}
+                </select>
+
+                <button
+                  onClick={assignToMe}
+                  disabled={!!busyAction || active.assignee === officer}
+                  className="px-2.5 py-1.5 rounded border border-ink-border text-[11.5px] text-zinc-300
+                             hover:border-zinc-600 hover:text-white disabled:opacity-40
+                             disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+                  title={active.assignee === officer ? 'Already assigned to you' : 'Assign this case to yourself'}
+                >
+                  <UserPlus size={12} />
+                  {active.assignee === officer ? `Assigned · ${officer}` : 'Assign to me'}
+                </button>
+
+                <button
+                  onClick={() => setNoteOpen(v => !v)}
+                  disabled={!!busyAction}
+                  className="px-2.5 py-1.5 rounded border border-ink-border text-[11.5px] text-zinc-300
+                             hover:border-zinc-600 hover:text-white transition-colors flex items-center gap-1.5"
+                >
+                  <StickyNote size={12} /> Note{notes.length ? ` · ${notes.length}` : ''}
+                </button>
+
+                {busyAction && <Loader2 size={13} className="animate-spin text-zinc-500" />}
+              </div>
+
+              {noteOpen && (
+                <div className="rounded border border-ink-border bg-ink-bg p-2.5">
+                  <textarea
+                    value={noteText}
+                    onChange={e => setNoteText(e.target.value)}
+                    rows={3}
+                    placeholder="What did you find, or what did you do?"
+                    className="w-full bg-transparent text-[12.5px] text-zinc-200 outline-none resize-none
+                               placeholder:text-zinc-600"
+                  />
+                  <div className="flex justify-end gap-2 pt-1.5 border-t border-ink-border mt-1">
+                    <button
+                      onClick={() => { setNoteOpen(false); setNoteText('') }}
+                      className="px-2.5 py-1 rounded text-[11.5px] text-zinc-400 hover:text-white transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={submitNote}
+                      disabled={!noteText.trim() || busyAction === 'note'}
+                      className="px-2.5 py-1 rounded bg-aegis-green text-black text-[11.5px] font-medium
+                                 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+                    >
+                      Save note
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {notes.length > 0 && (
+                <div className="space-y-1.5">
+                  {notes.slice(0, 3).map(n => (
+                    <div key={n.id} className="rounded border border-ink-border bg-ink-bg px-2.5 py-2">
+                      <div className="flex items-baseline justify-between gap-2 text-[11px] text-zinc-500">
+                        <span className="mono">{n.author}</span>
+                        <span>{timeAgo(n.timestamp, now)}</span>
+                      </div>
+                      <div className="text-[12.5px] text-zinc-300 mt-0.5 leading-snug">{n.text}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <CaseStory
                 complaint={active}
@@ -724,10 +925,10 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
                 now={now}
               />
 
-              <div className="grid grid-cols-2 gap-2 text-[11px] mono">
+              <div className="grid grid-cols-2 gap-2 text-[11.5px]">
                 <div className="bg-ink-bg p-2.5 rounded border border-ink-border">
                   <div className="text-zinc-400">Stolen Amount</div>
-                  <div className="text-base font-bold text-red-400 mt-0.5">{amountFmt(active.stolen_amount)}</div>
+                  <div className="mono tnum text-[15px] font-semibold text-red-400 mt-0.5">{amountFmt(active.stolen_amount)}</div>
                 </div>
                 <div className="bg-ink-bg p-2.5 rounded border border-ink-border">
                   <div className="text-zinc-400">Category</div>
@@ -751,11 +952,11 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
               </div>
 
               <div className="pt-2 border-t border-ink-border space-y-2">
-                <div className="mono text-[11px] font-bold text-zinc-300">TACTICAL ACTIONS</div>
+                <div className="text-[12px] font-medium text-zinc-300">Investigation</div>
                 {[
-                  ['/map', MapPinned, 'text-red-400', 'hover:border-red-500/60 hover:bg-red-500/10', 'Tactical GIS Map', 'Ranked candidate locations & PCR dispatch'],
-                  ['/graph', GitBranch, 'text-blue-400', 'hover:border-blue-500/60 hover:bg-blue-500/10', 'Forensic Money-Flow Graph', 'Multi-hop layering & GNN risk per node'],
-                  ['/intercept', Zap, 'text-aegis-green', 'hover:border-aegis-green/60 hover:bg-aegis-green/10', '1-Click Emergency Freeze', 'Lock terminal accounts before cashout'],
+                  ['/map', MapPinned, 'text-red-400', 'hover:border-red-500/60 hover:bg-red-500/10', 'Cash-out locations', 'Ranked ATMs and field dispatch'],
+                  ['/graph', GitBranch, 'text-blue-400', 'hover:border-blue-500/60 hover:bg-blue-500/10', 'Transaction trail', 'Fund movement and account risk'],
+                  ['/intercept', Zap, 'text-aegis-green', 'hover:border-aegis-green/60 hover:bg-aegis-green/10', 'Intervention', 'Freeze the terminal account'],
                 ].map(([path, Icon, iconColor, hover, title, sub]) => (
                   <button
                     key={path}
@@ -765,7 +966,7 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
                     <div className="flex items-center gap-2 min-w-0">
                       <Icon size={16} className={`${iconColor} shrink-0`} />
                       <div className="min-w-0">
-                        <div className="mono text-[11px] font-bold text-white truncate">{title}</div>
+                        <div className="text-[12.5px] font-medium text-zinc-100 truncate">{title}</div>
                         <div className="mono text-[10px] text-zinc-400 truncate">{sub}</div>
                       </div>
                     </div>
@@ -775,13 +976,13 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
               </div>
             </div>
           ) : (
-            <div className="aegis-panel p-8 text-center text-zinc-500 mono text-[12px]">
-              Select a complaint from the queue.
+            <div className="aegis-panel p-8 text-center text-zinc-500 text-[12.5px]">
+              Select a case from the queue.
             </div>
           )}
 
           <Panel title="PIPELINE STATUS" right={health ? 'ONLINE' : 'OFFLINE'}>
-            <div className="p-3 grid grid-cols-2 gap-2 mono text-[11px]">
+            <div className="p-3 grid grid-cols-2 gap-2 text-[11.5px]">
               {[
                 ['ATM Directory', health ? health.atm_directory_size.toLocaleString('en-IN') : '—'],
                 // Was 'GNN Embeddings', the same health.embeddings_loaded figure

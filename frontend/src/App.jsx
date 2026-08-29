@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react'
 import { Topbar, Sidebar, MobileNav } from './components/Shell'
 import TriageFeed from './pages/TriageFeed'
 import useWebSocket from './hooks/useWebSocket'
+import { ToastProvider } from './components/Toast'
 
 // Leaflet and React Flow are the two heaviest dependencies in the bundle and
 // neither is needed for the landing screen. Splitting them keeps the triage
@@ -155,6 +156,16 @@ function Layout() {
     )
   }, [navigate])
 
+  // A case whose status or assignee changed has to update in the queue too,
+  // or the row an analyst just acted on still reads as untouched beside the
+  // panel that says otherwise.
+  const handleCaseUpdated = useCallback((record) => {
+    if (!record?.ticket_id) return
+    setComplaints(prev => prev.map(c => (
+      c.ticket_id === record.ticket_id ? { ...c, ...record } : c
+    )))
+  }, [])
+
   const handleIngested = useCallback((record) => {
     if (!record?.ticket_id) return
     setComplaints(prev =>
@@ -170,8 +181,9 @@ function Layout() {
   const backendDown = !!loadError && complaints.length === 0
 
   const contextValue = useMemo(() => ({
-    complaints, selected, onSelect: handleSelect, onIngested: handleIngested, backendDown,
-  }), [complaints, selected, handleSelect, handleIngested, backendDown])
+    complaints, selected, onSelect: handleSelect, onIngested: handleIngested,
+    onCaseUpdated: handleCaseUpdated, backendDown,
+  }), [complaints, selected, handleSelect, handleIngested, handleCaseUpdated, backendDown])
 
   return (
     <div className="h-screen flex flex-col bg-ink-bg overflow-hidden">
@@ -228,7 +240,9 @@ function Layout() {
 export default function App() {
   return (
     <BrowserRouter>
-      <Layout />
+      <ToastProvider>
+        <Layout />
+      </ToastProvider>
     </BrowserRouter>
   )
 }

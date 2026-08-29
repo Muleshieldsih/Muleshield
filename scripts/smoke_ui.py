@@ -205,12 +205,15 @@ def selection_check(page, cid: str) -> None:
     page.goto(f"{APP}/?c={cid}", wait_until="networkidle", timeout=90_000)
     page.wait_for_timeout(3500)
 
+    # Case references render as 1930-NNNNNN. They were TKT-XXXXXXXX until the
+    # two id formats in the store were unified behind one display reference.
     def shown():
-        m = re.search(r"SELECTED INCIDENT.*?(TKT-[A-Z0-9]+)",
+        m = re.search(r"Selected case.*?(1930-\d{6})",
                       " ".join(page.inner_text("body").split()))
         return m.group(1) if m else None
 
-    rows = [r for r in page.query_selector_all("button") if "TKT-" in (r.inner_text() or "")]
+    rows = [r for r in page.query_selector_all("button")
+            if re.search(r"1930-\d{6}", r.inner_text() or "")]
     if len(rows) < 4:
         note("selection", "too few queue rows to test selection")
         return

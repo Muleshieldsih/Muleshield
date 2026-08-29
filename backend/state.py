@@ -466,3 +466,126 @@ def get_all_atms() -> list[dict]:
 
 def log_freeze(freeze_record: dict) -> None:
     freeze_log[freeze_record["freeze_reference"]] = freeze_record
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CASE WORKFLOW
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# A complaint arrives and is worked. Until now `status` was written once as
+# "ACTIVE" and never read, so the console could show a queue but not a caseload:
+# nothing recorded that an analyst had looked at a case, formed a view, acted on
+# it, or closed it.
+#
+# State lives in the same in-memory dicts as everything else. It does not
+# survive a restart, which is honest about what this build is -- but every
+# transition is recorded while the process lives, and that is what makes the
+# audit trail below mean anything.
+
+CASE_STATUSES = [
+    "New",
+    "Under Review",
+    "Investigating",
+    "Intervention Required",
+    "Resolved",
+    "Closed",
+]
+
+# Terminal states. A case can be reopened out of them, but nothing auto-advances.
+CLOSED_STATUSES = {"Resolved", "Closed"}
+
+# Audit entries, newest last. A list rather than a dict because order is the
+# point: an audit trail that cannot be read in sequence is not a trail.
+audit_log: list[dict] = []
+
+# Per-case notes: complaint_id -> list of note dicts.
+case_notes: dict[str, list[dict]] = {}
+
+_AUDIT_LIMIT = 5000
+
+
+def record_audit(actor: str, action: str, obj: str, result: str = "ok",
+                 case_id: str = "") -> dict:
+    """
+    Append one entry to the audit trail.
+
+    Deliberately free of any judgement about what is worth recording -- callers
+    decide. The trail is capped so a long-running process cannot exhaust memory;
+    the oldest entries fall off, which is the wrong trade-off for a real system
+    and the right one for a demo that must not fall over.
+    """
+    entry = {
+        "id": f"AUD-{len(audit_log) + 1:06d}",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "actor": actor or "UNKNOWN",
+        "action": action,
+        "object": obj,
+        "result": result,
+        "case_id": case_id,
+    }
+    audit_log.append(entry)
+    if len(audit_log) > _AUDIT_LIMIT:
+        del audit_log[: len(audit_log) - _AUDIT_LIMIT]
+    return entry
+
+
+def get_audit(case_id: str = "", limit: int = 100) -> list[dict]:
+    """Newest first. Filtered to one case when `case_id` is given."""
+    rows = audit_log if not case_id else [e for e in audit_log if e["case_id"] == case_id]
+    return list(reversed(rows))[:limit]
+
+
+def case_status(complaint_id: str) -> str:
+    """
+    The working status of a case.
+
+    Seed complaints load with the legacy "ACTIVE", which is not one of the six
+    workflow states. Rather than rewrite 2,500 records on load, that value is
+    read as "New" -- an untouched case is exactly what it means.
+    """
+    rec = complaints.get(complaint_id) or {}
+    status = rec.get("status", "New")
+    return "New" if status == "ACTIVE" else status
+
+
+def update_case(complaint_id: str, *, status: Optional[str] = None,
+                assignee: Optional[str] = None, actor: str = "SYSTEM") -> Optional[dict]:
+    """Move a case through the workflow. Returns the updated record, or None."""
+    rec = complaints.get(complaint_id)
+    if rec is None:
+        return None
+
+    if status is not None:
+        if status not in CASE_STATUSES:
+            raise ValueError(f"unknown status {status!r}")
+        before = case_status(complaint_id)
+        rec["status"] = status
+        record_audit(actor, "Changed status", f"{before} -> {status}",
+                     case_id=complaint_id)
+
+    if assignee is not None:
+        rec["assignee"] = assignee
+        record_audit(actor, "Assigned case",
+                     assignee or "unassigned", case_id=complaint_id)
+
+    rec["updated_at"] = datetime.now(timezone.utc).isoformat()
+    return rec
+
+
+def add_note(complaint_id: str, text: str, author: str) -> Optional[dict]:
+    """Attach an investigation note to a case."""
+    if complaint_id not in complaints:
+        return None
+    note = {
+        "id": f"NOTE-{complaint_id}-{len(case_notes.get(complaint_id, [])) + 1:03d}",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "author": author,
+        "text": text,
+    }
+    case_notes.setdefault(complaint_id, []).append(note)
+    record_audit(author, "Added note", note["id"], case_id=complaint_id)
+    return note
+
+
+def get_notes(complaint_id: str) -> list[dict]:
+    return list(reversed(case_notes.get(complaint_id, [])))

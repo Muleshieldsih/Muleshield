@@ -174,8 +174,19 @@ class TestComplaintEndpoints:
     def test_ingested_complaint_has_correct_amount(self, ingested_complaint):
         assert ingested_complaint["stolen_amount"] == 85000.0
 
-    def test_ingested_complaint_has_status_active(self, ingested_complaint):
-        assert ingested_complaint["status"] == "ACTIVE"
+    def test_ingested_complaint_starts_in_the_new_state(self, ingested_complaint):
+        """
+        A freshly ingested case enters the workflow at "New".
+
+        This asserted "ACTIVE" until the case workflow existed. That value was
+        written once at ingestion and never read or changed by anything, so it
+        described nothing an analyst could act on. It is now the first of six
+        real states, and the stored legacy value is presented as "New" -- an
+        untouched case is exactly what it meant.
+        """
+        assert ingested_complaint["status"] == "New"
+        assert ingested_complaint["assignee"] is None
+        assert ingested_complaint["note_count"] == 0
 
     def test_get_complaint_by_id(self, client, ingested_complaint):
         tid = ingested_complaint["ticket_id"]
