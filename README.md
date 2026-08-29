@@ -5,7 +5,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688.svg)](https://fastapi.tiangolo.com/)
 [![PyTorch Geometric](https://img.shields.io/badge/PyG-GraphSAGE-orange.svg)](https://pytorch-geometric.readthedocs.io/)
 [![XGBoost](https://img.shields.io/badge/ML-XGBoost%20v2-green.svg)](https://xgboost.readthedocs.io/)
-[![Tests](https://img.shields.io/badge/Tests-237%2F237%20Passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-275%2F275%20Passed-brightgreen.svg)]()
 [![SIH 2026](https://img.shields.io/badge/SIH-2026%20Problem%20ID%3A%20SIH26184-red.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -265,7 +265,7 @@ attainable. FPR 0.0031, FNR 0.1086, 10,561 parameters.
 | Per-complaint graph build | < 500 ms | **~2 ms** ✅ |
 | Full national graph build (startup) | < 1200 ms | **~670 ms** ✅ |
 | End-to-end inference | < 200 ms | **~4.5 ms** ✅ |
-| Automated test coverage | 100% | **237 / 237** ✅ |
+| Automated test coverage | 100% | **275 / 275** ✅ |
 
 Reproduce with:
 
@@ -406,13 +406,27 @@ venv\Scripts\activate       # Windows
 pip install -r requirements.txt
 ```
 
-### 2. Start the FastAPI Backend
+### 2. Generate the dataset  *(required — the repo does not ship it)*
+```bash
+python scripts/generate_data.py
+```
+`data/transactions.csv` (~114 MB) and `data/graph_edges.csv` (~40 MB) exceed GitHub's
+file limit, so they are gitignored rather than committed. Generation is deterministic
+at seed 42 — the same corpus every time — and takes a few minutes. **Skip this and the
+backend starts, but every screen renders empty.**
+
+Pre-trained models are committed, so training is optional. To reproduce them:
+```bash
+python engine/train_gnn.py && python engine/embed.py && python engine/train_xgb.py
+```
+
+### 3. Start the FastAPI Backend
 ```bash
 python -m uvicorn backend.main:app --port 8000 --reload
 # API Documentation (Swagger UI): http://localhost:8000/docs
 ```
 
-### 3. Start the React Frontend Dashboard
+### 4. Start the React Frontend Dashboard
 ```bash
 cd frontend
 npm install
@@ -420,7 +434,7 @@ npm run dev
 # Command Center UI: http://localhost:5173
 ```
 
-### 4. Run the Full Test Suite (237 Tests)
+### 5. Run the Full Test Suite (275 Tests)
 ```bash
 # Run AI engine unit tests (224 tests)
 python -m pytest tests/ -v
@@ -428,6 +442,16 @@ python -m pytest tests/ -v
 # Run FastAPI backend tests (51 tests)
 python -m pytest backend/tests/ -v
 ```
+
+**UI smoke test** — drives every button, link, input and select in the console
+against the live backend, reporting console errors, failed requests and controls
+with no visible effect. Needs both servers running:
+```bash
+python scripts/smoke_ui.py
+```
+Last run: **209 controls across 4 routes, 0 console errors, 0 failed requests**
+in normal operation. The only 404 is the deliberate existence-check that discards
+a stale complaint id.
 
 ---
 
@@ -449,13 +473,13 @@ python -m pytest backend/tests/ -v
   - WebSocket broadcaster (`/ws/feed`) for live event push.
 - [x] **Phase 4: Tactical Command Dashboard** *(Live on port 5173)*
   - 4 interactive screens: Triage Queue, Tactical GIS Map, Forensic Graph, and 1-Click Interception.
-- [x] **Phase 4.5: Hardening Pass** *(237/237 Tests Passing)*
+- [x] **Phase 4.5: Hardening Pass** *(275/275 Tests Passing)*
   - Live-ingested complaints now run the full GNN + XGBoost pipeline (chain grounded on real graph accounts).
   - Velocity / fund-splitting detections surfaced from `graph_engine.py` instead of static placeholders.
   - Node risk switched to the trained GraphSAGE classification head — `sigmoid(Wh + b)`.
   - Bank-affinity features repaired (were constant), model retrained; ATM addresses aligned to their own city.
   - Self-hosted fonts + Leaflet CSS and basemap-failure fallback for offline venues.
-- [x] **Phase 4.6: Leakage Removal & Honest Re-baselining** *(237/237 Tests Passing)*
+- [x] **Phase 4.6: Leakage Removal & Honest Re-baselining** *(275/275 Tests Passing)*
   - Rebuilt the generator so mule status is fixed before any transaction exists.
   - Added 29,998 legitimate transactions so the classes genuinely overlap.
   - Cashout ATM + delay sampled by a choice model and stored as ground truth.

@@ -42,3 +42,11 @@ frontend/dist/
 # The small CSVs stay tracked so the repo is inspectable without a full run.
 data/transactions.csv
 data/graph_edges.csv
+
+# Screen recordings and scratch analysis output. The underscore-prefixed files
+# are per-run diagnostics written by the evaluation scripts; the reproducible
+# results they summarise live in data/metrics.json.
+*.mp4
+*.mov
+data/_*.csv
+data/_*.npy

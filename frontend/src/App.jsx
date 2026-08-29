@@ -12,6 +12,26 @@ const TacticalMap = lazy(() => import('./pages/TacticalMap'))
 const ForensicGraph = lazy(() => import('./pages/ForensicGraph'))
 const Interception = lazy(() => import('./pages/Interception'))
 
+function NotFound({ onHome }) {
+  return (
+    <div className="p-10 grid place-items-center text-center">
+      <div className="mono">
+        <div className="text-[13px] text-zinc-300 font-bold">Screen not found</div>
+        <div className="text-[11px] text-zinc-500 mt-1.5">
+          <span className="text-zinc-400">{window.location.pathname}</span> is not a console route.
+        </div>
+        <button
+          onClick={onHome}
+          className="mt-4 px-3 py-1.5 rounded border border-aegis-green/50 bg-ink-panel
+                     text-[11px] text-white hover:bg-ink-surface transition"
+        >
+          Back to triage queue
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function RouteFallback() {
   return (
     <div className="p-10 grid place-items-center mono text-[12px] text-zinc-500">
@@ -162,6 +182,10 @@ function Layout() {
               <Route path="/map" element={<TacticalMap />} />
               <Route path="/graph" element={<ForensicGraph />} />
               <Route path="/intercept" element={<Interception />} />
+              {/* Without a catch-all, an unknown URL rendered the shell around an
+                  empty <main> -- a blank console with no indication anything was
+                  wrong. A mistyped link should say so and offer the way back. */}
+              <Route path="*" element={<NotFound onHome={() => goTo('/')} />} />
             </Routes>
           </Suspense>
         </main>
