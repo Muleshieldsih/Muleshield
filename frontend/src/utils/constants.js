@@ -28,21 +28,35 @@ export const CITIES = [
   'Pune', 'Jaipur', 'Lucknow', 'Gurgaon', 'Jamtara', 'Deoghar',
 ]
 
-/** Benchmarked model figures, from engine/train_xgb.py + train_gnn.py. */
-// Measured figures, each with the naive baseline it beats. Regenerate with
-// `python engine/train_xgb.py` and `python scripts/evaluate_baselines.py`.
-//
+/** Benchmarked model figures — generated, never typed. */
 // These previously read 98.5% Top-3 / 1.2 s MAE / 0.9996 F1. Those numbers were
 // retracted by the leakage audit (OVERNIGHT_ML_AUDIT.md) and were still being
-// displayed in the console long after every document had been corrected.
+// displayed in the console long after every document had been corrected. They
+// survived because they were hand-written here, so nothing tied them to a
+// trained model.
+//
+// Now they are not written here at all. model_stats.json is generated from
+// data/metrics.json, which only the training and evaluation scripts write:
+//
+//   python engine/train_gnn.py            -> detection
+//   python scripts/evaluate_baselines.py  -> detection_baselines
+//   python engine/train_xgb.py            -> location  (+ refreshes this file)
+//   python scripts/export_metrics.py      -> refresh without retraining
+//
+// Raw numbers live in the JSON; this module owns how they are displayed, so
+// there is exactly one place that decides what '87.4%' looks like.
+import stats from '../data/model_stats.json'
+
 export const MODEL_STATS = {
-  zoneContainment: '87.4%',
-  zoneBaseline: '78.5%',
-  searchCost: '8 of 1,000',
-  countdownMae: '11.8 min',
-  countdownBaseline: '15.0 min',
-  gnnF1: '0.8955',
-  gnnBaseline: '0.8463',
+  zoneContainment: pctFmt(stats.zoneContainment),
+  zoneBaseline: pctFmt(stats.zoneBaselineNearest3),
+  searchCost: `${Math.round(stats.zoneMedianAtms).toLocaleString('en-IN')} of ${stats.atmTotal.toLocaleString('en-IN')}`,
+  zoneRadius: `${stats.zoneMedianRadiusKm.toFixed(1)} km`,
+  countdownMae: `${stats.countdownMae.toFixed(1)} min`,
+  countdownBaseline: `${stats.countdownBaseline.toFixed(1)} min`,
+  gnnF1: stats.gnnF1.toFixed(4),
+  gnnBaseline: stats.gnnBaseline.toFixed(4),
+  gnnBaselineModel: stats.gnnBaselineModel,
 }
 
 export function amountFmt(n) {

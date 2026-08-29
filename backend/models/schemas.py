@@ -131,7 +131,7 @@ class EmbeddingResponse(BaseModel):
 # ─────────────────────────────────────────────────────────────────────────────
 
 class ATMPrediction(BaseModel):
-    """Single ATM candidate from XGBoost Top-3."""
+    """One ranked candidate cash-out location."""
     rank: int
     atm_id: str
     confidence: float
@@ -148,7 +148,7 @@ class SearchZone(BaseModel):
 
     SIH26184 asks for likely cash withdrawal *locations*. A unit is dispatched to
     an area, not to a single machine, so the zone is the deliverable and the
-    Top-3 ATM list is the tactical drill-down inside it.
+    ranked candidate list is the tactical drill-down inside it.
     """
     lat: float
     lon: float
@@ -162,7 +162,7 @@ class PredictionResponse(BaseModel):
     """Full cashout prediction for GET /api/v1/predict/cashout/{id}"""
     complaint_id: str
     search_zone: Optional[SearchZone] = None
-    top3_atms: list[ATMPrediction]
+    ranked_candidates: list[ATMPrediction]
     time_to_cashout_minutes: float
     # 5th/95th-percentile band. The delay carries irreducible noise, so a point
     # estimate alone overstates what is knowable.

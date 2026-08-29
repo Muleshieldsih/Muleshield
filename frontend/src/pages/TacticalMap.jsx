@@ -213,7 +213,7 @@ export default function TacticalMap() {
       .then(data => {
         if (cancelled) return
         setPrediction(data)
-        setSelectedAtmId(data.top3_atms?.[0]?.atm_id || '')
+        setSelectedAtmId(data.ranked_candidates?.[0]?.atm_id || '')
       })
       .catch(err => {
         if (cancelled) return
@@ -225,7 +225,7 @@ export default function TacticalMap() {
     return () => { cancelled = true }
   }, [complaintId, resolving])
 
-  const atms = useMemo(() => prediction?.top3_atms || [], [prediction])
+  const atms = useMemo(() => prediction?.ranked_candidates || [], [prediction])
   const activeAtm = atms.find(a => a.atm_id === selectedAtmId) || atms[0] || null
   const { label, remaining } = useCountdown(prediction?.time_to_cashout_minutes)
 
@@ -247,7 +247,7 @@ export default function TacticalMap() {
     <div className="grid grid-cols-12 gap-3 p-3">
       <div className="col-span-12 lg:col-span-8">
         <Panel
-          title={`TACTICAL GIS — ATM INTERCEPTION (${complaintId || '—'})`}
+          title={`TACTICAL GIS — PRIORITY SEARCH LOCATIONS (${complaintId || '—'})`}
           right={loading ? 'predicting…' : prediction ? `${label} remaining` : ''}
         >
           <div className="h-[64vh] relative">
@@ -284,7 +284,7 @@ export default function TacticalMap() {
                   </span>
                   {activeAtm && (
                     <span className="px-2.5 py-1 rounded-full bg-red-500/20 border border-red-500/40 text-red-300 font-semibold backdrop-blur-sm">
-                      Target: {activeAtm.atm_id} (#{activeAtm.rank})
+                      Priority {activeAtm.rank}: {activeAtm.atm_id}
                     </span>
                   )}
                   {tilesOffline && (
@@ -308,7 +308,7 @@ export default function TacticalMap() {
         <div className="aegis-panel p-3">
           <div className="flex items-center justify-between pb-2 border-b border-ink-border">
             <span className="mono text-[11px] tracking-[0.14em] text-zinc-400 font-semibold uppercase">
-              Target ATM Ranking
+              Priority Search Locations
             </span>
             <span className="mono text-[10px] text-aegis-green font-bold">XGBoost v2</span>
           </div>
@@ -389,7 +389,7 @@ export default function TacticalMap() {
               {prediction.search_zone && (
                 <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-2.5">
                   <div className="mono text-[10px] text-amber-300/90 uppercase tracking-wide">
-                    Predicted search zone
+                    Search zone
                   </div>
                   <div className="mono text-[15px] font-bold text-amber-200 mt-0.5">
                     {prediction.search_zone.radius_km.toFixed(2)} km radius
@@ -414,7 +414,7 @@ export default function TacticalMap() {
                   }
                 />
                 <Stat
-                  label="Interception conf."
+                  label="Rank-1 share"
                   value={`${((activeAtm?.confidence ?? prediction.interception_confidence) * 100).toFixed(1)}%`}
                   tone="good"
                 />

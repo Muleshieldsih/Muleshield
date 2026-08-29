@@ -42,6 +42,7 @@ sys.path.insert(0, str(ROOT / "engine"))
 
 from gnn_model import (GraphSAGEMule, FEATURE_COLS, IN_CHANNELS, OUT_CHANNELS,
                        derive_features)
+from metrics_io import write_metrics
 
 DATA_DIR = ROOT / "data"
 MODELS_DIR = ROOT / "models"
@@ -429,3 +430,11 @@ if __name__ == "__main__":
     target_met = "PASS" if f1 >= 0.85 else "FAIL (target: F1 > 0.85)"
     print(f"  Final Test F1: {f1:.4f}  [{target_met}]")
     print("=" * 60)
+
+    # ── Publish to the ledger ────────────────────────────────────────────────
+    # The checkpoint already carries these; the ledger is what the deck card and
+    # the console read, so they land there too rather than being retyped.
+    ckpt_metrics = torch.load(MODEL_PATH, map_location="cpu",
+                              weights_only=False)["metrics"]
+    write_metrics("detection", ckpt_metrics, source="python engine/train_gnn.py")
+    print("\n  [OK] Wrote detection metrics to data/metrics.json")

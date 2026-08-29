@@ -38,7 +38,7 @@ from feature_builder import (
     atms_within_radius,
     compute_transaction_velocity,
 )
-from xgb_model import MuleXGBPredictor
+from xgb_model import MuleXGBPredictor, OPERATING_K
 
 DATA_DIR = ROOT / "data"
 MODELS_DIR = ROOT / "models"
@@ -322,47 +322,47 @@ class TestTop3Prediction:
         result = predictor.predict(X[0], node_lat=28.6139, node_lon=77.2090)
         assert isinstance(result, dict)
 
-    def test_predict_has_top3_atms(self, predictor, training_set):
-        """AC3: Result must have 'top3_atms' key."""
+    def test_predict_has_ranked_candidates(self, predictor, training_set):
+        """AC3: Result must have 'ranked_candidates' key."""
         X, _, _, _ = training_set
         result = predictor.predict(X[0], node_lat=28.6139, node_lon=77.2090)
-        assert "top3_atms" in result
-        assert isinstance(result["top3_atms"], list)
+        assert "ranked_candidates" in result
+        assert isinstance(result["ranked_candidates"], list)
 
     def test_top3_has_exactly_3_entries(self, predictor, training_set):
-        """AC3: top3_atms must have exactly 3 entries."""
+        """AC3: ranked_candidates must have exactly 3 entries."""
         X, _, _, _ = training_set
         result = predictor.predict(X[0], node_lat=28.6139, node_lon=77.2090)
-        assert len(result["top3_atms"]) == 3
+        assert len(result["ranked_candidates"]) == OPERATING_K
 
     def test_top3_entries_have_required_fields(self, predictor, training_set):
         """AC3: Each ATM entry must have atm_id, confidence, rank."""
         X, _, _, _ = training_set
         result = predictor.predict(X[0], node_lat=28.6139, node_lon=77.2090)
-        for entry in result["top3_atms"]:
+        for entry in result["ranked_candidates"]:
             assert "atm_id" in entry
             assert "confidence" in entry
             assert "rank" in entry
 
-    def test_top3_ranks_are_1_2_3(self, predictor, training_set):
-        """Ranks must be 1, 2, 3 in order."""
+    def test_ranks_are_dense_and_ordered(self, predictor, training_set):
+        """Ranks must be 1..K in order. K moved from 3 to OPERATING_K = 5."""
         X, _, _, _ = training_set
         result = predictor.predict(X[0], node_lat=28.6139, node_lon=77.2090)
-        ranks = [e["rank"] for e in result["top3_atms"]]
-        assert ranks == [1, 2, 3]
+        ranks = [e["rank"] for e in result["ranked_candidates"]]
+        assert ranks == list(range(1, OPERATING_K + 1))
 
     def test_confidence_scores_sum_to_le_1(self, predictor, training_set):
         """Top-3 confidence scores must sum to <= 1.0."""
         X, _, _, _ = training_set
         result = predictor.predict(X[0], node_lat=28.6139, node_lon=77.2090)
-        total_conf = sum(e["confidence"] for e in result["top3_atms"])
+        total_conf = sum(e["confidence"] for e in result["ranked_candidates"])
         assert total_conf <= 1.0 + 1e-4, f"Confidence sum > 1: {total_conf}"
 
     def test_confidence_scores_are_positive(self, predictor, training_set):
         """All confidence scores must be > 0."""
         X, _, _, _ = training_set
         result = predictor.predict(X[0], node_lat=28.6139, node_lon=77.2090)
-        for e in result["top3_atms"]:
+        for e in result["ranked_candidates"]:
             assert e["confidence"] >= 0.0
 
     def test_top3_atm_ids_are_valid(self, predictor, training_set, atm_df):
@@ -371,7 +371,7 @@ class TestTop3Prediction:
         valid_ids = set(atm_df["atm_id"])
         for i in range(min(20, len(X))):
             result = predictor.predict(X[i], node_lat=28.6139, node_lon=77.2090)
-            for e in result["top3_atms"]:
+            for e in result["ranked_candidates"]:
                 assert e["atm_id"] in valid_ids, \
                     f"Unknown ATM ID: {e['atm_id']}"
 
@@ -392,7 +392,7 @@ class TestTop3Prediction:
         assert isinstance(results, list)
         assert len(results) == 10
         for r in results:
-            assert "top3_atms" in r
+            assert "ranked_candidates" in r
 
 
 # ─────────────────────────────────────────────
@@ -498,7 +498,7 @@ class TestInferenceSpeed:
 
         assert elapsed_ms < 200, \
             f"End-to-end took {elapsed_ms:.2f}ms — exceeds 200ms AC"
-        assert "top3_atms" in result
+        assert "ranked_candidates" in result
 
 
 # ─────────────────────────────────────────────
@@ -536,7 +536,7 @@ class TestIntegration:
             )
             result = predictor.predict(feat, node_lat=28.6139, node_lon=77.2090)
 
-            assert len(result["top3_atms"]) == 3
+            assert len(result["ranked_candidates"]) == OPERATING_K
             assert result["time_to_cashout_minutes"] > 0
             assert 0.0 <= result["interception_confidence"] <= 1.0
 
@@ -554,7 +554,7 @@ class TestIntegration:
         loaded = MuleXGBPredictor.load(tmp_path_pkl)
         reloaded = loaded.predict(sample, node_lat=28.6139, node_lon=77.2090)
 
-        assert orig["top3_atms"][0]["atm_id"] == reloaded["top3_atms"][0]["atm_id"]
+        assert orig["ranked_candidates"][0]["atm_id"] == reloaded["ranked_candidates"][0]["atm_id"]
         assert orig["time_to_cashout_minutes"] == pytest.approx(
             reloaded["time_to_cashout_minutes"], abs=0.01
         )

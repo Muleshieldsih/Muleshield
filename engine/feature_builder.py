@@ -577,7 +577,8 @@ class FeatureBuilder:
         self._graph = g
         self._acct_atm_hist = acct_atm
 
-    def neighbourhood_prior(self, account: str, cand_idx: np.ndarray) -> np.ndarray:
+    def neighbourhood_prior(self, account: str, cand_idx: np.ndarray,
+                            hops: int | None = None) -> np.ndarray:
         """
         Count historical cashouts at each candidate ATM by the account's crew.
 
@@ -599,7 +600,7 @@ class FeatureBuilder:
         # hops frequently stops just short of the rest of the ring.
         neigh = {account}
         frontier = {account}
-        for _ in range(CREW_HOPS):
+        for _ in range(CREW_HOPS if hops is None else hops):
             nxt = set()
             for n in frontier:
                 nxt.update(g.neighbors(n))

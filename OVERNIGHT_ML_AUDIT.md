@@ -197,6 +197,67 @@ The learned utility weights recover the generative parameters, which an evaluato
 
 ---
 
+## 7b. Top-K containment curve — the operating point
+
+Measured by `scripts/topk_curve.py` against the **shipped** checkpoint on the held-out
+complaints of the same seed-42 `GroupShuffleSplit` that `train_xgb.py` trains on. No retraining,
+no tuning. Containment counts a retrieval failure as a miss.
+
+| K | Containment | Distance-only | Search reduction | Retrieval fail | Ranking fail |
+|---|---|---|---|---|---|
+| 1 | 0.2654 | 0.2476 | 99.90% | 0.00% | 73.46% |
+| 2 | 0.4256 | 0.4013 | 99.80% | 0.00% | 57.44% |
+| 3 | 0.5615 | 0.5485 | 99.70% | 0.00% | 43.85% |
+| 4 | 0.6489 | 0.6359 | 99.60% | 0.00% | 35.11% |
+| **5** | **0.7136** | 0.7217 | **99.50%** | 0.00% | 28.64% |
+| 6 | 0.7896 | 0.7767 | 99.40% | 0.00% | 21.04% |
+| 8 | 0.8689 | 0.8689 | 99.20% | 0.00% | 13.11% |
+| 10 | 0.9175 | 0.9142 | 99.00% | 0.00% | 8.25% |
+
+n = 618 held-out cashouts, 1,000-ATM directory, 0.003 ms/cashout to rank.
+
+**Top-5 containment is 0.7136.** It is not 87.4% — that figure is the adaptive search zone at a
+median of 8 ATMs, a different operating point, and the two must not be conflated.
+
+### Retrieval vs ranking
+
+**Retrieval never fails.** The true ATM is inside the 25-candidate pool in 618 of 618 cases, so
+no amount of pool widening can help and every miss is a ranking miss. But of the 177 misses at
+K=5, **94.9% are unavoidable**: the true ATM sat outside the top-5 of the *true generative
+posterior*, i.e. the offender made a low-probability choice. Only **9 of 618 (1.5%)** are genuine
+model error.
+
+| | Misses | Hits |
+|---|---|---|
+| median p(true ATM) | 0.0447 | 0.1745 |
+| effective # plausible ATMs | 10.57 | 8.31 |
+| median distance (km) | 11.01 | 5.12 |
+
+### Why no model change was made
+
+The ranker is **statistically indistinguishable from distance-sorting at every K** (paired
+McNemar over the same 618 cashouts; no p < 0.05, and at K=5 distance is ahead by 0.008). That is
+not a defect to fix — it is what the ceiling looks like. Top-1 equals the Bayes bound exactly, and
+Top-5 sits 0.8 points under it.
+
+A crew-representation sweep was run on **validation only** (inner split of the training
+complaints; the test set was never touched). `crew_prior` flags a mean of **20.3 of 25**
+candidates at the shipped `CREW_HOPS = 3`, so it is nearly constant within a group and largely
+cancels in the conditional-logit softmax. Narrowing to 1 hop sharpens it tenfold — 2.16 flagged —
+and changes containment by ±0.008, i.e. nothing:
+
+| hops | flagged/25 | val@1 | val@3 | val@5 |
+|---|---|---|---|---|
+| 1 | 2.16 | 0.2770 | 0.5790 | 0.7355 |
+| 2 | 6.48 | 0.2770 | 0.5759 | 0.7340 |
+| 3 (shipped) | 20.35 | 0.2754 | 0.5712 | 0.7371 |
+| distance only | — | 0.2723 | 0.5587 | 0.7230 |
+
+Three very different crew representations land within noise of each other. **Not shipped** — a
+change that does not improve a downstream metric does not go in, however much better the feature
+looks. Louvain/Leiden community detection was therefore not attempted: the evidence says the
+bottleneck is the generator's stochastic choice law, not the crew representation.
+
 ## 8. Countdown
 
 | Metric | Value |
@@ -258,28 +319,39 @@ The GNN earns its place by naming freeze targets and by supplying crew structure
 
 ---
 
-## 10b. Known open issue — risk-score calibration
+## 10b. RESOLVED — risk-score calibration transfer
 
-Isotonic calibration was fitted on the validation split and stored in the checkpoint
-(`train_gnn.py`), and the API serves through it (`backend/state.gnn_risk_score`). The curve
-itself is sound, but it does **not** transfer cleanly to the cached-embedding path:
+Previously open. The served [0.70, 0.95) band held 2,089 accounts at a 0.5% true mule rate where
+it should have held ~80%, and the cause was recorded here as "a small mismatch" between the
+training forward pass and the cached-embedding path. It was not small.
 
-| Calibrated band | Accounts | Actual mule rate |
-|---|---|---|
-| [0.00, 0.10) | 1,615 | 0.001 |
-| [0.40, 0.70) | 106 | 0.009 |
-| **[0.70, 0.95)** | **2,089** | **0.005** |
-| [0.95, 1.00] | 112 | 0.866 |
+**Cause.** `engine/embed.py` applied the `StandardScaler` to a `data.x` that `load_pyg_data`
+had **already standardized**. Every cached embedding was therefore produced from doubly
+normalized inputs, deviating from the training forward pass by up to **167.9** per dimension.
+The isotonic curve — correctly fitted, on validation, against training-path scores — was then
+being applied to scores from a different function. A second defect in the same file: the
+single-complaint path read `FEATURE_COLS` (which includes the 5 `DERIVED_FEATURE_COLS`) without
+calling `derive_features()`, so a third of every subgraph feature vector was silently `0.0`.
 
-The [0.70, 0.95) band should hold ~80% mules and holds 0.5%. The likely cause is a small
-mismatch between the training forward pass (`model(x, edge_index)`) and the served path
-(classifier head applied to embeddings cached by `embed.py`). The **ordering** is unaffected —
-F1/AUC/PR-AUC in §5 are computed from the training path and are correct — but the number shown
-in the Node Inspector should not be presented as a probability until this is resolved.
+This survived because ranking inside a traced chain still looked plausible. Nothing reads as
+wrong until a probability band is compared against labels.
 
-**Recommendation:** either recompute calibration against the cached-embedding scores, or show
-the risk as a rank/percentile in the UI until it is fixed. Do not claim calibrated
-probabilities to judges in the meantime.
+**After the fix** (`max|cached − fresh| = 0.0`, held-out test split):
+
+| Calibrated band | Accounts | Actual mule rate | Before |
+|---|---|---|---|
+| [0.00, 0.30) | 7,274 | 0.003 | 0.002 |
+| [0.50, 0.70) | 3 | 0.333 | 0.000 |
+| **[0.70, 0.95)** | **218** | **0.899** | **0.006** |
+| [0.95, 1.00] | 4 | 1.000 | 0.838 |
+
+Displayed scores are calibrated probabilities again, verified on held-out data. Guarded by
+`tests/test_calibration_transfer.py`, which compares the two paths directly and checks the bands
+against ground truth rather than trusting that they agree.
+
+ATM figures are unaffected: the ranker is fitted on `X[:, RANK_CONTEXT_DIM:]`, and the GNN
+probability is a context feature that is constant within a candidate group. Re-running the
+containment curve after the fix reproduced every cell exactly.
 
 ## 11. Remaining bottlenecks
 
@@ -289,7 +361,7 @@ probabilities to judges in the meantime.
    neighbourhood is a weak proxy for syndicate membership; community detection (Louvain) on
    the mule subgraph would be the principled replacement.
 3. **Label noise floor** — 8%/0.2% caps F1 at 0.927. We are at 0.8955.
-4. **Calibration transfer** — see §10b; ordering is correct, displayed probabilities are not.
+4. ~~Calibration transfer~~ — **fixed**, see §10b. Served bands verified against held-out labels.
 5. **Prevalence** — 2.95% is far more realistic than the original 19.8%, but real prevalence
    is under 1%. Precision@K would be the right headline there.
 
@@ -298,7 +370,7 @@ probabilities to judges in the meantime.
 1. Countdown: richer terminal-account speed features (dwell measured over the account's
    *outgoing* legs only, rather than all traffic).
 2. `crew_prior` via community detection instead of k-hop.
-3. Fix calibration transfer (§10b) — small, and it removes a demo-visible credibility risk.
+3. ~~Fix calibration transfer (§10b)~~ — **done**. Cause was a double-applied scaler in `embed.py`.
 4. Precision@K reporting at a realistic alert budget.
 
 ## 13. What to STOP optimizing

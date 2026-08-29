@@ -38,6 +38,7 @@ sys.path.insert(0, str(ROOT / "engine"))
 DATA = ROOT / "data"
 
 from gnn_model import FEATURE_COLS, derive_features  # noqa: E402
+from metrics_io import write_metrics                 # noqa: E402
 
 
 def _hav(lat, lon, lats, lons):
@@ -216,9 +217,31 @@ def main():
               f'{fmt(r["pr_auc"]):>9}{fmt(r["precision"]):>9}{fmt(r["recall"]):>9}')
 
     best_naive = df.iloc[:-1]["f1"].max()
+    best_naive_model = str(df.iloc[:-1].loc[df.iloc[:-1]["f1"].idxmax(), "model"])
     print("-" * 92)
     print(f'  Lift over the best non-graph baseline: {m["test_f1"] - best_naive:+.4f} F1')
     print(f'  Decision threshold (tuned on validation): {m.get("threshold", 0.5):.4f}')
+
+    # ── Publish to the ledger ────────────────────────────────────────────────
+    # This is the only place a non-graph baseline is fitted, so it is the only
+    # place allowed to say what "best non-graph" means. It is a real max over
+    # the rows above, not whichever model happens to sit second-from-last in a
+    # list — that assumption is what let the card and the console disagree.
+    write_metrics(
+        "detection_baselines",
+        {
+            "per_model_f1": {str(r["model"]): float(r["f1"])
+                             for _, r in df.iloc[:-1].iterrows()},
+            "best_non_graph": float(best_naive),
+            "best_non_graph_model": best_naive_model,
+            "gnn_test_f1": float(m["test_f1"]),
+            "lift_over_best_non_graph": float(m["test_f1"] - best_naive),
+            "n_test_nodes": int(len(yte)),
+        },
+        source="python scripts/evaluate_baselines.py",
+    )
+    print(f'  [OK] Wrote detection_baselines to data/metrics.json '
+          f'(best non-graph: {best_naive_model})')
 
     # ── Precision@K: what an alert budget actually buys ──────────────────────
     base_rate = float(yte.mean())

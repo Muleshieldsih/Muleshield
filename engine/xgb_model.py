@@ -24,7 +24,7 @@ does not run.
 
 Inference output per complaint:
     {
-        "top3_atms": [{"atm_id": ..., "confidence": ..., "rank": 1}, ...],
+        "ranked_candidates": [{"atm_id": ..., "confidence": ..., "rank": 1}, ...],
         "search_zone": {"lat": ..., "lon": ..., "radius_km": ..., "atm_count": ...},
         "time_to_cashout_minutes": 23.4,
         "interception_confidence": 0.91,
@@ -47,6 +47,17 @@ XGB_MODEL_PATH = MODELS_DIR / "xgb_cashout.pkl"
 # serving expand the same neighbourhood; a mismatch silently shrinks the strongest
 # non-distance signal at serving time.
 CREW_HOPS = 3
+
+# How many ranked candidate locations the system returns.
+#
+# SIH26184 asks for withdrawal *locations* to search, not one machine. The
+# operating point is 5: measured containment at K=5 is 0.7136 on the held-out
+# split (scripts/topk_curve.py), against 0.5615 at K=3, while still cutting the
+# search from 1,000 ATMs to 5 -- a 99.5% reduction. K is exposed here rather
+# than defaulted at each call site, because the interface contract ("Top 5
+# Priority Search Locations") and the number the evaluation reports must not be
+# able to drift apart.
+OPERATING_K = 5
 
 
 def _haversine_array(lat: float, lon: float, lats: np.ndarray, lons: np.ndarray) -> np.ndarray:
@@ -396,7 +407,7 @@ class MuleXGBPredictor:
     def predict(
         self,
         X: np.ndarray,
-        top_k: int = 3,
+        top_k: int = OPERATING_K,
         node_lat: Optional[float] = None,
         node_lon: Optional[float] = None,
         node_bank: str = "UNKNOWN",
@@ -482,7 +493,7 @@ class MuleXGBPredictor:
             lo, hi = max(1.0, min(lo, hi)), max(1.0, max(lo, hi))
 
         return {
-            "top3_atms": top,
+            "ranked_candidates": top,
             "search_zone": self._search_zone(cand_idx, conf),
             "time_to_cashout_minutes": round(max(1.0, minutes), 2),
             "time_to_cashout_low": round(lo, 2) if lo is not None else None,
@@ -490,7 +501,7 @@ class MuleXGBPredictor:
             "interception_confidence": top[0]["confidence"] if top else 0.0,
         }
 
-    def predict_batch(self, X: np.ndarray, top_k: int = 3, **kwargs) -> list[dict]:
+    def predict_batch(self, X: np.ndarray, top_k: int = OPERATING_K, **kwargs) -> list[dict]:
         """
         Predict for a batch of feature vectors.
 

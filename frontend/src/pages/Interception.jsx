@@ -45,7 +45,7 @@ export default function Interception() {
 
       if (predRes.status === 'fulfilled') {
         setPrediction(predRes.value)
-        setSelectedAtmId(predRes.value.top3_atms?.[0]?.atm_id || '')
+        setSelectedAtmId(predRes.value.ranked_candidates?.[0]?.atm_id || '')
       } else {
         setPrediction(null)
         setError(describeError(predRes.reason))
@@ -58,7 +58,7 @@ export default function Interception() {
     return () => { cancelled = true }
   }, [complaintId, resolving])
 
-  const atms = useMemo(() => prediction?.top3_atms || [], [prediction])
+  const atms = useMemo(() => prediction?.ranked_candidates || [], [prediction])
   const activeAtm = atms.find(a => a.atm_id === selectedAtmId) || atms[0] || null
   const { label, remaining, expired } = useCountdown(prediction?.time_to_cashout_minutes)
 
@@ -95,16 +95,17 @@ export default function Interception() {
   const alertMessage = useMemo(() => [
     '*CYBER INTERCEPT ALERT - MuleShield AI*',
     '------------------------------',
-    `Target ATM: ${activeAtm?.atm_id ?? '-'} (${activeAtm?.bank ?? '-'})`,
+    `Priority ${activeAtm?.rank ?? '-'} of ${atms.length}: ${activeAtm?.atm_id ?? '-'} (${activeAtm?.bank ?? '-'})`,
     `Location: ${activeAtm?.address ?? '-'}`,
     `GPS: https://maps.google.com/?q=${activeAtm?.lat},${activeAtm?.lon}`,
-    `AI Confidence: ${((activeAtm?.confidence ?? 0) * 100).toFixed(1)}%`,
+    `Model rank share: ${((activeAtm?.confidence ?? 0) * 100).toFixed(1)}% (relative, not a certainty)`,
     `Time Remaining: ${label}`,
     `Suspect Mule Account: ${prediction?.terminal_account ?? '-'}`,
     `1930 Ticket: ${complaintId ?? '-'}`,
     `Amount at risk: ${amountFmt(stolen)}`,
     '------------------------------',
-    'Action Required: Intercept individual attempting ATM cashout.',
+    'Action Required: Search this location for an ATM cashout in progress.',
+    'NOTE: A ranked candidate, not a confirmed location.',
   ].join('\n'), [activeAtm, label, prediction, complaintId, stolen])
 
   const handleWhatsApp = useCallback(() => {
@@ -176,7 +177,7 @@ export default function Interception() {
               </div>
               {activeAtm && (
                 <div className="text-center mono text-[11px] text-zinc-500 mt-0.5 px-4 truncate">
-                  Target: <span className="text-red-400 font-bold">{activeAtm.atm_id}</span> · {activeAtm.address}
+                  Priority {activeAtm.rank}: <span className="text-red-400 font-bold">{activeAtm.atm_id}</span> · {activeAtm.address}
                 </div>
               )}
 
@@ -292,7 +293,7 @@ export default function Interception() {
               </div>
               <div className="text-zinc-300 mt-2 space-y-1">
                 <div className="text-red-400 font-bold">CYBER INTERCEPT ALERT</div>
-                <div className="truncate">Target ATM: <span className="text-white font-bold">{activeAtm?.atm_id || '—'}</span></div>
+                <div className="truncate">Priority location: <span className="text-white font-bold">{activeAtm?.atm_id || '—'}</span></div>
                 <div className="text-zinc-400 line-clamp-2">{activeAtm?.address || '—'}</div>
                 <div>
                   GPS: <span className="text-aegis-green font-semibold">
@@ -357,7 +358,7 @@ export default function Interception() {
             </div>
             <div className="space-y-3 mt-4 mono text-[11px]">
               <div className="bg-ink-panel border border-ink-border p-3 rounded-lg text-zinc-300 space-y-1">
-                <div className="truncate"><strong>Target:</strong> {activeAtm?.atm_id}</div>
+                <div className="truncate"><strong>Priority {activeAtm?.rank}:</strong> {activeAtm?.atm_id}</div>
                 <div className="text-zinc-400 line-clamp-2">{activeAtm?.address}</div>
                 <div><strong>Countdown:</strong> {label}</div>
               </div>

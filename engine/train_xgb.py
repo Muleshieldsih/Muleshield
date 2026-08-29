@@ -41,6 +41,7 @@ ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT / "engine"))
 
 from feature_builder import FeatureBuilder, TOTAL_FEATURE_DIM, TABULAR_FEATURE_NAMES
+from metrics_io import write_metrics, write_frontend_stats
 from xgb_model import ConditionalLogitRanker, MuleXGBPredictor
 
 MODELS_DIR = ROOT / "models"
@@ -344,6 +345,15 @@ def train(
     time_r2 = r2_score(yt_test, y_time_pred)
     baseline_mae = float(np.mean(np.abs(yt_test - yt_train.mean())))
 
+    # The deck's countdown scatter is drawn from these exact pairs. It used to
+    # re-score the shipped regressor on a split of its own making, which is how
+    # the panel came to plot a 12.35 min MAE under a card that said 11.8 —
+    # a figure is only reproducible if the split that produced it travels with it.
+    np.savez(ROOT / "data" / "countdown_eval.npz",
+             actual=np.asarray(yt_test, dtype=float),
+             predicted=np.asarray(y_time_pred, dtype=float),
+             train_mean=float(yt_train.mean()))
+
     # ── Prediction interval ───────────────────────────────────────────────────
     # The delay carries irreducible heavy-tailed noise, so a point estimate
     # overstates what is knowable. "Cashout expected in 25-45 min" is both more
@@ -452,6 +462,7 @@ def train(
         "lead_call_precision": precision_of_call,
         "interval_coverage": coverage,
         "interval_width_min": interval_width,
+        "n_atms": len(fb.atm_ids),
         "n_train": len(X_train),
         "n_test": len(X_test),
         "meta_df": meta_df,
@@ -533,3 +544,24 @@ if __name__ == "__main__":
     print(f"  Beats distance-only Top-3 : {'YES' if beats_dist else 'NO'}")
     print(f"  Beats mean-countdown MAE  : {'YES' if beats_mean else 'NO'}")
     print("=" * 66)
+
+    # ── Publish to the ledger ────────────────────────────────────────────────
+    # These figures are what the deck card and the console display. Writing them
+    # here means the only way to change a published number is to retrain, which
+    # is the point.
+    write_metrics(
+        "location",
+        {k: v for k, v in results.items()
+         if k not in ("predictor", "meta_df")} | {"inference_mean_ms": mean_ms,
+                                                  "inference_max_ms": max_ms},
+        source="python engine/train_xgb.py",
+    )
+    print(f"\n  [OK] Wrote location metrics to data/metrics.json")
+    try:
+        write_frontend_stats()
+        print("  [OK] Refreshed frontend/src/data/model_stats.json")
+    except KeyError as exc:
+        # The console needs the detection figures too; if the GNN half of the
+        # ledger is missing, say which command fills it rather than shipping a
+        # half-populated file.
+        print(f"  [--] Console stats not refreshed: {exc}")

@@ -29,7 +29,7 @@ from sklearn.preprocessing import StandardScaler
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT / "engine"))
 
-from gnn_model import GraphSAGEMule, FEATURE_COLS, IN_CHANNELS
+from gnn_model import GraphSAGEMule, FEATURE_COLS, IN_CHANNELS, derive_features
 from train_gnn import load_pyg_data
 
 DATA_DIR = ROOT / "data"
@@ -90,11 +90,17 @@ def generate_all_embeddings(
         node_features_path=node_features_path,
     )
 
-    # Re-scale using the saved scaler (not the one from load_pyg_data)
-    x_scaled = scaler.transform(
-        data.x.numpy()  # already float32, just re-normalize with saved params
-    ).astype(np.float32)
-    x_tensor = torch.tensor(x_scaled, dtype=torch.float)
+    # data.x is ALREADY standardized by load_pyg_data, which fits its scaler on
+    # the training split of the same seed-42 partition the checkpoint used. The
+    # previous line here ran scaler.transform() over it a second time, so every
+    # cached embedding was produced from doubly-normalized inputs and bore no
+    # relation to the training forward pass (max deviation 167.9). The isotonic
+    # curve fitted during training then mapped those scores onto meaningless
+    # probabilities: the served [0.70, 0.95) band held 3,988 held-out accounts at
+    # a 0.58% true mule rate, against 89.9% for the same band computed correctly.
+    # Ranking within a traced chain still looked plausible, which is why this
+    # survived: the error is invisible unless the band is checked against labels.
+    x_tensor = data.x
 
     embeddings = model.get_embeddings(x_tensor, data.edge_index)  # [N, 64]
     emb_np = embeddings.numpy()
@@ -153,7 +159,14 @@ def get_embeddings_for_complaint(
     account_to_idx = {acc: i for i, acc in enumerate(all_accounts)}
     N = len(all_accounts)
 
-    # Build feature matrix for subgraph nodes
+    # Build feature matrix for subgraph nodes.
+    #
+    # derive_features() must run before the lookup: FEATURE_COLS includes the 5
+    # DERIVED_FEATURE_COLS, which do not exist as columns in node_features.csv.
+    # Without this the row.get(col, 0.0) fallback below silently returned 0.0 for
+    # all five, so a third of every subgraph feature vector was zeros and the
+    # embeddings disagreed with both training and the full-graph path.
+    node_features_df = derive_features(node_features_df.copy())
     node_lookup = node_features_df.set_index("account_id")
     x_list = []
     for acc in all_accounts:

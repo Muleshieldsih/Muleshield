@@ -9,7 +9,7 @@ GET /api/v1/predict/cashout/{complaint_id}
     1. Find the terminal mule account
     2. Build the 80-dim hybrid feature vector (GNN + spatial tabular)
     3. Rank the reachable ATMs with the conditional-logit choice model
-    4. Return the search ZONE (the deliverable), the Top-3 ATMs inside it
+    4. Return the search ZONE (the deliverable), the ranked candidates inside it
        (tactical drill-down), and a countdown with a q05-q95 band
 """
 
@@ -36,7 +36,7 @@ router = APIRouter(prefix="/api/v1/predict", tags=["Prediction"])
 @router.get(
     "/cashout/{complaint_id}",
     response_model=PredictionResponse,
-    summary="XGBoost Top-3 ATM prediction + cashout countdown",
+    summary="Ranked candidate cash-out locations + countdown",
 )
 async def predict_cashout(complaint_id: str) -> PredictionResponse:
     """
@@ -124,14 +124,14 @@ async def predict_cashout(complaint_id: str) -> PredictionResponse:
     elapsed_ms = round((time.time() - t0) * 1000, 2)
     logger.info(
         f"[PREDICT] {complaint_id}: {terminal_acc} → "
-        f"Top ATM: {raw_result['top3_atms'][0]['atm_id']} "
+        f"Top ATM: {raw_result['ranked_candidates'][0]['atm_id']} "
         f"({raw_result['interception_confidence']:.2%}), "
         f"{elapsed_ms}ms"
     )
 
     # ── Enrich ATM predictions with directory metadata ────────────────────────
     enriched_atms: list[ATMPrediction] = []
-    for pred in raw_result["top3_atms"]:
+    for pred in raw_result["ranked_candidates"]:
         atm_meta = state.get_atm(pred["atm_id"]) or {}
         enriched_atms.append(ATMPrediction(
             rank=pred["rank"],
@@ -148,7 +148,7 @@ async def predict_cashout(complaint_id: str) -> PredictionResponse:
     response = PredictionResponse(
         complaint_id=complaint_id,
         search_zone=SearchZone(**zone_raw) if zone_raw else None,
-        top3_atms=enriched_atms,
+        ranked_candidates=enriched_atms,
         time_to_cashout_minutes=raw_result["time_to_cashout_minutes"],
         time_to_cashout_low=raw_result.get("time_to_cashout_low"),
         time_to_cashout_high=raw_result.get("time_to_cashout_high"),

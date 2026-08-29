@@ -417,7 +417,7 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
               <div className="pt-2 border-t border-ink-border space-y-2">
                 <div className="mono text-[11px] font-bold text-zinc-300">TACTICAL ACTIONS</div>
                 {[
-                  ['/map', MapPinned, 'text-red-400', 'hover:border-red-500/60 hover:bg-red-500/10', 'Tactical GIS Map', 'Predicted ATM cluster & PCR dispatch'],
+                  ['/map', MapPinned, 'text-red-400', 'hover:border-red-500/60 hover:bg-red-500/10', 'Tactical GIS Map', 'Ranked candidate locations & PCR dispatch'],
                   ['/graph', GitBranch, 'text-blue-400', 'hover:border-blue-500/60 hover:bg-blue-500/10', 'Forensic Money-Flow Graph', 'Multi-hop layering & GNN risk per node'],
                   ['/intercept', Zap, 'text-aegis-green', 'hover:border-aegis-green/60 hover:bg-aegis-green/10', '1-Click Emergency Freeze', 'Lock terminal accounts before cashout'],
                 ].map(([path, Icon, iconColor, hover, title, sub]) => (

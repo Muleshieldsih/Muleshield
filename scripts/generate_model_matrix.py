@@ -32,10 +32,7 @@ import torch
 from sklearn.metrics import (average_precision_score, confusion_matrix,
                              f1_score, precision_recall_curve, roc_auc_score,
                              roc_curve)
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GroupShuffleSplit
-from sklearn.preprocessing import StandardScaler
 
 warnings.filterwarnings("ignore")
 
@@ -46,8 +43,12 @@ DATA, DOCS, MODELS = ROOT / "data", ROOT / "docs", ROOT / "models"
 
 from gnn_model import FEATURE_COLS, derive_features            # noqa: E402
 from feature_builder import FeatureBuilder                     # noqa: E402
+from metrics_io import read_metrics, require                   # noqa: E402
 from xgb_model import ConditionalLogitRanker, MuleXGBPredictor  # noqa: E402
 import generate_data as gd                                     # noqa: E402
+
+# Every published figure comes from here. Nothing on the card is typed in.
+LEDGER = read_metrics()
 
 # ── Palette: deep pine accent, signal colours reserved for verdicts ──────────
 INK, MUTED, RULE = "#16191A", "#6C7570", "#D8DCD4"
@@ -78,7 +79,7 @@ def _style(ax, title, sub=None):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def evaluate_gnn() -> dict:
-    """Score the GNN and every non-graph baseline on the checkpoint's own split."""
+    """Score the GNN on the checkpoint's own split; take baselines from the ledger."""
     ckpt = torch.load(MODELS / "graphsage_mule.pt", map_location="cpu",
                       weights_only=False)
     node = derive_features(pd.read_csv(DATA / "node_features.csv"))
@@ -88,11 +89,8 @@ def evaluate_gnn() -> dict:
     node["_pos"] = node["account_id"].map(order)
     node = node.sort_values("_pos").reset_index(drop=True)
 
-    X = node[FEATURE_COLS].to_numpy(float)
     y = node["is_mule_label"].to_numpy()
-    sp = ckpt["split"]
-    tr = np.array(sp["train_idx"] + sp["val_idx"])
-    te = np.array(sp["test_idx"])
+    te = np.array(ckpt["split"]["test_idx"])
 
     # GNN scores, reproduced from the saved weights on the saved split.
     from train_gnn import load_pyg_data
@@ -106,19 +104,28 @@ def evaluate_gnn() -> dict:
     thr = ckpt["metrics"].get("threshold", 0.5)
     p_te, y_te = prob_all[te], y[te]
 
-    sc = StandardScaler().fit(X[tr])
-    lr = LogisticRegression(max_iter=3000, class_weight="balanced").fit(sc.transform(X[tr]), y[tr])
-    rf = RandomForestClassifier(n_estimators=400, max_depth=16, class_weight="balanced",
-                                random_state=42, n_jobs=-1).fit(X[tr], y[tr])
+    # Baselines are NOT refitted here. scripts/evaluate_baselines.py is the one
+    # place a non-graph baseline is fitted, and it writes what it measured to the
+    # ledger. This panel used to fit its own logistic regression and a 400-tree
+    # forest with test-tuned thresholds, which scored the same models differently
+    # from the baseline script — that is how the card came to claim 0.8501 while
+    # the console claimed 0.8463 for one quantity.
+    bl = LEDGER.get("detection_baselines")
+    if bl is None:
+        raise SystemExit(
+            "data/metrics.json has no 'detection_baselines'.\n"
+            "Run: python scripts/evaluate_baselines.py"
+        )
+    per_model = bl["per_model_f1"]
 
-    def tuned_f1(scores):
-        best = 0.0
-        for t in np.unique(np.quantile(scores, np.linspace(.80, .999, 90))):
-            best = max(best, f1_score(y_te, (scores >= t).astype(int), zero_division=0))
-        return best
+    def bl_f1(prefix: str) -> float:
+        """Look a baseline up by name prefix, so the row label can carry detail."""
+        for name, val in per_model.items():
+            if name.startswith(prefix):
+                return float(val)
+        raise SystemExit(f"No baseline named '{prefix}*' in the ledger.")
 
-    lr_s = lr.predict_proba(sc.transform(X[te]))[:, 1]
-    rf_s = rf.predict_proba(X[te])[:, 1]
+    gnn_f1 = f1_score(y_te, (p_te >= thr).astype(int))
 
     prev = float(y.mean())
     tp = prev * (1 - gd.UNDETECTED_MULE_RATE)
@@ -131,11 +138,15 @@ def evaluate_gnn() -> dict:
         cm=confusion_matrix(y_te, (p_te >= thr).astype(int)),
         f1=f1_score(y_te, (p_te >= thr).astype(int)),
         auc=roc_auc_score(y_te, p_te), ap=average_precision_score(y_te, p_te),
-        lr_s=lr_s, rf_s=rf_s,
-        bars=[("Best single\nfeature", tuned_f1(X[te][:, FEATURE_COLS.index("burst_out_5min")])),
-              ("Logistic\nregression", tuned_f1(lr_s)),
-              ("Random\nforest", tuned_f1(rf_s)),
-              ("GraphSAGE", f1_score(y_te, (p_te >= thr).astype(int)))],
+        bars=[("Best single\nfeature", bl_f1("Best single feature")),
+              ("Logistic\nregression", bl_f1("Logistic regression")),
+              ("Random\nforest", bl_f1("Random forest")),
+              ("GraphSAGE", gnn_f1)],
+        # A real max over the non-graph rows. Previously this was read off as
+        # bars[-2] — always the random forest — while being labelled "best
+        # non-graph", which holds only while the forest happens to lead.
+        best_non_graph=float(bl["best_non_graph"]),
+        best_non_graph_model=str(bl["best_non_graph_model"]),
         ceiling=2 * P * R / (P + R),
         prevalence=prev,
     )
@@ -173,23 +184,33 @@ def evaluate_location() -> dict:
                 hits[k] += pos <= k
         return {k: v / max(1, n) for k, v in hits.items()}
 
-    # Countdown: use the SHIPPED model and its scaler, not a refit. Refitting
-    # here produced a slightly different MAE from the one train_xgb.py reports,
-    # which would put two numbers for the same thing into the repository.
-    predictor = MuleXGBPredictor.load()
-    tmap = dict(zip(meta.group_id, meta.time_to_cashout_min))
-    pos_tr, pos_te = np.where(y[tr] == 1)[0], np.where(y[te] == 1)[0]
-    yt_tr = np.array([tmap[int(g)] for g in groups[tr][pos_tr]], float)
-    yt_te = np.array([tmap[int(g)] for g in groups[te][pos_te]], float)
-    yhat = predictor.regressor.predict(predictor.scaler.transform(X[te][pos_te]))
+    # Countdown: neither refit nor re-scored. engine/train_xgb.py owns this
+    # metric and exports the exact (actual, predicted) pairs behind it, so the
+    # panel plots the same evaluation the card and the console quote. Scoring
+    # the shipped regressor on a split built here gave 12.35 min under a card
+    # that said 11.8 — the same model, two splits, two published numbers.
+    cd_path = DATA / "countdown_eval.npz"
+    if not cd_path.exists():
+        raise SystemExit(f"Missing {cd_path.name}. Run: python engine/train_xgb.py")
+    cd = np.load(cd_path)
+    yt_te, yhat = cd["actual"], cd["predicted"]
 
     return dict(
         ours=topk(s_te), dist=topk(-d_te), bayes=topk(bayes),
         yt=yt_te, yhat=yhat,
-        mae=float(np.mean(np.abs(yhat - yt_te))),
-        base_mae=float(np.mean(np.abs(yt_te - yt_tr.mean()))),
-        # Measured in engine/train_xgb.py; the zone geometry is reproduced there.
-        zone=dict(model=.874, near3=.785, mule=.752, radius=9.98, atms=8),
+        mae=require(LEDGER, "location", "time_mae_minutes"),
+        base_mae=require(LEDGER, "location", "time_baseline_mae"),
+        # Measured in engine/train_xgb.py, which owns the zone geometry. Read,
+        # never retyped: this used to be a literal dict that no retrain touched.
+        zone=dict(
+            model=require(LEDGER, "location", "zone_containment"),
+            near3=require(LEDGER, "location", "zone_containment_baseline_nearest3"),
+            mule=require(LEDGER, "location", "zone_containment_baseline_mule"),
+            radius=require(LEDGER, "location", "zone_median_radius_km"),
+            atms=require(LEDGER, "location", "zone_median_atms"),
+            n_atms=require(LEDGER, "location", "n_atms"),
+            ms=require(LEDGER, "location", "inference_mean_ms"),
+        ),
     )
 
 
@@ -295,8 +316,8 @@ def render(g: dict, loc: dict) -> None:
                 fontweight="bold" if i == 2 else "normal")
     ax.set_xlim(0, 1.02)
     ax.set_xlabel("withdrawal falls inside the zone", labelpad=8)
-    ax.text(0, -.20, f"1,000 ATMs to a median of {z['atms']}   |   "
-                     f"{z['radius']:.1f} km radius   |   4.5 ms",
+    ax.text(0, -.20, f"{z['n_atms']:,} ATMs to a median of {z['atms']:.0f}   |   "
+                     f"{z['radius']:.1f} km radius   |   {z['ms']:.1f} ms",
             transform=ax.transAxes, fontsize=8.8, color=ACCENT, fontweight="bold")
 
     out = DOCS / "model_matrix_full.png"
@@ -313,12 +334,23 @@ def render(g: dict, loc: dict) -> None:
                        "every figure shown against its baseline",
             fontsize=10, color=MUTED, transform=ax.transAxes)
 
+    # Top-1 is claimed to sit ON the Bayes bound, so the claim is checked rather
+    # than asserted. Within half a point of the bound reads as "= the bound";
+    # anything further has to say what the gap actually is.
+    top1, bayes1 = loc["ours"][1], loc["bayes"][1]
+    bayes_note = ("= the Bayes bound" if abs(top1 - bayes1) < 0.005
+                  else f"vs {bayes1:.4f} Bayes bound")
+
     cards = [
-        ("87.4%", "search-zone containment", f"vs {z['near3']:.1%} best naive zone", ACCENT),
-        (f"{z['atms']} of 1,000", "ATMs to cover", f"{z['radius']:.1f} km radius · 4.5 ms", ACCENT),
-        (f"{g['bars'][-1][1]:.4f}", "mule-detection F1", f"vs {g['bars'][-2][1]:.4f} best non-graph", INK),
-        (f"{loc['mae']:.1f} min", "countdown MAE", f"vs {loc['base_mae']:.1f} min baseline", INK),
-        (f"{loc['ours'][1]:.4f}", "exact-ATM Top-1", "= the Bayes bound", MUTED),
+        (f"{z['model']:.1%}", "search-zone containment",
+         f"vs {z['near3']:.1%} best naive zone", ACCENT),
+        (f"{z['atms']:.0f} of {z['n_atms']:,}", "ATMs to cover",
+         f"{z['radius']:.1f} km radius · {z['ms']:.1f} ms", ACCENT),
+        (f"{g['bars'][-1][1]:.4f}", "mule-detection F1",
+         f"vs {g['best_non_graph']:.4f} best non-graph", INK),
+        (f"{loc['mae']:.1f} min", "countdown MAE",
+         f"vs {loc['base_mae']:.1f} min baseline", INK),
+        (f"{top1:.4f}", "exact-ATM Top-1", bayes_note, MUTED),
     ]
     for i, (big, label, sub, col) in enumerate(cards):
         x = .012 + i * .197

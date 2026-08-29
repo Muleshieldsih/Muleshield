@@ -1,0 +1,17 @@
+{
+  "_about": "Generated from data/metrics.json \u2014 do not hand-edit. Regenerate: python scripts/export_metrics.py",
+  "zoneContainment": 0.8737864077669902,
+  "zoneBaselineNearest3": 0.7847896440129449,
+  "zoneMedianAtms": 8.0,
+  "zoneMedianRadiusKm": 9.982021465701855,
+  "atmTotal": 1000,
+  "countdownMae": 11.86084720315285,
+  "countdownBaseline": 14.978154536704853,
+  "gnnF1": 0.8954545454545455,
+  "gnnBaseline": 0.8423423423423423,
+  "gnnBaselineModel": "Random forest (no graph)",
+  "top5Containment": 0.7136,
+  "top5BaselineDistance": 0.7217,
+  "top5SearchReduction": 0.995,
+  "operatingK": 5
+}

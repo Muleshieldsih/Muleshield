@@ -306,26 +306,27 @@ class TestPredictionEndpoints:
         resp = client.get(f"/api/v1/predict/cashout/{first_complaint_id}")
         assert resp.status_code == 200
 
-    def test_predict_has_top3_atms(self, client, first_complaint_id):
+    def test_predict_has_ranked_candidates(self, client, first_complaint_id):
         resp = client.get(f"/api/v1/predict/cashout/{first_complaint_id}")
         data = resp.json()
-        assert "top3_atms" in data
-        assert len(data["top3_atms"]) == 3
+        assert "ranked_candidates" in data
+        assert len(data["ranked_candidates"]) == 5
 
     def test_predict_atm_has_required_fields(self, client, first_complaint_id):
         resp = client.get(f"/api/v1/predict/cashout/{first_complaint_id}")
-        atm = resp.json()["top3_atms"][0]
+        atm = resp.json()["ranked_candidates"][0]
         for field in ("rank", "atm_id", "confidence", "lat", "lon", "bank"):
             assert field in atm, f"ATM prediction missing field: {field}"
 
-    def test_predict_ranks_are_1_2_3(self, client, first_complaint_id):
+    def test_predict_ranks_are_dense_and_ordered(self, client, first_complaint_id):
+        """The API returns 5 ranked candidate locations, ranked 1..5."""
         resp = client.get(f"/api/v1/predict/cashout/{first_complaint_id}")
-        ranks = [a["rank"] for a in resp.json()["top3_atms"]]
-        assert ranks == [1, 2, 3]
+        ranks = [a["rank"] for a in resp.json()["ranked_candidates"]]
+        assert ranks == [1, 2, 3, 4, 5]
 
     def test_predict_confidence_in_valid_range(self, client, first_complaint_id):
         resp = client.get(f"/api/v1/predict/cashout/{first_complaint_id}")
-        for atm in resp.json()["top3_atms"]:
+        for atm in resp.json()["ranked_candidates"]:
             assert 0.0 <= atm["confidence"] <= 1.0
 
     def test_predict_time_to_cashout_positive(self, client, first_complaint_id):

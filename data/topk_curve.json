@@ -1,0 +1,96 @@
+{
+  "n_cashouts": 618,
+  "n_atms": 1000,
+  "retrieval_ceiling": 1.0,
+  "latency_ms_per_cashout": 0.0,
+  "curve": [
+    {
+      "K": 1,
+      "containment": 0.2654,
+      "baseline": 0.2476,
+      "reduction": 0.999,
+      "avg_candidates": 1,
+      "median_candidates": 1,
+      "retrieval_failures": 0,
+      "ranking_failures": 454,
+      "latency_ms": 0.0
+    },
+    {
+      "K": 2,
+      "containment": 0.4256,
+      "baseline": 0.4013,
+      "reduction": 0.998,
+      "avg_candidates": 2,
+      "median_candidates": 2,
+      "retrieval_failures": 0,
+      "ranking_failures": 355,
+      "latency_ms": 0.0
+    },
+    {
+      "K": 3,
+      "containment": 0.5615,
+      "baseline": 0.5485,
+      "reduction": 0.997,
+      "avg_candidates": 3,
+      "median_candidates": 3,
+      "retrieval_failures": 0,
+      "ranking_failures": 271,
+      "latency_ms": 0.0
+    },
+    {
+      "K": 4,
+      "containment": 0.6489,
+      "baseline": 0.6359,
+      "reduction": 0.996,
+      "avg_candidates": 4,
+      "median_candidates": 4,
+      "retrieval_failures": 0,
+      "ranking_failures": 217,
+      "latency_ms": 0.0
+    },
+    {
+      "K": 5,
+      "containment": 0.7136,
+      "baseline": 0.7217,
+      "reduction": 0.995,
+      "avg_candidates": 5,
+      "median_candidates": 5,
+      "retrieval_failures": 0,
+      "ranking_failures": 177,
+      "latency_ms": 0.0
+    },
+    {
+      "K": 6,
+      "containment": 0.7896,
+      "baseline": 0.7767,
+      "reduction": 0.994,
+      "avg_candidates": 6,
+      "median_candidates": 6,
+      "retrieval_failures": 0,
+      "ranking_failures": 130,
+      "latency_ms": 0.0
+    },
+    {
+      "K": 8,
+      "containment": 0.8689,
+      "baseline": 0.8689,
+      "reduction": 0.992,
+      "avg_candidates": 8,
+      "median_candidates": 8,
+      "retrieval_failures": 0,
+      "ranking_failures": 81,
+      "latency_ms": 0.0
+    },
+    {
+      "K": 10,
+      "containment": 0.9175,
+      "baseline": 0.9142,
+      "reduction": 0.99,
+      "avg_candidates": 10,
+      "median_candidates": 10,
+      "retrieval_failures": 0,
+      "ranking_failures": 51,
+      "latency_ms": 0.0
+    }
+  ]
+}
