@@ -14,7 +14,7 @@ function terminalIcon() {
   return L.divIcon({
     className: '',
     html: `<span style="display:block;width:13px;height:13px;border-radius:999px;background:#58a6ff;
-      box-shadow:0 0 0 6px rgba(88,166,255,0.16), 0 0 14px #58a6ff;border:2px solid #080a0a"></span>`,
+      box-shadow:0 0 0 4px rgba(88,166,255,0.18);border:2px solid #080a0a"></span>`,
     iconSize: [13, 13],
     iconAnchor: [6.5, 6.5],
   })
@@ -31,7 +31,7 @@ function atmIcon(rank, isSelected) {
         border:${isSelected ? '2px solid #fff' : '1px solid #3a4242'};padding:3px 8px;border-radius:999px;
         white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,0.6)">ATM-${rank} • ${label}</div>
       <div style="width:12px;height:12px;background:${dot};border:2px solid #fff;border-radius:999px;
-        margin-top:4px;box-shadow:0 0 12px ${dot}"></div>
+        margin-top:4px;box-shadow:0 1px 3px rgba(0,0,0,0.5)"></div>
     </div>`,
     iconSize: [0, 0],
     iconAnchor: [0, 0],
@@ -106,7 +106,7 @@ function TacticalLeafletMap({ terminal, atms, zone, selectedAtmId, onSelectAtm, 
       L.marker([terminal.lat, terminal.lon], { icon: terminalIcon() })
         .bindPopup(
           `<div style="font-family:'JetBrains Mono',monospace;font-size:11px">
-            <b style="color:#1d4ed8">TERMINAL MULE ACCOUNT</b><br/>${terminal.account || '—'}<br/>
+            <b style="color:#1d4ed8">Terminal mule account</b><br/>${terminal.account || '—'}<br/>
             ${terminal.lat.toFixed(4)}°, ${terminal.lon.toFixed(4)}°
           </div>`
         )
@@ -146,7 +146,7 @@ function TacticalLeafletMap({ terminal, atms, zone, selectedAtmId, onSelectAtm, 
       })
         .bindPopup(
           `<div style="font-family:'JetBrains Mono',monospace;font-size:11px">
-            <b style="color:#b45309">PREDICTED SEARCH ZONE</b><br/>
+            <b style="color:#b45309">Search zone</b><br/>
             radius ${zone.radius_km.toFixed(2)} km<br/>
             ${zone.atm_count} ATM(s) to cover<br/>
             ${(zone.probability_mass * 100).toFixed(0)}% of predicted probability
@@ -247,7 +247,7 @@ export default function TacticalMap() {
     <div className="grid grid-cols-12 gap-3 p-3">
       <div className="col-span-12 lg:col-span-8">
         <Panel
-          title={`TACTICAL GIS — PRIORITY SEARCH LOCATIONS (${formatTicket(complaintId)})`}
+          title={`Cash-out locations — ${formatTicket(complaintId)}`}
           right={loading ? 'predicting…' : prediction ? `${label} remaining` : ''}
         >
           <div className="h-[64vh] relative">
@@ -279,22 +279,22 @@ export default function TacticalMap() {
                 )}
 
                 <div className="absolute top-3 left-3 flex flex-wrap gap-2 mono text-[11px] z-[1000] max-w-[calc(100%-24px)]">
-                  <span className="px-2.5 py-1 rounded-full bg-ink-panel/90 border border-ink-border text-zinc-200 backdrop-blur-sm">
-                    Pan-India ATM Grid
+                  <span className="px-2.5 py-1 rounded bg-ink-panel border border-ink-border text-zinc-300">
+                    ATM directory
                   </span>
                   {activeAtm && (
-                    <span className="px-2.5 py-1 rounded-full bg-red-500/20 border border-red-500/40 text-red-300 font-semibold backdrop-blur-sm">
+                    <span className="px-2.5 py-1 rounded bg-red-500/15 border border-red-500/40 text-red-300 font-medium">
                       Priority {activeAtm.rank}: {activeAtm.atm_id}
                     </span>
                   )}
                   {tilesOffline && (
-                    <span className="px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-300 font-semibold backdrop-blur-sm flex items-center gap-1.5">
-                      <CloudOff size={11} /> Basemap offline — geometry still live
+                    <span className="px-2.5 py-1 rounded bg-amber-500/10 border border-amber-500/40 text-amber-300 font-medium flex items-center gap-1.5">
+                      <CloudOff size={11} /> Basemap offline — positions still accurate
                     </span>
                   )}
                 </div>
 
-                <div className="absolute bottom-3 left-3 bg-ink-panel/90 border border-ink-border px-3 py-1.5 rounded-lg mono text-[11px] text-zinc-400 z-[1000] backdrop-blur-sm flex items-center gap-2">
+                <div className="absolute bottom-3 left-3 bg-ink-panel border border-ink-border px-3 py-1.5 rounded text-[11px] text-zinc-400 z-[1000] flex items-center gap-2">
                   <Navigation size={13} className="text-aegis-green" />
                   Click a pin or a card to retarget
                 </div>
@@ -308,7 +308,7 @@ export default function TacticalMap() {
         <div className="aegis-panel p-3">
           <div className="flex items-center justify-between pb-2 border-b border-ink-border">
             <span className="mono text-[11px] tracking-[0.14em] text-zinc-400 font-semibold uppercase">
-              Priority Search Locations
+              Ranked locations
             </span>
             <span className="mono text-[10px] text-aegis-green font-bold">XGBoost v2</span>
           </div>
@@ -328,7 +328,7 @@ export default function TacticalMap() {
                   onClick={() => setSelectedAtmId(a.atm_id)}
                   className={`w-full text-left p-3 rounded-lg border transition-all duration-150 ${
                     isSel
-                      ? 'bg-ink-panel border-red-500 ring-1 ring-red-500/30'
+                      ? 'bg-ink-panel border-red-500/70'
                       : 'bg-ink-surface/60 border-ink-border hover:bg-ink-panel hover:border-zinc-700'
                   }`}
                 >

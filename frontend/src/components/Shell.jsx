@@ -1,7 +1,7 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { Shield, Activity, GitBranch, MapPinned, Zap, Radio, Circle, WifiOff } from 'lucide-react'
+import { Shield, Activity, GitBranch, MapPinned, Zap, BarChart3, Radio, Circle, WifiOff } from 'lucide-react'
 import { useMemo } from 'react'
-import { amountShort, formatTicket, MODEL_STATS } from '../utils/constants'
+import { amountShort, formatTicket } from '../utils/constants'
 import { timeAgo, useNow } from '../hooks/useCountdown'
 
 /** Compact city code for the ticker, derived from the city name itself. */
@@ -49,18 +49,18 @@ function SidebarStreamTicker({ complaints = [], onSelect, activeId }) {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 border-t border-ink-border px-3 py-2">
-      <div className="flex items-center justify-between pb-1.5 mono text-[10px] text-zinc-400 font-semibold uppercase tracking-wider">
-        <span>Intake Queue{rows.length ? ` · ${rows.length}` : ''}</span>
+      <div className="flex items-center justify-between pb-1.5 text-[11px] text-zinc-500 font-medium">
+        <span>Case queue{rows.length ? ` · ${rows.length}` : ''}</span>
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-1.5 pr-0.5">
         {rows.length === 0 ? (
-          <div className="mono text-[10px] text-zinc-600 py-4 text-center leading-relaxed">
+          <div className="text-[11px] text-zinc-500 py-4 text-center leading-relaxed">
             No complaints in queue.
             <br />
-            Ingest one from the Triage screen.
+            Add one from the Cases screen.
             <br />
-            <span className="text-zinc-700">Offline build — no NCRP feed.</span>
+            <span className="text-zinc-600">No live feed in this build.</span>
           </div>
         ) : (
           rows.map(c => {
@@ -70,10 +70,10 @@ function SidebarStreamTicker({ complaints = [], onSelect, activeId }) {
                 key={c.ticket_id}
                 onClick={() => handleClick(c.ticket_id)}
                 title={`${formatTicket(c.ticket_id)} — ${c.victim_name}, ${c.city}`}
-                className={`w-full text-left p-1.5 rounded border transition-colors duration-100 flex items-center justify-between mono text-[10px] ${
+                className={`w-full text-left p-1.5 rounded border transition-colors duration-100 flex items-center justify-between text-[11px] ${
                   isActive
-                    ? 'bg-ink-panel border-aegis-green/60'
-                    : 'bg-ink-panel/70 border-ink-border/80 hover:border-aegis-green/40 hover:bg-ink-panel'
+                    ? 'bg-ink-panel border-aegis-green/50'
+                    : 'bg-ink-panel/60 border-ink-border/80 hover:border-ink-border2 hover:bg-ink-panel'
                 }`}
               >
                 <div className="flex items-center gap-1.5 min-w-0">
@@ -86,8 +86,8 @@ function SidebarStreamTicker({ complaints = [], onSelect, activeId }) {
                   </div>
                 </div>
                 <div className="text-right shrink-0 pl-1">
-                  <div className="font-bold text-aegis-green">{amountShort(c.stolen_amount)}</div>
-                  <div className="text-[9px] text-zinc-500">{timeAgo(c.complaint_timestamp, now)}</div>
+                  <div className="mono tnum font-semibold text-zinc-200">{amountShort(c.stolen_amount)}</div>
+                  <div className="text-[10px] text-zinc-500">{timeAgo(c.complaint_timestamp, now)}</div>
                 </div>
               </button>
             )
@@ -117,28 +117,28 @@ export function Topbar({ wsConnected, complaintId, backendDown, lastEvent }) {
   return (
     <header className="h-[48px] flex items-center justify-between gap-3 px-4 border-b border-ink-border bg-ink-bg shrink-0 z-30">
       <div className="flex items-center gap-3 min-w-0">
-        <div className="w-8 h-8 rounded bg-aegis-green grid place-items-center shadow-[0_0_10px_rgba(124,240,0,0.4)] shrink-0">
+        <div className="w-8 h-8 rounded bg-aegis-green grid place-items-center shrink-0">
           <Shield size={16} className="text-black" />
         </div>
         <div className="leading-tight min-w-0">
-          <div className="text-[12px] font-bold tracking-[0.14em] text-white mono">MULESHIELD AI</div>
-          <div className="text-[10px] mono text-zinc-400 truncate">
-            1930 HELPLINE INTERDICTION CONSOLE · MHA / I4C
+          <div className="text-[13px] font-semibold tracking-tight text-white">MuleShield AI</div>
+          <div className="text-[11px] text-zinc-400 truncate">
+            Fraud investigation console · 1930 / I4C
           </div>
         </div>
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
         {recent && (
-          <span className="hidden lg:flex items-center gap-1.5 mono text-[10px] text-aegis-green bg-aegis-green/10 border border-aegis-green/30 rounded-full px-2.5 py-1 animate-pulse-dot">
+          <span className="hidden lg:flex items-center gap-1.5 text-[11px] text-aegis-green bg-aegis-green/10 border border-aegis-green/30 rounded px-2.5 py-1">
             <Radio size={10} /> {EVENT_LABEL[recent.type]}
           </span>
         )}
 
-        <div className="hidden md:flex items-center gap-2 text-[11px] mono bg-ink-panel border border-ink-border rounded-full px-3 py-1">
+        <div className="hidden md:flex items-center gap-2 text-[11px] bg-ink-panel border border-ink-border rounded px-3 py-1">
           {backendDown ? (
             <span className="flex items-center gap-1.5 text-red-400 font-semibold">
-              <WifiOff size={11} /> API OFFLINE
+              <WifiOff size={11} /> Service offline
             </span>
           ) : (
             <span
@@ -147,14 +147,15 @@ export function Topbar({ wsConnected, complaintId, backendDown, lastEvent }) {
               }`}
             >
               <Circle size={8} className={wsConnected ? 'fill-aegis-green' : ''} />
-              {wsConnected ? '1930 FEED CONNECTED' : 'RECONNECTING…'}
+              {wsConnected ? 'Connected' : 'Reconnecting…'}
             </span>
           )}
         </div>
 
         {complaintId && (
-          <div className="hidden sm:block text-[11px] mono text-zinc-300 border border-aegis-green/40 rounded-full px-3 py-1 bg-aegis-green/10">
-            Active: <span className="font-bold text-white">{formatTicket(complaintId)}</span>
+          <div className="hidden sm:flex items-baseline gap-1.5 text-[11px] text-zinc-400 border border-ink-border rounded px-3 py-1 bg-ink-panel">
+            Case
+            <span className="mono tnum font-semibold text-zinc-100">{formatTicket(complaintId)}</span>
           </div>
         )}
       </div>
@@ -163,10 +164,11 @@ export function Topbar({ wsConnected, complaintId, backendDown, lastEvent }) {
 }
 
 const NAV_ITEMS = [
-  ['/', <Activity size={15} key="i" />, 'TRIAGE QUEUE', '1930 complaint intake'],
-  ['/map', <MapPinned size={15} key="i" />, 'TACTICAL MAP', 'ATM GPS routing'],
-  ['/graph', <GitBranch size={15} key="i" />, 'MONEY FLOW', 'Forensic graph'],
-  ['/intercept', <Zap size={15} key="i" />, 'INTERCEPTION', '1-Click freeze'],
+  ['/', <Activity size={15} key="i" />, 'Cases', 'Queue and triage'],
+  ['/graph', <GitBranch size={15} key="i" />, 'Transaction trail', 'Fund movement'],
+  ['/map', <MapPinned size={15} key="i" />, 'Locations', 'Cash-out points'],
+  ['/intercept', <Zap size={15} key="i" />, 'Intervention', 'Freeze and escalate'],
+  ['/model', <BarChart3 size={15} key="i" />, 'Model performance', 'Detection accuracy'],
 ]
 
 export function Sidebar({ complaintId, complaints, onSelect }) {
@@ -188,21 +190,25 @@ export function Sidebar({ complaintId, complaints, onSelect }) {
             to={withCid(to)}
             end={to === '/'}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg border text-[12px] mono transition ${
+              `flex items-center gap-3 px-3 py-2 rounded-md border text-[12.5px] transition-colors ${
                 isActive
-                  ? 'bg-ink-panel border-aegis-green/50 text-white font-bold shadow-[0_0_10px_rgba(124,240,0,0.1)]'
-                  : 'border-transparent text-zinc-400 hover:text-white hover:bg-ink-panel/50'
+                  ? 'bg-ink-panel border-ink-border text-white font-medium'
+                  : 'border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-ink-panel/50'
               }`
             }
           >
-            <span className="w-6 h-6 grid place-items-center rounded bg-ink-surface border border-ink-border shrink-0">
-              {icon}
-            </span>
-            <span className="flex-1 leading-tight">
-              {label}
-              <br />
-              <span className="text-[10px] text-zinc-500 font-normal">{sub}</span>
-            </span>
+            {({ isActive }) => (
+              <>
+                <span className={`shrink-0 ${isActive ? 'text-aegis-green' : 'text-zinc-500'}`}>
+                  {icon}
+                </span>
+                <span className="flex-1 leading-tight">
+                  {label}
+                  <br />
+                  <span className="text-[10.5px] text-zinc-500 font-normal">{sub}</span>
+                </span>
+              </>
+            )}
           </NavLink>
         ))}
       </div>
@@ -213,47 +219,12 @@ export function Sidebar({ complaintId, complaints, onSelect }) {
         <div className="flex-1 min-h-0" />
       )}
 
-      <div className="p-3 border-t border-ink-border shrink-0">
-        <div className="aegis-panel p-3 bg-ink-panel/40">
-          <div className="text-[10px] mono tracking-[0.12em] text-zinc-400 uppercase font-semibold">
-            Validated Performance
-          </div>
-
-          {/* The operating point the system actually ships, and the claim we can
-              defend: the search space collapses. Deliberately without a "vs" --
-              the distance-only baseline is 0.7217 against this 0.7136, so a
-              comparison here would be a loss with no room for the Bayes-ceiling
-              context that explains it. That argument lives in the README. */}
-          <div className="mt-2">
-            <div className="text-[15px] mono font-bold text-aegis-green leading-none">
-              {MODEL_STATS.top5Containment}
-            </div>
-            <div className="text-[10px] mono text-zinc-300 mt-1">
-              Top-{MODEL_STATS.operatingK} containment
-            </div>
-            <div className="text-[10px] mono text-zinc-500 mt-0.5">
-              {MODEL_STATS.atmTotal} ATMs → {MODEL_STATS.operatingK}
-            </div>
-          </div>
-
-          {/* Below: the figures that do beat a named baseline, each carrying it. */}
-          <div className="mt-2.5 pt-2.5 border-t border-ink-border space-y-1">
-            {[
-              ['Search zone', MODEL_STATS.zoneContainment, MODEL_STATS.zoneBaseline],
-              ['Countdown MAE', MODEL_STATS.countdownMae, MODEL_STATS.countdownBaseline],
-              ['Mule F1', MODEL_STATS.gnnF1, MODEL_STATS.gnnBaseline],
-            ].map(([label, value, baseline]) => (
-              <div key={label} className="flex items-baseline justify-between gap-2 text-[10px] mono">
-                <span className="text-zinc-500 shrink-0">{label}</span>
-                <span className="text-right">
-                  <span className="text-zinc-200 font-bold">{value}</span>
-                  <span className="text-zinc-600"> vs {baseline}</span>
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="text-[10px] mono text-zinc-600 mt-2 text-center">SIH26184 · MHA / I4C</div>
+      {/* The model metrics that used to live here are on /model.
+          They describe the detector across a test set, not the case an analyst
+          is reading, and standing beside one invited them to be read as its
+          confidence. */}
+      <div className="p-3 border-t border-ink-border shrink-0 text-[10.5px] text-zinc-600">
+        SIH26184 · MHA / I4C
       </div>
     </nav>
   )
@@ -286,10 +257,10 @@ export function Panel({ title, right, children, className = '', bodyClass = '' }
   return (
     <section className={`aegis-panel ${className}`}>
       <div className="aegis-panel-header">
-        <div className="flex items-center gap-2 text-[11px] mono tracking-[0.12em] text-zinc-400 min-w-0">
+        <div className="flex items-center gap-2 text-[12px] font-medium text-zinc-300 min-w-0">
           <span className="truncate">{title}</span>
         </div>
-        <div className="text-[11px] mono text-zinc-500 shrink-0 pl-2">{right}</div>
+        <div className="text-[11px] text-zinc-500 shrink-0 pl-2">{right}</div>
       </div>
       <div className={bodyClass}>{children}</div>
     </section>
@@ -307,9 +278,9 @@ export function Stat({ label, value, tone = 'default', sub }) {
   }
   return (
     <div className="rounded-lg border border-ink-border bg-ink-panel px-2.5 py-2">
-      <div className="mono text-[10px] text-zinc-500 uppercase tracking-wide">{label}</div>
-      <div className={`mono text-[15px] font-bold mt-0.5 ${tones[tone] || tones.default}`}>{value}</div>
-      {sub && <div className="mono text-[10px] text-zinc-500 mt-0.5">{sub}</div>}
+      <div className="text-[11px] text-zinc-500">{label}</div>
+      <div className={`mono tnum text-[16px] font-semibold mt-0.5 ${tones[tone] || tones.default}`}>{value}</div>
+      {sub && <div className="text-[11px] text-zinc-500 mt-0.5">{sub}</div>}
     </div>
   )
 }

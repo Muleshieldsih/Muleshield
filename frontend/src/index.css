@@ -27,7 +27,20 @@ body { @apply bg-ink-bg text-zinc-200 font-sans antialiased; }
 .aegis-panel-header { @apply flex items-center justify-between px-3 py-2 border-b border-ink-border bg-ink-panel/60; }
 .aegis-dot { @apply w-1.5 h-1.5 rounded-full; }
 
-.cursor-blink::after { content: '▌'; @apply animate-blink ml-1 text-aegis-green; }
+/* Tabular figures so amounts and timestamps align down a column. Enterprise
+   tables are read by scanning vertically; proportional digits defeat that. */
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* Data tables share one skin so every screen reads the same way. */
+.data-table { @apply w-full text-left border-collapse; }
+.data-table thead th {
+  @apply px-3 py-2 text-[11px] font-semibold text-zinc-400 border-b border-ink-border
+         bg-ink-panel/60 whitespace-nowrap sticky top-0 z-10;
+}
+.data-table tbody td { @apply px-3 py-2 text-[12px] text-zinc-300 border-b border-ink-border/60; }
+.data-table tbody tr { @apply cursor-pointer transition-colors; }
+.data-table tbody tr:hover { @apply bg-ink-panel/50; }
+.data-table tbody tr[aria-selected='true'] { @apply bg-ink-panel; }
 
 /* Visible keyboard focus — an operator console has to be driveable without a mouse. */
 :where(button, a, input, select, [tabindex]):focus-visible {
@@ -47,11 +60,15 @@ body { @apply bg-ink-bg text-zinc-200 font-sans antialiased; }
 /* ── Leaflet, themed dark ─────────────────────────────────────────────── */
 .leaflet-container {
   background: #0a0f0f !important;
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  /* Place names are prose. They were set in JetBrains Mono, which made the
+     basemap read as a terminal rather than a map. */
+  font-family: 'Inter', system-ui, sans-serif;
 }
 .leaflet-tile-pane {
-  filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.95) saturate(0);
-  opacity: 0.9;
+  /* Desaturating to zero left the map looking like a wireframe. Keeping a
+     little colour lets an analyst tell a road from a river. */
+  filter: invert(1) hue-rotate(180deg) brightness(0.88) contrast(0.92) saturate(0.25);
+  opacity: 0.92;
 }
 .leaflet-popup-content-wrapper, .leaflet-popup-tip {
   background: #f8fafc;

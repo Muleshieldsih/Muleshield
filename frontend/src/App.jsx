@@ -11,6 +11,7 @@ import useWebSocket from './hooks/useWebSocket'
 const TacticalMap = lazy(() => import('./pages/TacticalMap'))
 const ForensicGraph = lazy(() => import('./pages/ForensicGraph'))
 const Interception = lazy(() => import('./pages/Interception'))
+const ModelPerformance = lazy(() => import('./pages/ModelPerformance'))
 
 function NotFound({ onHome }) {
   return (
@@ -206,6 +207,7 @@ function Layout() {
               <Route path="/map" element={<TacticalMap />} />
               <Route path="/graph" element={<ForensicGraph />} />
               <Route path="/intercept" element={<Interception />} />
+              <Route path="/model" element={<ModelPerformance />} />
               {/* Without a catch-all, an unknown URL rendered the shell around an
                   empty <main> -- a blank console with no indication anything was
                   wrong. A mistyped link should say so and offer the way back. */}
@@ -215,9 +217,9 @@ function Layout() {
         </main>
       </div>
 
-      <footer className="h-6 border-t border-ink-border bg-ink-panel flex items-center justify-between px-3 mono text-[10px] text-zinc-500 shrink-0">
-        <span>SIH26184 · MHA / I4C · MuleShield AI v3.0 · GraphSAGE 64-d + XGBoost v2</span>
-        <span className="hidden md:block">Real-Time Law Enforcement Interdiction</span>
+      <footer className="h-6 border-t border-ink-border bg-ink-panel flex items-center justify-between px-3 text-[10.5px] text-zinc-500 shrink-0">
+        <span>MuleShield AI · SIH26184 · MHA / I4C</span>
+        <span className="hidden md:block">v3.0</span>
       </footer>
     </div>
   )

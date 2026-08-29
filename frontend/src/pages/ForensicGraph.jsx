@@ -78,7 +78,7 @@ function buildLayout(nodes = [], edges = [], anomalies = {}) {
           borderRadius: '8px',
           padding: '8px 10px',
           width: 178,
-          boxShadow: type === 'terminal' ? '0 0 16px rgba(255,59,59,0.32)' : 'none',
+          boxShadow: 'none',
         },
       })
     })
@@ -89,7 +89,7 @@ function buildLayout(nodes = [], edges = [], anomalies = {}) {
     source: e.source,
     target: e.target,
     label: e.label || amountFmt(e.amount),
-    animated: true,
+    animated: false,
     markerEnd: { type: MarkerType.ArrowClosed, color: '#4b5563', width: 16, height: 16 },
     style: { stroke: '#3a4242', strokeWidth: 1.5 },
     labelStyle: { fontFamily: 'JetBrains Mono, monospace', fontSize: '10px', fill: '#9ca3af' },
@@ -166,7 +166,7 @@ export default function ForensicGraph() {
     <div className="grid grid-cols-12 gap-3 p-3">
       <div className="col-span-12 lg:col-span-9">
         <Panel
-          title={`MONEY-FLOW DAG — ${formatTicket(complaintId)}`}
+          title={`Transaction trail — ${formatTicket(complaintId)}`}
           right={
             loading
               ? 'building…'
@@ -178,7 +178,7 @@ export default function ForensicGraph() {
           <div className="h-[64vh] bg-ink-bg relative">
             {loading && (
               <div className="absolute inset-0 grid place-items-center z-10 bg-ink-bg/70 mono text-[12px] text-zinc-400">
-                <span className="flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> Traversing transaction graph…</span>
+                <span className="flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> Building transaction trail…</span>
               </div>
             )}
 
@@ -224,7 +224,7 @@ export default function ForensicGraph() {
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded" style={{ background: NODE_COLOR.mule }} /> Layering mule</span>
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded" style={{ background: NODE_COLOR.terminal }} /> Terminal cashout</span>
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded border-2 border-[#ffd23f]" /> Anomaly flagged</span>
-            <span className="ml-auto text-zinc-500">Click a node to inspect</span>
+            <span className="ml-auto text-zinc-500">Select an account to inspect</span>
           </div>
         </Panel>
       </div>
@@ -232,7 +232,7 @@ export default function ForensicGraph() {
       <div className="col-span-12 lg:col-span-3 space-y-3">
         {/* ── Node inspector ─────────────────────────────────────────────── */}
         <div className="aegis-panel p-3">
-          <div className="mono text-[11px] tracking-[0.14em] text-zinc-400 font-semibold uppercase">Node Inspector</div>
+          <div className="mono text-[11px] tracking-[0.14em] text-zinc-400 font-semibold uppercase">Account detail</div>
           {!selected ? (
             <div className="mono text-[12px] text-zinc-500 mt-3">Select a node on the graph.</div>
           ) : (
@@ -250,11 +250,11 @@ export default function ForensicGraph() {
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="bg-ink-panel border border-ink-border rounded px-2.5 py-2">
-                  <div className="text-zinc-500">Amount In</div>
+                  <div className="text-zinc-500">Amount received</div>
                   <div className="text-white font-semibold">{amountFmt(selected.amount)}</div>
                 </div>
                 <div className="bg-ink-panel border border-ink-border rounded px-2.5 py-2">
-                  <div className="text-zinc-500">GNN Mule Prob.</div>
+                  <div className="text-zinc-500">Mule probability</div>
                   <div className="font-bold" style={{ color: riskColor(risk) }}>
                     {(risk * 100).toFixed(1)}%
                   </div>
@@ -268,8 +268,8 @@ export default function ForensicGraph() {
                 />
               </div>
               <div className="text-[10px] text-zinc-600 leading-relaxed">
-                sigmoid(Wh + b) from the trained GraphSAGE classification head, applied to this
-                account's cached 64-d embedding.
+                How likely this account is a money mule, scored from who it moves money
+                with rather than its own activity alone.
               </div>
 
               <div className="bg-ink-panel border border-ink-border rounded px-2.5 py-2">
@@ -293,7 +293,7 @@ export default function ForensicGraph() {
         </div>
 
         {/* ── Real anomaly detections ────────────────────────────────────── */}
-        <Panel title="GRAPH ANOMALIES" right="NetworkX">
+        <Panel title="Risk indicators" right="Rule-based">
           <div className="p-3 mono text-[11px] space-y-2">
             {[
               [AlertTriangle, 'text-amber-400', 'Velocity', anomalies.velocity_count ?? 0, anomalies.velocity_rule],
@@ -318,7 +318,7 @@ export default function ForensicGraph() {
         </Panel>
 
         {/* ── Highest-risk accounts ──────────────────────────────────────── */}
-        <Panel title="HIGHEST-RISK ACCOUNTS" right="GraphSAGE">
+        <Panel title="Highest-risk accounts" right="Model score">
           <div className="p-3 space-y-1.5 mono text-[11px]">
             {topMules.length === 0 ? (
               <div className="text-zinc-500 text-[11px]">No embedding data for this complaint.</div>
@@ -348,7 +348,7 @@ export default function ForensicGraph() {
               ))
             )}
             <div className="flex items-center gap-1.5 text-[10px] text-zinc-600 pt-0.5">
-              <Activity size={11} /> Ranked by trained mule probability
+              <Activity size={11} /> Ranked by model mule probability
             </div>
           </div>
         </Panel>
