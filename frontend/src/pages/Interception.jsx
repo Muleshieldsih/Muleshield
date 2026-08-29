@@ -145,8 +145,16 @@ export default function Interception() {
         <div className="aegis-panel p-4">
           <div className="flex items-center justify-between mono text-[11px] tracking-[0.14em] text-zinc-400 gap-2">
             <span className="truncate">INTERCEPTION CONTROL · {complaintId || '—'}</span>
-            <span className="flex items-center gap-1.5 text-aegis-green font-bold shrink-0">
-              <Radio size={13} className="animate-pulse-dot" /> LIVE
+            {/* Reflects the actual inference state. This was previously a green
+                "LIVE" badge rendered unconditionally — it stayed lit while the
+                panel below was loading, empty, or showing an error. */}
+            <span
+              className={`flex items-center gap-1.5 font-bold shrink-0 ${
+                prediction ? 'text-aegis-green' : 'text-zinc-500'
+              }`}
+            >
+              <Radio size={13} className={prediction ? 'animate-pulse-dot' : ''} />
+              {prediction ? 'ARMED' : loading ? 'COMPUTING' : 'STANDBY'}
             </span>
           </div>
 

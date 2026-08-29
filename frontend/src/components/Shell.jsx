@@ -14,11 +14,18 @@ function cityCode(city) {
 }
 
 /**
- * Live intake ticker.
+ * Complaint intake queue.
  *
- * Renders the real complaint queue. It used to invent random ticket IDs on a
- * timer, which looked live but navigated to tickets the backend had never
- * heard of — every click produced a 404 on the graph and prediction screens.
+ * Renders the real queue. It used to invent random ticket IDs on a timer, which
+ * looked live but navigated to tickets the backend had never heard of — every
+ * click produced a 404 on the graph and prediction screens.
+ *
+ * It was then labelled "1930 LIVE STREAM · live" while showing a list that never
+ * moved, because the badge reported the WebSocket being *open*, not complaints
+ * arriving. Offline there is no NCRP feed pushing new complaints, so the queue is
+ * static by definition and the label was claiming something untrue. The badge now
+ * reports the connection for what it is: the socket is ready and new complaints
+ * will appear the moment one is ingested.
  */
 function SidebarStreamTicker({ complaints = [], onSelect, activeId, wsConnected }) {
   const now = useNow(1000)
@@ -34,18 +41,24 @@ function SidebarStreamTicker({ complaints = [], onSelect, activeId, wsConnected 
   return (
     <div className="flex-1 flex flex-col min-h-0 border-t border-ink-border px-3 py-2">
       <div className="flex items-center justify-between pb-1.5 mono text-[10px] text-zinc-400 font-semibold uppercase tracking-wider">
-        <span>1930 Live Stream</span>
+        <span>Intake Queue{rows.length ? ` · ${rows.length}` : ''}</span>
         <span
           className={`flex items-center gap-1 font-bold text-[9px] lowercase tracking-normal ${
             wsConnected ? 'text-aegis-green' : 'text-zinc-500'
           }`}
+          title={
+            wsConnected
+              ? 'Connected to the complaint feed. New complaints appear here as they are ingested.'
+              : 'Not connected — start the backend to receive complaints.'
+          }
         >
+          {/* A static dot, not a pulsing one: the socket being open is not the
+              same as traffic flowing, and an animated indicator reads as the
+              latter. */}
           <span
-            className={`w-1.5 h-1.5 rounded-full ${
-              wsConnected ? 'bg-aegis-green animate-pulse-dot' : 'bg-zinc-600'
-            }`}
+            className={`w-1.5 h-1.5 rounded-full ${wsConnected ? 'bg-aegis-green' : 'bg-zinc-600'}`}
           />
-          {wsConnected ? 'live' : 'offline'}
+          {wsConnected ? 'connected' : 'offline'}
         </span>
       </div>
 
@@ -55,6 +68,8 @@ function SidebarStreamTicker({ complaints = [], onSelect, activeId, wsConnected 
             No complaints in queue.
             <br />
             Ingest one from the Triage screen.
+            <br />
+            <span className="text-zinc-700">Offline build — no NCRP feed.</span>
           </div>
         ) : (
           rows.map(c => {
@@ -135,8 +150,8 @@ export function Topbar({ wsConnected, complaintId, backendDown, lastEvent }) {
                 wsConnected ? 'text-aegis-green font-semibold' : 'text-zinc-500'
               }`}
             >
-              <Circle size={8} className={wsConnected ? 'fill-aegis-green animate-pulse-dot' : ''} />
-              {wsConnected ? 'LIVE 1930 TELEMETRY' : 'RECONNECTING…'}
+              <Circle size={8} className={wsConnected ? 'fill-aegis-green' : ''} />
+              {wsConnected ? '1930 FEED CONNECTED' : 'RECONNECTING…'}
             </span>
           )}
         </div>
@@ -152,7 +167,7 @@ export function Topbar({ wsConnected, complaintId, backendDown, lastEvent }) {
 }
 
 const NAV_ITEMS = [
-  ['/', <Activity size={15} key="i" />, 'TRIAGE QUEUE', 'Live 1930 feed'],
+  ['/', <Activity size={15} key="i" />, 'TRIAGE QUEUE', '1930 complaint intake'],
   ['/map', <MapPinned size={15} key="i" />, 'TACTICAL MAP', 'ATM GPS routing'],
   ['/graph', <GitBranch size={15} key="i" />, 'MONEY FLOW', 'Forensic graph'],
   ['/intercept', <Zap size={15} key="i" />, 'INTERCEPTION', '1-Click freeze'],
@@ -246,18 +261,15 @@ export function MobileNav({ onNavigate, pathname }) {
   )
 }
 
-export function Panel({ title, live, right, children, className = '', bodyClass = '' }) {
+// Carried a `live` prop that rendered a pulsing "Live" tag. No caller ever set
+// it, and it was the same unearned claim the intake badge was making, so it is
+// gone rather than left available to switch on.
+export function Panel({ title, right, children, className = '', bodyClass = '' }) {
   return (
     <section className={`aegis-panel ${className}`}>
       <div className="aegis-panel-header">
         <div className="flex items-center gap-2 text-[11px] mono tracking-[0.12em] text-zinc-400 min-w-0">
           <span className="truncate">{title}</span>
-          {live && (
-            <span className="flex items-center gap-1.5 text-aegis-green normal-case tracking-normal shrink-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-aegis-green animate-pulse-dot" />
-              Live
-            </span>
-          )}
         </div>
         <div className="text-[11px] mono text-zinc-500 shrink-0 pl-2">{right}</div>
       </div>

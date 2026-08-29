@@ -278,7 +278,7 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
           <div className="mono text-[11px] text-zinc-400 uppercase tracking-wider font-semibold">Queue Depth</div>
           <div className="text-2xl font-bold text-white mt-1 mono">{visible.length}</div>
           <div className="text-[11px] text-zinc-500 mt-1">
-            {health ? `${health.active_complaints.toLocaleString('en-IN')} on national feed` : 'Live NCRP queue'}
+            {health ? `${health.active_complaints.toLocaleString('en-IN')} on national feed` : 'Queue total unavailable'}
           </div>
         </div>
         <div className="aegis-panel p-3 border-l-4 border-l-red-500">
