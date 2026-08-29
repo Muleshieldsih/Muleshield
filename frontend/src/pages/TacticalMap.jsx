@@ -105,7 +105,7 @@ function TacticalLeafletMap({ terminal, atms, zone, selectedAtmId, onSelectAtm, 
     if (hasTerminal) {
       L.marker([terminal.lat, terminal.lon], { icon: terminalIcon() })
         .bindPopup(
-          `<div style="font-family:'JetBrains Mono',monospace;font-size:11px">
+          `<div style="font-family:Inter,system-ui,sans-serif;font-size:12px;line-height:1.5">
             <b style="color:#1d4ed8">Terminal mule account</b><br/>${terminal.account || '—'}<br/>
             ${terminal.lat.toFixed(4)}°, ${terminal.lon.toFixed(4)}°
           </div>`
@@ -121,11 +121,14 @@ function TacticalLeafletMap({ terminal, atms, zone, selectedAtmId, onSelectAtm, 
         zIndexOffset: isSel ? 1000 : 100,
       })
         .bindPopup(
-          `<div style="font-family:'JetBrains Mono',monospace;font-size:11px">
+          `<div style="font-family:Inter,system-ui,sans-serif;font-size:12px;line-height:1.5">
             <b style="color:#b91c1c">${a.atm_id} — ${a.bank}</b> (Rank #${a.rank})<br/>
             ${a.address}<br/>
-            <b style="color:#047857">Confidence ${(a.confidence * 100).toFixed(1)}%</b><br/>
-            <span style="color:#6b7280">${a.historical_fraud_count} historical incidents</span>
+            <span style="color:#374151">Rank share ${(a.confidence * 100).toFixed(1)}%
+              · ${a.historical_fraud_count} prior incidents</span><br/>
+            <span style="color:#6b7280">${
+              a.opening_time ? `Open ${a.opening_time}–${a.closing_time}` : 'Hours unknown'
+            }</span>
           </div>`
         )
         .on('click', () => selectRef.current?.(a.atm_id))
@@ -145,7 +148,7 @@ function TacticalLeafletMap({ terminal, atms, zone, selectedAtmId, onSelectAtm, 
         fillOpacity: 0.10, weight: 2, dashArray: '8 6',
       })
         .bindPopup(
-          `<div style="font-family:'JetBrains Mono',monospace;font-size:11px">
+          `<div style="font-family:Inter,system-ui,sans-serif;font-size:12px;line-height:1.5">
             <b style="color:#b45309">Search zone</b><br/>
             radius ${zone.radius_km.toFixed(2)} km<br/>
             ${zone.atm_count} ATM(s) to cover<br/>
@@ -183,6 +186,30 @@ function TacticalLeafletMap({ terminal, atms, zone, selectedAtmId, onSelectAtm, 
 }
 
 /** Great-circle distance in km. */
+/**
+ * Is this ATM open at the hour the withdrawal is expected?
+ *
+ * The directory carries opening and closing times for every machine and the
+ * console had never used them, so a location shut at the predicted hour ranked
+ * beside one that was open and an officer could be sent to a closed branch.
+ *
+ * Returns null when the hours are unknown -- an absent answer, not a false one.
+ */
+function openAt(atm, minutesFromNow) {
+  if (!atm?.opening_time || !atm?.closing_time) return null
+  const at = new Date(Date.now() + (Number(minutesFromNow) || 0) * 60000)
+  const mins = at.getHours() * 60 + at.getMinutes()
+  const toMins = (hhmm) => {
+    const [h, m] = String(hhmm).split(':').map(Number)
+    return Number.isFinite(h) ? h * 60 + (m || 0) : null
+  }
+  const open = toMins(atm.opening_time)
+  const close = toMins(atm.closing_time)
+  if (open == null || close == null) return null
+  // A window that ends before it starts runs past midnight.
+  return close > open ? mins >= open && mins < close : mins >= open || mins < close
+}
+
 function haversineKm(aLat, aLon, bLat, bLon) {
   const R = 6371
   const toRad = (d) => (d * Math.PI) / 180
@@ -252,7 +279,7 @@ export default function TacticalMap() {
         >
           <div className="h-[64vh] relative">
             {error ? (
-              <div className="absolute inset-0 grid place-items-center px-6 text-center mono text-[12px] z-[1200] bg-ink-bg">
+              <div className="absolute inset-0 grid place-items-center px-6 text-center text-[12.5px] z-[1200] bg-ink-bg">
                 <div>
                   <ServerCrash size={26} className="text-red-400 mx-auto mb-2" />
                   <div className="text-red-300 font-bold">Prediction unavailable</div>
@@ -271,14 +298,14 @@ export default function TacticalMap() {
                 />
 
                 {loading && (
-                  <div className="absolute inset-0 grid place-items-center bg-ink-bg/70 z-[1100] mono text-[12px] text-zinc-300">
+                  <div className="absolute inset-0 grid place-items-center bg-ink-bg/70 z-[1100] text-[12.5px] text-zinc-300">
                     <span className="flex items-center gap-2">
-                      <Loader2 size={14} className="animate-spin" /> Running GNN + XGBoost inference…
+                      <Loader2 size={14} className="animate-spin" /> Ranking cash-out locations…
                     </span>
                   </div>
                 )}
 
-                <div className="absolute top-3 left-3 flex flex-wrap gap-2 mono text-[11px] z-[1000] max-w-[calc(100%-24px)]">
+                <div className="absolute top-3 left-3 flex flex-wrap gap-2 text-[11.5px] z-[1000] max-w-[calc(100%-24px)]">
                   <span className="px-2.5 py-1 rounded bg-ink-panel border border-ink-border text-zinc-300">
                     ATM directory
                   </span>
@@ -307,21 +334,22 @@ export default function TacticalMap() {
       <div className="col-span-12 lg:col-span-4 space-y-3">
         <div className="aegis-panel p-3">
           <div className="flex items-center justify-between pb-2 border-b border-ink-border">
-            <span className="mono text-[11px] tracking-[0.14em] text-zinc-400 font-semibold uppercase">
+            <span className="text-[12px] font-medium text-zinc-300">
               Ranked locations
             </span>
-            <span className="mono text-[10px] text-aegis-green font-bold">XGBoost v2</span>
+            <span className="text-[11px] text-zinc-500">XGBoost v2</span>
           </div>
 
           <div className="space-y-2 mt-3">
             {atms.length === 0 && !loading && (
-              <div className="mono text-[11px] text-zinc-500 py-4 text-center">No prediction to display.</div>
+              <div className="text-[12.5px] text-zinc-500 py-4 text-center">No ranked locations for this case.</div>
             )}
             {atms.map(a => {
               const isSel = a.atm_id === activeAtm?.atm_id
               const d = Number.isFinite(terminal.lat)
                 ? haversineKm(terminal.lat, terminal.lon, a.lat, a.lon).toFixed(1)
                 : null
+              const openNow = openAt(a, prediction?.time_to_cashout_minutes)
               return (
                 <button
                   key={a.atm_id}
@@ -332,27 +360,36 @@ export default function TacticalMap() {
                       : 'bg-ink-surface/60 border-ink-border hover:bg-ink-panel hover:border-zinc-700'
                   }`}
                 >
-                  <div className="flex items-center justify-between mono text-[11px] gap-2">
+                  <div className="flex items-center justify-between text-[11.5px] gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className={`w-5 h-5 grid place-items-center rounded text-[10px] font-bold shrink-0 ${
                         isSel ? 'bg-red-500 text-white'
                           : a.rank === 1 ? 'bg-red-500/20 text-red-400 border border-red-500/40'
                           : 'bg-ink-bg border border-ink-border text-zinc-400'
                       }`}>{a.rank}</span>
-                      <span className="font-bold text-white truncate">{a.atm_id}</span>
+                      <span className="mono font-semibold text-zinc-100 truncate">{a.atm_id}</span>
                     </div>
-                    <span className="text-aegis-green font-bold shrink-0">{(a.confidence * 100).toFixed(1)}%</span>
+                    <span className="mono tnum text-zinc-300 shrink-0">{(a.confidence * 100).toFixed(1)}%</span>
                   </div>
 
-                  <div className="mono text-[10px] text-zinc-400 mt-1">{a.bank}</div>
-                  <div className="mono text-[11px] text-zinc-300 mt-1 flex items-start gap-1">
+                  <div className="text-[11.5px] text-zinc-400 mt-1">{a.bank}</div>
+                  <div className="text-[11.5px] text-zinc-300 mt-1 flex items-start gap-1">
                     <MapPin size={12} className="text-red-400 shrink-0 mt-0.5" />
                     <span className="line-clamp-2">{a.address}</span>
                   </div>
 
-                  <div className="mono text-[10px] text-zinc-500 mt-1 flex justify-between gap-2">
-                    <span>{d != null ? `${d} km from mule` : '—'}</span>
-                    <span>{a.historical_fraud_count} priors</span>
+                  <div className="text-[11px] text-zinc-500 mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span className="mono tnum">{d != null ? `${d} km away` : '—'}</span>
+                    <span>{a.historical_fraud_count} prior incidents</span>
+                    {a.opening_time && (
+                      <span className="mono tnum">{a.opening_time}–{a.closing_time}</span>
+                    )}
+                    {openNow === false && (
+                      <span className="text-amber-400 border border-amber-500/40 bg-amber-500/10
+                                       rounded px-1.5 py-0.5">
+                        closed at the expected time
+                      </span>
+                    )}
                   </div>
 
                   <div className="mt-2 h-1.5 bg-ink-bg border border-ink-border rounded overflow-hidden">
@@ -371,7 +408,7 @@ export default function TacticalMap() {
 
           {prediction && (
             <>
-              <div className="mt-3 pt-3 border-t border-ink-border space-y-1.5 mono text-[11px]">
+              <div className="mt-3 pt-3 border-t border-ink-border space-y-1.5 text-[11.5px]">
                 {[
                   ['Terminal account', prediction.terminal_account],
                   ['Selected target', activeAtm ? `${activeAtm.atm_id}` : '—'],
@@ -388,13 +425,13 @@ export default function TacticalMap() {
 
               {prediction.search_zone && (
                 <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-2.5">
-                  <div className="mono text-[10px] text-amber-300/90 uppercase tracking-wide">
+                  <div className="text-[11px] text-zinc-400">
                     Search zone
                   </div>
-                  <div className="mono text-[15px] font-bold text-amber-200 mt-0.5">
+                  <div className="mono tnum text-[15px] font-semibold text-amber-200 mt-0.5">
                     {prediction.search_zone.radius_km.toFixed(2)} km radius
                   </div>
-                  <div className="mono text-[10px] text-zinc-400 mt-0.5">
+                  <div className="text-[11px] text-zinc-400 mt-0.5">
                     {prediction.search_zone.atm_count} ATM
                     {prediction.search_zone.atm_count === 1 ? '' : 's'} to cover ·
                     {' '}{(prediction.search_zone.probability_mass * 100).toFixed(0)}% probability mass

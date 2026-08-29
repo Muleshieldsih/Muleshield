@@ -136,7 +136,15 @@ class EmbeddingResponse(BaseModel):
 # ─────────────────────────────────────────────────────────────────────────────
 
 class ATMPrediction(BaseModel):
-    """One ranked candidate cash-out location."""
+    """
+    One ranked candidate cash-out location.
+
+    The directory carries city, district, opening hours and a risk score for
+    every ATM, all loaded into memory at startup and none of it previously sent
+    to the client. Opening hours in particular decide whether a location is
+    worth dispatching to at all -- a machine inside a branch that shut at 21:00
+    is not where a 02:00 withdrawal happens.
+    """
     rank: int
     atm_id: str
     confidence: float
@@ -145,6 +153,12 @@ class ATMPrediction(BaseModel):
     bank: str
     address: str
     historical_fraud_count: int
+    city: str = ""
+    district: str = ""
+    state: str = ""
+    opening_time: str = ""
+    closing_time: str = ""
+    cashout_risk_score: float = 0.0
 
 
 class SearchZone(BaseModel):
