@@ -1,49 +1,157 @@
 import { useEffect, useState, useMemo, useCallback, memo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { endpoints, describeError } from '../services/api'
-import { amountFmt, amountShort, formatTicket, FRAUD_TYPES, BANKS, CITIES } from '../utils/constants'
+import { amountFmt, amountShort, formatTicket, MODEL_STATS, FRAUD_TYPES, BANKS, CITIES } from '../utils/constants'
 import { timeAgo, useNow } from '../hooks/useCountdown'
 import { Panel } from '../components/Shell'
 import {
   ShieldAlert, Plus, Search, MapPinned, GitBranch, Zap, ArrowUpRight,
-  CheckCircle2, AlertTriangle, Loader2, Radio,
+  CheckCircle2, AlertTriangle, Loader2, Radio, RotateCcw,
 } from 'lucide-react'
 
 const GOLDEN_HOUR_MIN = 60
-const CRITICAL_MIN = 15
-const WARNING_MIN = 35
-const HIGH_VALUE = 150000
-const MID_VALUE = 75000
+
+// A queue of small complaints must not manufacture a HIGH VALUE row simply by
+// containing the largest of a set of small ones. Percentiles decide the
+// ordering; this decides whether the top of that ordering earns the label.
+const HIGH_VALUE_FLOOR = 100000
+
+/** Minutes since a complaint was filed, or Infinity if the timestamp is unusable. */
+function ageMinutes(complaint, now) {
+  const ts = new Date(complaint.complaint_timestamp).getTime()
+  return Number.isNaN(ts) ? Infinity : Math.max(0, (now - ts) / 60000)
+}
 
 /**
- * Severity of a complaint, from how long the money has been moving and how
- * much of it there is. Age is bucketed rather than read continuously so a row
- * only changes class when it crosses a real threshold.
+ * Is this complaint's clock safe to draw a countdown from?
+ *
+ * Complaints stamped by the backend carry `is_live` and a UTC offset
+ * (state.py writes datetime.now(timezone.utc).isoformat()). The seed corpus
+ * carries naive local-time strings — "2026-05-27T19:43:13", no zone — which JS
+ * resolves against the *browser's* timezone. On a demo machine in a different
+ * zone from the one that generated the CSV, a seed row can drift inside the
+ * last 60 minutes and start a countdown for a complaint that is months old.
+ *
+ * A countdown that is not true is the exact defect this model exists to remove,
+ * so the golden hour is only ever drawn for a timestamp that says what zone it
+ * is in.
  */
-function severityOf(complaint, now) {
-  const ts = new Date(complaint.complaint_timestamp).getTime()
-  const mins = Number.isNaN(ts) ? Infinity : Math.max(0, (now - ts) / 60000)
+function hasTrustedClock(complaint) {
+  if (complaint?.is_live) return true
+  return /(?:Z|[+-]\d{2}:\d{2})$/.test(String(complaint?.complaint_timestamp || ''))
+}
+
+/**
+ * Value thresholds taken from the queue that is actually loaded.
+ *
+ * These were fixed rupee constants (₹1.5L / ₹75k). Against the shipped corpus
+ * that put 43% of complaints in the top band and 73% in the top two, so the
+ * badge told an operator almost nothing — the head of the queue was uniformly
+ * red. Percentiles self-calibrate to whatever data is present, so the top band
+ * stays a top band whatever the caseload looks like.
+ */
+function valueBands(complaints) {
+  const amts = complaints
+    .map(c => Number(c.stolen_amount) || 0)
+    .sort((a, b) => a - b)
+  const at = p => (amts.length ? amts[Math.min(amts.length - 1, Math.floor(p * amts.length))] : 0)
+  const high = Math.max(at(0.90), HIGH_VALUE_FLOOR)
+  // The floor can push `high` past p90, so the share is counted rather than
+  // assumed — the stat card prints this number and it has to be true.
+  const share = amts.length ? amts.filter(a => a >= high).length / amts.length : 0
+  return { high, mid: at(0.65), share }
+}
+
+/**
+ * Severity on two axes that are never collapsed into one claim.
+ *
+ * The old version was `age < 15min OR amount >= ₹1.5L` and labelled the result
+ * "CRITICAL · <15m". No complaint in the corpus is under 12 HOURS old, so the
+ * age test never fired and every badge was decided by amount alone — while
+ * still asserting a 15-minute window. A row read "CRITICAL · <15m" directly
+ * above its own "3d ago". That is the kind of contradiction a judge reads as
+ * fabrication, so the label now states only what is true of that complaint.
+ *
+ * Axis A, the golden hour, applies only where it is real: a complaint ingested
+ * through the console is timestamped now (backend/state.py add_complaint), so
+ * its 60-minute window genuinely ticks. Axis B, value, ranks the cold backlog
+ * that the window has already closed on.
+ */
+function severityOf(complaint, now, bands) {
+  const mins = ageMinutes(complaint, now)
   const amount = Number(complaint.stolen_amount) || 0
-
-  if (mins < CRITICAL_MIN || amount >= HIGH_VALUE) {
-    return { weight: 3, label: `CRITICAL · <${CRITICAL_MIN}m`, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/30', dot: 'bg-red-500', critical: true }
-  }
-  if (mins < WARNING_MIN || amount >= MID_VALUE) {
-    return { weight: 2, label: `WARNING · <${WARNING_MIN}m`, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/30', dot: 'bg-amber-500', critical: false }
-  }
-  return { weight: 1, label: 'MONITORING', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/30', dot: 'bg-emerald-500', critical: false }
-}
-
-/** Fraction of the golden hour already burned, for the row's urgency bar. */
-function goldenHourUsed(complaint, now) {
   const ts = new Date(complaint.complaint_timestamp).getTime()
-  if (Number.isNaN(ts)) return 1
-  const mins = Math.max(0, (now - ts) / 60000)
-  return Math.min(1, mins / GOLDEN_HOUR_MIN)
+
+  if (mins < GOLDEN_HOUR_MIN && hasTrustedClock(complaint)) {
+    const open = { label: 'GOLDEN HOUR', golden: true, urgent: true, startedAt: ts }
+    if (mins < 15) {
+      return { ...open, weight: 5, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/30', dot: 'bg-red-500' }
+    }
+    if (mins < 35) {
+      return { ...open, weight: 4, color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/30', dot: 'bg-orange-500' }
+    }
+    return { ...open, weight: 3, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/30', dot: 'bg-amber-500' }
+  }
+
+  // Cold: the interception window closed. Rank by what is at stake instead.
+  const cold = { golden: false, urgent: false, startedAt: null }
+  if (amount >= bands.high) {
+    return { ...cold, weight: 2, label: 'HIGH VALUE', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/30', dot: 'bg-red-500' }
+  }
+  if (amount >= bands.mid) {
+    return { ...cold, weight: 1, label: 'ELEVATED', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/30', dot: 'bg-amber-500' }
+  }
+  // Zinc rather than emerald: emerald is this console's "good / live" accent and
+  // the majority of rows wearing it competed with the aegis-green LIVE chip.
+  return { ...cold, weight: 0, label: 'ROUTINE', color: 'text-zinc-400', bg: 'bg-zinc-500/10 border-zinc-600/30', dot: 'bg-zinc-600' }
 }
 
-const TriageRow = memo(function TriageRow({ c, isSelected, onSelect, now }) {
-  const sev = severityOf(c, now)
+/**
+ * Minutes:seconds left on an open interception window.
+ *
+ * Its own 1-second tick. The page runs `useNow(15000)` because 60 static rows
+ * do not need to repaint every second — but a countdown that advances in
+ * 15-second jumps reads as broken during the one moment the console is
+ * actually claiming to be real-time. Mounted only for golden rows, so nothing
+ * else pays for the faster tick.
+ */
+const GoldenHourClock = memo(function GoldenHourClock({ startedAt }) {
+  const tick = useNow(1000)
+  const left = Math.max(0, GOLDEN_HOUR_MIN * 60000 - (tick - startedAt))
+  if (left === 0) return <span>· expired</span>
+  const mm = String(Math.floor(left / 60000)).padStart(2, '0')
+  const ss = String(Math.floor((left % 60000) / 1000)).padStart(2, '0')
+  return <span>· {mm}:{ss}</span>
+})
+
+/** One badge, so a row and the selected-incident panel can never disagree. */
+const SevBadge = memo(function SevBadge({ sev }) {
+  return (
+    <span
+      className={`px-2 py-0.5 rounded text-[10px] mono border font-medium shrink-0 inline-flex items-center gap-1 ${sev.bg} ${sev.color}`}
+    >
+      {sev.label}
+      {sev.golden && sev.startedAt != null && <GoldenHourClock startedAt={sev.startedAt} />}
+    </span>
+  )
+})
+
+/**
+ * Fraction of the golden hour burned, or null once it has closed.
+ *
+ * null, not 1. The bar used to clamp to 1 for anything past the window, which
+ * meant every row in a corpus of days-old complaints rendered a full red bar —
+ * an urgency signal on rows where no urgency remained. The caller now omits the
+ * bar entirely for those.
+ */
+function goldenHourUsed(complaint, now) {
+  const mins = ageMinutes(complaint, now)
+  if (!Number.isFinite(mins) || mins >= GOLDEN_HOUR_MIN) return null
+  return mins / GOLDEN_HOUR_MIN
+}
+
+const TriageRow = memo(function TriageRow({ c, isSelected, onSelect, now, bands }) {
+  const sev = severityOf(c, now, bands)
   const used = goldenHourUsed(c, now)
 
   return (
@@ -52,7 +160,7 @@ const TriageRow = memo(function TriageRow({ c, isSelected, onSelect, now }) {
       className={`w-full text-left p-3 rounded-lg border transition-colors duration-150 relative overflow-hidden ${
         isSelected
           ? 'bg-ink-panel border-aegis-green ring-1 ring-aegis-green/30'
-          : sev.critical
+          : sev.urgent
           ? 'bg-ink-surface/80 border-ink-border hover:bg-ink-panel hover:border-red-500/40'
           : 'bg-ink-surface/60 border-ink-border hover:bg-ink-panel hover:border-zinc-700'
       }`}
@@ -66,11 +174,9 @@ const TriageRow = memo(function TriageRow({ c, isSelected, onSelect, now }) {
               LIVE
             </span>
           )}
-          <span className={`px-2 py-0.5 rounded text-[10px] mono border font-medium shrink-0 ${sev.bg} ${sev.color}`}>
-            {sev.label}
-          </span>
+          <SevBadge sev={sev} />
         </div>
-        <span className={`mono text-[13px] font-bold shrink-0 ${sev.critical ? 'text-red-400' : 'text-aegis-green'}`}>
+        <span className={`mono text-[13px] font-bold shrink-0 ${sev.urgent ? 'text-red-400' : 'text-aegis-green'}`}>
           {amountFmt(c.stolen_amount)}
         </span>
       </div>
@@ -84,16 +190,19 @@ const TriageRow = memo(function TriageRow({ c, isSelected, onSelect, now }) {
         <div className="text-right text-zinc-500">{timeAgo(c.complaint_timestamp, now)}</div>
       </div>
 
-      {/* Golden-hour burn-down */}
-      <div className="mt-2 h-0.5 bg-ink-bg rounded overflow-hidden">
-        <span
-          className="block h-full transition-all duration-500"
-          style={{
-            width: `${used * 100}%`,
-            background: used > 0.75 ? '#ff3b3b' : used > 0.45 ? '#ff8c42' : '#7cf000',
-          }}
-        />
-      </div>
+      {/* Golden-hour burn-down. Drawn only while the window is genuinely open --
+          on a days-old complaint a full bar is decoration, not information. */}
+      {used !== null && (
+        <div className="mt-2 h-0.5 bg-ink-bg rounded overflow-hidden">
+          <span
+            className="block h-full transition-all duration-500"
+            style={{
+              width: `${used * 100}%`,
+              background: used > 0.75 ? '#ff3b3b' : used > 0.45 ? '#ff8c42' : '#7cf000',
+            }}
+          />
+        </div>
+      )}
     </button>
   )
 })
@@ -213,6 +322,7 @@ const IngestModal = memo(function IngestModal({ isOpen, onClose, onSuccess }) {
 
 export default function TriageFeed({ complaints = [], selected, onSelect, onIngested, backendDown }) {
   const [dismissed, setDismissed] = useState(() => new Set())
+  const [lastResolved, setLastResolved] = useState(null)
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState('ALL')
   const [modalOpen, setModalOpen] = useState(false)
@@ -221,16 +331,31 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
 
   // 15s is enough for relative timestamps and severity buckets. A 1s tick here
   // re-sorted the entire queue sixty times a minute for no visible benefit.
+  // An open golden hour gets its own 1s tick inside GoldenHourClock.
   const now = useNow(15000)
 
+  // Value bands from the whole loaded queue, not the filtered view: if the cuts
+  // moved as the operator typed in the search box, a row's badge would change
+  // meaning mid-keystroke.
+  const bands = useMemo(() => valueBands(complaints), [complaints])
+
+  // Polled, not fetched once. This was keyed on `complaints.length`, so against
+  // a static corpus it ran a single time and the WS-client count below it was
+  // frozen from page load onward while claiming to read live from /health.
   useEffect(() => {
-    endpoints.health().then(setHealth).catch(() => setHealth(null))
-  }, [complaints.length])
+    let cancelled = false
+    const pull = () => endpoints.health()
+      .then(h => { if (!cancelled) setHealth(h) })
+      .catch(() => { if (!cancelled) setHealth(null) })
+    pull()
+    const id = setInterval(pull, 15000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [])
 
   const visible = useMemo(() => {
     const rows = complaints.filter(c => c?.ticket_id && !dismissed.has(c.ticket_id))
 
-    const scored = rows.map(c => ({ c, w: severityOf(c, now).weight }))
+    const scored = rows.map(c => ({ c, w: severityOf(c, now, bands).weight }))
     scored.sort((a, b) => (b.w - a.w) || ((b.c.stolen_amount || 0) - (a.c.stolen_amount || 0)))
 
     const needle = q.trim().toLowerCase()
@@ -244,7 +369,7 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
         return `${c.ticket_id} ${formatTicket(c.ticket_id)} ${c.victim_name} ${c.city} ${c.state} ${c.fraud_type} ${c.victim_account}`
           .toLowerCase().includes(needle)
       })
-  }, [complaints, dismissed, q, filter, now])
+  }, [complaints, dismissed, q, filter, now, bands])
 
   const active = useMemo(
     () => visible.find(c => c.ticket_id === selected) || visible[0] || null,
@@ -256,16 +381,45 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
     if (!selected && visible.length) onSelect?.(visible[0].ticket_id)
   }, [selected, visible, onSelect])
 
-  const stats = useMemo(() => ({
-    critical: visible.filter(c => severityOf(c, now).critical).length,
-    atRisk: visible.reduce((sum, c) => sum + (Number(c.stolen_amount) || 0), 0),
-  }), [visible, now])
+  const stats = useMemo(() => {
+    let highValue = 0
+    let golden = 0
+    let atRisk = 0
+    for (const c of visible) {
+      const s = severityOf(c, now, bands)
+      if (s.golden) golden++
+      else if (s.weight === 2) highValue++
+      atRisk += Number(c.stolen_amount) || 0
+    }
+    return { highValue, golden, atRisk }
+  }, [visible, now, bands])
 
+  // Resolving used to add the ticket to `dismissed` and stop, which dropped it
+  // from `visible` but left `selected` pointing at it. The topbar "Active" pill
+  // and all three tactical screens then kept naming a complaint the operator had
+  // just cleared. The selection has to move with the queue.
   const resolve = useCallback(() => {
-    if (active) setDismissed(prev => new Set(prev).add(active.ticket_id))
-  }, [active])
+    if (!active) return
+    const id = active.ticket_id
+    const next = visible.find(c => c.ticket_id !== id)
+    setDismissed(prev => new Set(prev).add(id))
+    setLastResolved(id)
+    onSelect?.(next ? next.ticket_id : '')
+  }, [active, visible, onSelect])
 
-  const activeSev = active ? severityOf(active, now) : null
+  // `dismissed` only ever grew, so a misclick cost a page reload to undo.
+  const undoResolve = useCallback(() => {
+    if (!lastResolved) return
+    setDismissed(prev => {
+      const nextSet = new Set(prev)
+      nextSet.delete(lastResolved)
+      return nextSet
+    })
+    onSelect?.(lastResolved)
+    setLastResolved(null)
+  }, [lastResolved, onSelect])
+
+  const activeSev = active ? severityOf(active, now, bands) : null
 
   const jump = (path) => {
     if (!active) return
@@ -277,16 +431,28 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
       {/* ── Command metrics ─────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="aegis-panel p-3 border-l-4 border-l-blue-500">
-          <div className="mono text-[11px] text-zinc-400 uppercase tracking-wider font-semibold">Queue Depth</div>
+          <div className="mono text-[11px] text-zinc-400 uppercase tracking-wider font-semibold">In View</div>
           <div className="text-2xl font-bold text-white mt-1 mono">{visible.length}</div>
           <div className="text-[11px] text-zinc-500 mt-1">
-            {health ? `${health.active_complaints.toLocaleString('en-IN')} on national feed` : 'Queue total unavailable'}
+            {/* This is the loaded page, not a queue depth — the label said
+                "Queue Depth" over a number that is really QUEUE_LIMIT. */}
+            {health ? `of ${health.active_complaints.toLocaleString('en-IN')} on national feed` : 'Feed total unavailable'}
           </div>
         </div>
         <div className="aegis-panel p-3 border-l-4 border-l-red-500">
-          <div className="mono text-[11px] text-zinc-400 uppercase tracking-wider font-semibold">Critical Severity</div>
-          <div className="text-2xl font-bold text-red-400 mt-1 mono">{stats.critical}</div>
-          <div className="text-[11px] text-red-400/80 mt-1">&lt;{CRITICAL_MIN}m window / high-loss</div>
+          <div className="mono text-[11px] text-zinc-400 uppercase tracking-wider font-semibold">High Value</div>
+          <div className="text-2xl font-bold text-red-400 mt-1 mono">{stats.highValue}</div>
+          {/* States the rule and the calibrated cut, both computed from the rows
+              on screen, so the number can be checked against the queue itself. */}
+          <div className="text-[11px] text-red-400/80 mt-1">
+            ≥ {amountShort(bands.high)} · top {Math.round(bands.share * 100)}% by loss
+          </div>
+          {stats.golden > 0 && (
+            <div className="text-[11px] text-aegis-green mt-0.5 flex items-center gap-1">
+              <Radio size={10} className="animate-pulse-dot" />
+              {stats.golden} inside the golden hour
+            </div>
+          )}
         </div>
         <div className="aegis-panel p-3 border-l-4 border-l-emerald-500">
           <div className="mono text-[11px] text-zinc-400 uppercase tracking-wider font-semibold">Funds At Risk</div>
@@ -310,17 +476,30 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
               <div className="flex items-center gap-2">
                 <ShieldAlert size={16} className="text-aegis-green" />
                 <span className="mono text-[12px] font-bold tracking-wider text-white">1930 TRIAGE QUEUE</span>
-                <span className="text-[10px] mono text-red-400 font-semibold bg-red-500/10 border border-red-500/30 px-2 py-0.5 rounded flex items-center gap-1">
-                  <AlertTriangle size={11} /> SEVERITY RANKED
+                {/* Says what the sort actually does. "SEVERITY RANKED" in red
+                    implied every row carried a severity worth alarming about. */}
+                <span className="text-[10px] mono text-zinc-400 font-semibold bg-ink-bg border border-ink-border px-2 py-0.5 rounded flex items-center gap-1">
+                  <AlertTriangle size={11} /> GOLDEN HOUR FIRST, THEN LOSS
                 </span>
               </div>
-              <button
-                onClick={() => setModalOpen(true)}
-                disabled={backendDown}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-aegis-green text-black mono text-[11px] font-bold hover:bg-emerald-400 disabled:opacity-40 transition"
-              >
-                <Plus size={14} /> Ingest Complaint
-              </button>
+              <div className="flex items-center gap-2">
+                {lastResolved && (
+                  <button
+                    onClick={undoResolve}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-ink-border bg-ink-bg text-zinc-300 mono text-[11px] hover:text-white hover:border-zinc-600 transition"
+                    title={`Restore ${formatTicket(lastResolved)} to the queue`}
+                  >
+                    <RotateCcw size={12} /> Undo resolve
+                  </button>
+                )}
+                <button
+                  onClick={() => setModalOpen(true)}
+                  disabled={backendDown}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-aegis-green text-black mono text-[11px] font-bold hover:bg-emerald-400 disabled:opacity-40 transition"
+                >
+                  <Plus size={14} /> Ingest Complaint
+                </button>
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-2 mb-3">
@@ -361,6 +540,7 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
                     isSelected={active?.ticket_id === c.ticket_id}
                     onSelect={onSelect}
                     now={now}
+                    bands={bands}
                   />
                 ))
               )}
@@ -376,11 +556,9 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
                 <div className="min-w-0">
                   <div className="mono text-[10px] uppercase tracking-wider text-zinc-400 font-semibold flex items-center gap-2 flex-wrap">
                     <span>Selected Incident</span>
-                    {activeSev && (
-                      <span className={`px-2 py-0.5 rounded text-[9px] mono border ${activeSev.bg} ${activeSev.color}`}>
-                        {activeSev.label}
-                      </span>
-                    )}
+                    {/* Same component as the queue row, so the two can never
+                        disagree about the same complaint. */}
+                    {activeSev && <SevBadge sev={activeSev} />}
                   </div>
                   <div className="text-lg font-bold text-white mono mt-0.5 truncate">{formatTicket(active.ticket_id)}</div>
                   <div className="text-[12px] mono text-zinc-400 mt-1 truncate">
@@ -413,6 +591,13 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
                 <div className="bg-ink-bg p-2.5 rounded border border-ink-border">
                   <div className="text-zinc-400">Reported</div>
                   <div className="text-sm text-zinc-200 mt-1">{timeAgo(active.complaint_timestamp, now)}</div>
+                  {/* The state of the interception window, said plainly. The
+                      console previously implied every complaint still had one. */}
+                  <div className={`text-[10px] mt-0.5 ${activeSev?.golden ? 'text-red-400' : 'text-zinc-500'}`}>
+                    {activeSev?.golden
+                      ? <>window open<GoldenHourClock startedAt={activeSev.startedAt} /></>
+                      : 'window closed · historical record'}
+                  </div>
                 </div>
               </div>
 
@@ -450,7 +635,9 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
             <div className="p-3 grid grid-cols-2 gap-2 mono text-[11px]">
               {[
                 ['ATM Directory', health ? health.atm_directory_size.toLocaleString('en-IN') : '—'],
-                ['GNN Embeddings', health ? health.embeddings_loaded.toLocaleString('en-IN') : '—'],
+                // Was 'GNN Embeddings', the same health.embeddings_loaded figure
+                // the Graph Corpus card already shows at the top of this screen.
+                ['Ranked per case', `Top ${MODEL_STATS.operatingK}`],
                 ['WS Clients', health ? health.ws_connections : '—'],
                 ['API Version', health ? health.version : '—'],
               ].map(([k, v]) => (

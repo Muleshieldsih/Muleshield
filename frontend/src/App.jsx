@@ -159,11 +159,12 @@ function Layout() {
       />
 
       <div className="flex flex-1 min-h-0">
+        {/* No wsConnected: the sidebar no longer carries a connection badge of
+            its own. The Topbar owns that state. */}
         <Sidebar
           complaintId={selected}
           complaints={complaints}
           onSelect={handleSelect}
-          wsConnected={connected}
         />
 
         <main className="flex-1 min-w-0 bg-ink-bg overflow-y-auto">

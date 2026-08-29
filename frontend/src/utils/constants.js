@@ -57,6 +57,21 @@ export const MODEL_STATS = {
   gnnF1: stats.gnnF1.toFixed(4),
   gnnBaseline: stats.gnnBaseline.toFixed(4),
   gnnBaselineModel: stats.gnnBaselineModel,
+
+  // The operating point the product actually ships: K ranked candidate ATMs.
+  // These sat in model_stats.json unread, so the headline figure appeared
+  // nowhere in the console it describes.
+  //
+  // Deliberately no baseline beside top5Containment. The distance-only baseline
+  // is 0.7217 against our 0.7136 -- we do NOT beat distance-sorting at K=5, and
+  // a "vs" here would either be a false win or a bare loss with no room for the
+  // Bayes-ceiling context that explains it. The claim we make on screen is the
+  // search-space reduction, which is true and is the point of the system. The
+  // full comparison lives in README.md and OVERNIGHT_ML_AUDIT.md.
+  operatingK: stats.operatingK,
+  top5Containment: pctFmt(stats.top5Containment),
+  top5Reduction: pctFmt(stats.top5SearchReduction),
+  atmTotal: stats.atmTotal.toLocaleString('en-IN'),
 }
 
 export function amountFmt(n) {

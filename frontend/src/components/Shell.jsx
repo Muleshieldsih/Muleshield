@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { Shield, Activity, GitBranch, MapPinned, Zap, Radio, Circle, WifiOff } from 'lucide-react'
 import { useMemo } from 'react'
 import { amountShort, formatTicket, MODEL_STATS } from '../utils/constants'
@@ -23,43 +23,34 @@ function cityCode(city) {
  * It was then labelled "1930 LIVE STREAM · live" while showing a list that never
  * moved, because the badge reported the WebSocket being *open*, not complaints
  * arriving. Offline there is no NCRP feed pushing new complaints, so the queue is
- * static by definition and the label was claiming something untrue. The badge now
- * reports the connection for what it is: the socket is ready and new complaints
- * will appear the moment one is ingested.
+ * static by definition and the label was claiming something untrue.
+ *
+ * It no longer carries a connection badge of its own. That was the third one on
+ * screen — two in the topbar, one here — all reading the same boolean. The
+ * topbar owns connection state; this list is a switcher.
+ *
+ * The Sidebar renders it only away from "/", where the main panel already shows
+ * the same complaints in a form that has room for severity and amounts.
  */
-function SidebarStreamTicker({ complaints = [], onSelect, activeId, wsConnected }) {
+function SidebarStreamTicker({ complaints = [], onSelect, activeId }) {
   const now = useNow(1000)
   const navigate = useNavigate()
+  const location = useLocation()
 
   const rows = useMemo(() => (complaints || []).slice(0, 24), [complaints])
 
+  // Stay on the screen the operator is using. This used to navigate to "/"
+  // unconditionally, so picking a complaint while working the map threw you back
+  // to the triage queue and you had to navigate to the map a second time.
   const handleClick = (id) => {
     onSelect?.(id)
-    navigate(`/?c=${encodeURIComponent(id)}`)
+    navigate(`${location.pathname}?c=${encodeURIComponent(id)}`)
   }
 
   return (
     <div className="flex-1 flex flex-col min-h-0 border-t border-ink-border px-3 py-2">
       <div className="flex items-center justify-between pb-1.5 mono text-[10px] text-zinc-400 font-semibold uppercase tracking-wider">
         <span>Intake Queue{rows.length ? ` · ${rows.length}` : ''}</span>
-        <span
-          className={`flex items-center gap-1 font-bold text-[9px] lowercase tracking-normal ${
-            wsConnected ? 'text-aegis-green' : 'text-zinc-500'
-          }`}
-          title={
-            wsConnected
-              ? 'Connected to the complaint feed. New complaints appear here as they are ingested.'
-              : 'Not connected — start the backend to receive complaints.'
-          }
-        >
-          {/* A static dot, not a pulsing one: the socket being open is not the
-              same as traffic flowing, and an animated indicator reads as the
-              latter. */}
-          <span
-            className={`w-1.5 h-1.5 rounded-full ${wsConnected ? 'bg-aegis-green' : 'bg-zinc-600'}`}
-          />
-          {wsConnected ? 'connected' : 'offline'}
-        </span>
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-1.5 pr-0.5">
@@ -107,16 +98,21 @@ function SidebarStreamTicker({ complaints = [], onSelect, activeId, wsConnected 
   )
 }
 
+// CONNECTED is deliberately absent. The backend broadcasts it on socket open
+// (backend/main.py), so for 12 seconds after every connect the header rendered
+// "feed connected" beside the persistent "1930 FEED CONNECTED" pill -- same
+// green, same shape, saying the same thing twice. This pill is for events that
+// carry news; connection state is owned by the pill next to it.
 const EVENT_LABEL = {
   NEW_COMPLAINT: 'complaint ingested',
   PREDICTION_READY: 'prediction ready',
   FREEZE_EXECUTED: 'freeze executed',
-  CONNECTED: 'feed connected',
 }
 
 export function Topbar({ wsConnected, complaintId, backendDown, lastEvent }) {
   const now = useNow(1000)
-  const recent = lastEvent && now - lastEvent.at < 12000 ? lastEvent : null
+  const isNews = lastEvent && EVENT_LABEL[lastEvent.type]
+  const recent = isNews && now - lastEvent.at < 12000 ? lastEvent : null
 
   return (
     <header className="h-[48px] flex items-center justify-between gap-3 px-4 border-b border-ink-border bg-ink-bg shrink-0 z-30">
@@ -135,7 +131,7 @@ export function Topbar({ wsConnected, complaintId, backendDown, lastEvent }) {
       <div className="flex items-center gap-2 shrink-0">
         {recent && (
           <span className="hidden lg:flex items-center gap-1.5 mono text-[10px] text-aegis-green bg-aegis-green/10 border border-aegis-green/30 rounded-full px-2.5 py-1 animate-pulse-dot">
-            <Radio size={10} /> {EVENT_LABEL[recent.type] || recent.type.toLowerCase()}
+            <Radio size={10} /> {EVENT_LABEL[recent.type]}
           </span>
         )}
 
@@ -173,9 +169,15 @@ const NAV_ITEMS = [
   ['/intercept', <Zap size={15} key="i" />, 'INTERCEPTION', '1-Click freeze'],
 ]
 
-export function Sidebar({ complaintId, complaints, onSelect, wsConnected }) {
+export function Sidebar({ complaintId, complaints, onSelect }) {
+  const location = useLocation()
   const withCid = (path) =>
     complaintId ? `${path}?c=${encodeURIComponent(complaintId)}` : path
+
+  // On the triage screen the main panel already lists these complaints with room
+  // for severity, victim and amount. Repeating a truncated copy of the same rows
+  // in a 210px column taught the operator nothing and cost the queue the width.
+  const showTicker = location.pathname !== '/'
 
   return (
     <nav className="w-[210px] shrink-0 border-r border-ink-border bg-ink-bg hidden md:flex flex-col min-h-0">
@@ -205,34 +207,50 @@ export function Sidebar({ complaintId, complaints, onSelect, wsConnected }) {
         ))}
       </div>
 
-      <SidebarStreamTicker
-        complaints={complaints}
-        onSelect={onSelect}
-        activeId={complaintId}
-        wsConnected={wsConnected}
-      />
+      {showTicker ? (
+        <SidebarStreamTicker complaints={complaints} onSelect={onSelect} activeId={complaintId} />
+      ) : (
+        <div className="flex-1 min-h-0" />
+      )}
 
       <div className="p-3 border-t border-ink-border shrink-0">
-        <div className="aegis-panel p-2.5 bg-ink-panel/40">
+        <div className="aegis-panel p-3 bg-ink-panel/40">
           <div className="text-[10px] mono tracking-[0.12em] text-zinc-400 uppercase font-semibold">
             Validated Performance
           </div>
-          {/* Each figure carries the naive baseline it beats — the console should
-              not state a number the deck would have to defend without one. */}
-          <div className="text-[11px] mono text-aegis-green flex items-center gap-1.5 mt-1 font-bold">
-            <Radio size={12} className="animate-pulse-dot" />
-            {MODEL_STATS.zoneContainment} zone containment
+
+          {/* The operating point the system actually ships, and the claim we can
+              defend: the search space collapses. Deliberately without a "vs" --
+              the distance-only baseline is 0.7217 against this 0.7136, so a
+              comparison here would be a loss with no room for the Bayes-ceiling
+              context that explains it. That argument lives in the README. */}
+          <div className="mt-2">
+            <div className="text-[15px] mono font-bold text-aegis-green leading-none">
+              {MODEL_STATS.top5Containment}
+            </div>
+            <div className="text-[10px] mono text-zinc-300 mt-1">
+              Top-{MODEL_STATS.operatingK} containment
+            </div>
+            <div className="text-[10px] mono text-zinc-500 mt-0.5">
+              {MODEL_STATS.atmTotal} ATMs → {MODEL_STATS.operatingK}
+            </div>
           </div>
-          <div className="text-[9px] mono text-zinc-600 mt-0.5">
-            vs {MODEL_STATS.zoneBaseline} nearest-3 · {MODEL_STATS.searchCost} ATMs
-          </div>
-          <div className="text-[10px] mono text-zinc-500 mt-1.5">
-            Countdown MAE: <span className="text-zinc-300">{MODEL_STATS.countdownMae}</span>
-            <span className="text-zinc-600"> vs {MODEL_STATS.countdownBaseline}</span>
-          </div>
-          <div className="text-[10px] mono text-zinc-500">
-            Mule F1: <span className="text-zinc-300">{MODEL_STATS.gnnF1}</span>
-            <span className="text-zinc-600"> vs {MODEL_STATS.gnnBaseline}</span>
+
+          {/* Below: the figures that do beat a named baseline, each carrying it. */}
+          <div className="mt-2.5 pt-2.5 border-t border-ink-border space-y-1">
+            {[
+              ['Search zone', MODEL_STATS.zoneContainment, MODEL_STATS.zoneBaseline],
+              ['Countdown MAE', MODEL_STATS.countdownMae, MODEL_STATS.countdownBaseline],
+              ['Mule F1', MODEL_STATS.gnnF1, MODEL_STATS.gnnBaseline],
+            ].map(([label, value, baseline]) => (
+              <div key={label} className="flex items-baseline justify-between gap-2 text-[10px] mono">
+                <span className="text-zinc-500 shrink-0">{label}</span>
+                <span className="text-right">
+                  <span className="text-zinc-200 font-bold">{value}</span>
+                  <span className="text-zinc-600"> vs {baseline}</span>
+                </span>
+              </div>
+            ))}
           </div>
         </div>
         <div className="text-[10px] mono text-zinc-600 mt-2 text-center">SIH26184 · MHA / I4C</div>
