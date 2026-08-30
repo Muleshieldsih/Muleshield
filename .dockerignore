@@ -1,0 +1,26 @@
+# Everything the image builds for itself or must never contain.
+
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/dist-smoke/
+
+# Regenerated inside the image by scripts/generate_data.py. Copying the local
+# 154 MB in would bloat the build context for files that are then overwritten.
+data/transactions.csv
+data/graph_edges.csv
+
+.git/
+.github/
+docs/screens/
+*.mp4
+*.mov
+*.log
+.env
+.env.local
