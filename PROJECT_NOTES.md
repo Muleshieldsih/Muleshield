@@ -16,14 +16,19 @@ Last reviewed: 30 Aug 2026.
 
 - [ ] **Merge `sameer` into `main`.** Six commits of Phase 1–6 work live only on
       the branch. Nothing is lost; it is a decision, not a task.
-- [ ] **A fresh clone cannot run.** `data/transactions.csv` (114 MB) and
-      `data/graph_edges.csv` (40 MB) exceed GitHub's limit and are gitignored, so
-      `python scripts/generate_data.py` must run first. Documented in the README,
-      but there is still no Dockerfile, Procfile or host config — nothing a
-      platform can build against.
-- [ ] **`frontend/.env` is committed with `VITE_API_BASE_URL=http://localhost:8000`.**
-      A production build would ship pointing at localhost. Read it from the host's
-      environment at build time instead.
+- [x] ~~No Dockerfile~~ — **written 30 Aug, but NOT BUILT.** Docker Desktop was
+      not running, so it is reviewed and unverified. Build it before trusting it;
+      the untested parts are the CPU-only torch index URL, `libgomp1` for XGBoost,
+      and how long `generate_data.py` takes inside the image.
+- [ ] **A fresh clone still needs `python scripts/generate_data.py` first.**
+      `data/transactions.csv` (114 MB) and `data/graph_edges.csv` (40 MB) exceed
+      GitHub's limit and are gitignored. The Dockerfile handles this at build
+      time; a local clone does not.
+- [x] ~~`frontend/.env` committed with a localhost API base~~ — **fixed 30 Aug.**
+      It was baking `localhost:8000` into every production build, so a deployed
+      console would have asked the *viewer's own machine* for the API. `.env` is
+      deleted; the bundle now uses relative URLs. `wsUrl()` had the same defect
+      and would have opened an insecure `ws://` socket on an https deployment.
 - [ ] **No authentication on any endpoint, including freeze.** Acceptable for a
       judged demo; make it a conscious decision before anything is public.
 - [ ] CORS is `allow_origins=["*"]` (`backend/main.py`).
@@ -242,8 +247,32 @@ authentication on any endpoint — including the freeze.
 ```bash
 python scripts/generate_data.py                     # required — not in the repo
 python -m uvicorn backend.main:app --port 8000
-cd frontend && npm install && npm run dev
+cd frontend && npm install && npm run dev           # console on :5173
 ```
+
+### Which URL to open (this changed on 30 Aug)
+
+| What you want | Open | Notes |
+|---|---|---|
+| Develop, with hot reload | `npm run dev` → **:5173** | Vite proxies `/api` and `/ws` to :8000 |
+| See the production build | **:8000** | FastAPI serves `frontend/dist` after `npm run build` |
+| `npm run preview` → :4173 | **needs an env var** | see below |
+
+`npm run preview` no longer works on its own. The production bundle now uses
+**relative** API URLs — correct, because the deployed container serves the
+console from the same process that answers the API — so a preview on :4173 asks
+:4173 for `/api`, and nothing is there. Vite's proxy config applies to the dev
+server, not `preview`.
+
+Two ways round it, and the first is better:
+
+```bash
+npm run build && open http://127.0.0.1:8000      # exactly what the container does
+VITE_API_BASE_URL=http://127.0.0.1:8000 npm run build && npm run preview
+```
+
+The smoke test already sets that variable for its isolated build, so it is
+unaffected.
 
 Models are committed, so training is optional:
 
