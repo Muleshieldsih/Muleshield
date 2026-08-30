@@ -53,7 +53,7 @@
     "test_precision": 0.8995433789954338,
     "test_recall": 0.8914027149321267,
     "test_accuracy": 0.9938666666666667,
-    "measured_utc": "2026-08-29T04:30:55Z",
+    "measured_utc": "2026-08-29T17:11:54Z",
     "source": "python engine/train_gnn.py"
   },
   "ranking": {
@@ -162,5 +162,19 @@
     ],
     "measured_utc": "2026-08-29T04:30:53Z",
     "source": "python scripts/topk_curve.py"
+  },
+  "detection_confusion": {
+    "true_positives": 197,
+    "false_positives": 22,
+    "false_negatives": 24,
+    "true_negatives": 7257,
+    "n_test_accounts": 7500,
+    "actual_mules": 221,
+    "threshold": 0.9277,
+    "flagged_total": 219,
+    "flagged_precision": 0.8995,
+    "missed_rate": 0.1086,
+    "measured_utc": "2026-08-29T17:06:17Z",
+    "source": "python scripts/export_confusion.py"
   }
 }

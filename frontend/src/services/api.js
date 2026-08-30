@@ -37,6 +37,15 @@ export const endpoints = {
     api.get(`/api/v1/embeddings/${id}`, { params: { top_n: topN } }).then(r => r.data),
   predictCashout: (id) => api.get(`/api/v1/predict/cashout/${id}`).then(r => r.data),
   microFreeze: (payload) => api.post('/api/v1/bank/micro-freeze', payload).then(r => r.data),
+  updateCase: (id, payload) =>
+    api.patch(`/api/v1/complaint/${id}`, payload).then(r => r.data),
+  addNote: (id, payload) =>
+    api.post(`/api/v1/complaint/${id}/note`, payload).then(r => r.data),
+  listNotes: (id) => api.get(`/api/v1/complaint/${id}/notes`).then(r => r.data),
+  listTransactions: (id) =>
+    api.get(`/api/v1/complaint/${id}/transactions`).then(r => r.data),
+  listAudit: (params = {}) =>
+    api.get('/api/v1/audit', { params }).then(r => r.data),
 }
 
 export function wsUrl() {

@@ -151,6 +151,29 @@ def write_frontend_stats(path: Path = FRONTEND_STATS_PATH,
         "top5BaselineDistance": require(m, "ranking", "top5_baseline_distance"),
         "top5SearchReduction": require(m, "ranking", "top5_search_reduction"),
         "operatingK": require(m, "ranking", "operating_k"),
+        # Detection detail for the Model performance screen. These describe the
+        # detector across a held-out test set; they say nothing about any one
+        # case, which is why they no longer sit beside one.
+        "precision": require(m, "detection", "test_precision"),
+        "recall": require(m, "detection", "test_recall"),
+        "rocAuc": require(m, "detection", "test_auc"),
+        "prAuc": require(m, "detection", "test_pr_auc"),
+        "threshold": require(m, "detection", "threshold"),
+        "truePositives": require(m, "detection_confusion", "true_positives"),
+        "falsePositives": require(m, "detection_confusion", "false_positives"),
+        "falseNegatives": require(m, "detection_confusion", "false_negatives"),
+        "trueNegatives": require(m, "detection_confusion", "true_negatives"),
+        "nTestAccounts": require(m, "detection_confusion", "n_test_accounts"),
+        "actualMules": require(m, "detection_confusion", "actual_mules"),
+        "detectionBaselines": require(m, "detection_baselines", "per_model_f1"),
+        "rankingCurve": require(m, "ranking", "curve"),
+        "nTestCashouts": require(m, "ranking", "n_test_cashouts"),
+        "top5BaselineDistance": require(m, "ranking", "top5_baseline_distance"),
+        "zoneMedianErrorKm": require(m, "location", "zone_median_error_km"),
+        "countdownR2": require(m, "location", "time_r2"),
+        "leadTimeMedianMin": require(m, "location", "lead_time_median_min"),
+        "inferenceMeanMs": require(m, "location", "inference_mean_ms"),
+        "measuredUtc": require(m, "detection", "measured_utc"),
     }
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as fh:

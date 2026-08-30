@@ -27,14 +27,19 @@ export default {
           blue: '#58a6ff',
         }
       },
+      // Motion an operator benefits from, and nothing else. `pulseDot` and
+      // `blink` drew the eye continuously to indicators that were not changing;
+      // on a screen watched for hours that is fatigue, not emphasis. `drift`
+      // was declared with no matching animation and never ran at all.
+      // `toast-in` is the one addition: a notification has to announce itself.
       keyframes: {
-        pulseDot: { '0%,100%': { opacity: '1' }, '50%': { opacity: '0.35' } },
-        blink: { '0%,50%': { opacity: '1' }, '51%,100%': { opacity: '0.35' } },
-        drift: { '0%': { opacity: '0' }, '10%': { opacity: '1' }, '90%': { opacity: '1' }, '100%': { opacity: '0' } },
+        toastIn: {
+          '0%': { opacity: '0', transform: 'translateY(6px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
       },
       animation: {
-        'pulse-dot': 'pulseDot 2s ease-in-out infinite',
-        'blink': 'blink 1s step-end infinite',
+        'toast-in': 'toastIn 140ms ease-out',
       }
     },
   },

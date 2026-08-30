@@ -53,6 +53,11 @@ class ComplaintResponse(BaseModel):
     complaint_timestamp: str
     status: str = "ACTIVE"
     is_live: bool = False   # True for complaints ingested during this session
+    # Workflow fields. Absent on seed records, so both carry a default rather
+    # than 404-ing a case that has simply never been touched.
+    assignee: Optional[str] = None
+    updated_at: Optional[str] = None
+    note_count: int = 0
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -131,7 +136,15 @@ class EmbeddingResponse(BaseModel):
 # ─────────────────────────────────────────────────────────────────────────────
 
 class ATMPrediction(BaseModel):
-    """One ranked candidate cash-out location."""
+    """
+    One ranked candidate cash-out location.
+
+    The directory carries city, district, opening hours and a risk score for
+    every ATM, all loaded into memory at startup and none of it previously sent
+    to the client. Opening hours in particular decide whether a location is
+    worth dispatching to at all -- a machine inside a branch that shut at 21:00
+    is not where a 02:00 withdrawal happens.
+    """
     rank: int
     atm_id: str
     confidence: float
@@ -140,6 +153,12 @@ class ATMPrediction(BaseModel):
     bank: str
     address: str
     historical_fraud_count: int
+    city: str = ""
+    district: str = ""
+    state: str = ""
+    opening_time: str = ""
+    closing_time: str = ""
+    cashout_risk_score: float = 0.0
 
 
 class SearchZone(BaseModel):
@@ -220,3 +239,63 @@ class WSEvent(BaseModel):
     complaint_id: str
     payload: dict
     timestamp: str
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CASE WORKFLOW SCHEMAS
+# ─────────────────────────────────────────────────────────────────────────────
+
+class CaseUpdateRequest(BaseModel):
+    """PATCH /api/v1/complaint/{id} — move a case through the workflow."""
+    status: Optional[str] = Field(default=None, description="One of the six workflow statuses")
+    assignee: Optional[str] = Field(default=None, description="Analyst the case is assigned to")
+    actor: str = Field(default="ANALYST", description="Who is making the change, for the audit trail")
+
+
+class NoteRequest(BaseModel):
+    """POST /api/v1/complaint/{id}/note"""
+    text: str = Field(..., min_length=1, max_length=2000)
+    author: str = Field(default="ANALYST")
+
+
+class NoteResponse(BaseModel):
+    id: str
+    timestamp: str
+    author: str
+    text: str
+
+
+class AuditEntry(BaseModel):
+    """One line of the audit trail."""
+    id: str
+    timestamp: str
+    actor: str
+    action: str
+    object: str
+    result: str
+    case_id: str
+
+
+class TransactionRow(BaseModel):
+    """
+    One transfer in a case's money trail.
+
+    The graph endpoint already returns edges, but it de-duplicates them by
+    source-destination pair, so two transfers between the same accounts collapse
+    into one and the second disappears. A ledger an investigator works from
+    cannot drop rows, so this returns every transaction as recorded.
+    """
+    txn_id: str
+    timestamp: str
+    src_account: str
+    dst_account: str
+    amount: float
+    bank_name: str = "Unknown"
+    ifsc_code: str = ""
+    city: str = ""
+    state: str = ""
+    channel: str = ""
+    hop_depth: int = 0
+    is_terminal: bool = False
+    cashout_atm_id: Optional[str] = None
+    minutes_from_first: float = 0.0

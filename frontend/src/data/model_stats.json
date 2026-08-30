@@ -13,5 +13,118 @@
   "top5Containment": 0.7136,
   "top5BaselineDistance": 0.7217,
   "top5SearchReduction": 0.995,
-  "operatingK": 5
+  "operatingK": 5,
+  "precision": 0.8995433789954338,
+  "recall": 0.8914027149321267,
+  "rocAuc": 0.9638981909777025,
+  "prAuc": 0.8528652755950785,
+  "threshold": 0.9276896399259547,
+  "truePositives": 197,
+  "falsePositives": 22,
+  "falseNegatives": 24,
+  "trueNegatives": 7257,
+  "nTestAccounts": 7500,
+  "actualMules": 221,
+  "detectionBaselines": {
+    "Majority class (all mule)": 0.057246470664421706,
+    "Best single feature (burst_out_5min)": 0.4969939879759519,
+    "Logistic regression (no graph)": 0.6835871404399323,
+    "Random forest (no graph)": 0.8423423423423423
+  },
+  "rankingCurve": [
+    {
+      "K": 1,
+      "containment": 0.2654,
+      "baseline": 0.2476,
+      "reduction": 0.999,
+      "avg_candidates": 1,
+      "median_candidates": 1,
+      "retrieval_failures": 0,
+      "ranking_failures": 454,
+      "latency_ms": 0.0
+    },
+    {
+      "K": 2,
+      "containment": 0.4256,
+      "baseline": 0.4013,
+      "reduction": 0.998,
+      "avg_candidates": 2,
+      "median_candidates": 2,
+      "retrieval_failures": 0,
+      "ranking_failures": 355,
+      "latency_ms": 0.0
+    },
+    {
+      "K": 3,
+      "containment": 0.5615,
+      "baseline": 0.5485,
+      "reduction": 0.997,
+      "avg_candidates": 3,
+      "median_candidates": 3,
+      "retrieval_failures": 0,
+      "ranking_failures": 271,
+      "latency_ms": 0.0
+    },
+    {
+      "K": 4,
+      "containment": 0.6489,
+      "baseline": 0.6359,
+      "reduction": 0.996,
+      "avg_candidates": 4,
+      "median_candidates": 4,
+      "retrieval_failures": 0,
+      "ranking_failures": 217,
+      "latency_ms": 0.0
+    },
+    {
+      "K": 5,
+      "containment": 0.7136,
+      "baseline": 0.7217,
+      "reduction": 0.995,
+      "avg_candidates": 5,
+      "median_candidates": 5,
+      "retrieval_failures": 0,
+      "ranking_failures": 177,
+      "latency_ms": 0.0
+    },
+    {
+      "K": 6,
+      "containment": 0.7896,
+      "baseline": 0.7767,
+      "reduction": 0.994,
+      "avg_candidates": 6,
+      "median_candidates": 6,
+      "retrieval_failures": 0,
+      "ranking_failures": 130,
+      "latency_ms": 0.0
+    },
+    {
+      "K": 8,
+      "containment": 0.8689,
+      "baseline": 0.8689,
+      "reduction": 0.992,
+      "avg_candidates": 8,
+      "median_candidates": 8,
+      "retrieval_failures": 0,
+      "ranking_failures": 81,
+      "latency_ms": 0.0
+    },
+    {
+      "K": 10,
+      "containment": 0.9175,
+      "baseline": 0.9142,
+      "reduction": 0.99,
+      "avg_candidates": 10,
+      "median_candidates": 10,
+      "retrieval_failures": 0,
+      "ranking_failures": 51,
+      "latency_ms": 0.0
+    }
+  ],
+  "nTestCashouts": 618,
+  "zoneMedianErrorKm": 5.494746475710523,
+  "countdownR2": 0.16735311297406008,
+  "leadTimeMedianMin": 41.855000000000004,
+  "inferenceMeanMs": 7.4892449378967285,
+  "measuredUtc": "2026-08-29T17:11:54Z"
 }

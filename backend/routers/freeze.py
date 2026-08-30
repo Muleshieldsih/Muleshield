@@ -61,6 +61,15 @@ async def micro_freeze(request: FreezeRequest) -> FreezeResponse:
     )
 
     state.log_freeze(record.model_dump())
+    # The freeze log is keyed by reference and never read back by any endpoint,
+    # so on its own it left an irreversible action with no readable trace of who
+    # ordered it or against which case. The audit trail is that record.
+    state.record_audit(
+        actor=request.officer_id,
+        action="Froze account",
+        obj=f"{request.account_id} ({bank}) - {freeze_ref}",
+        case_id=request.complaint_id,
+    )
     logger.info(
         f"[FREEZE] {freeze_ref}: Account {request.account_id} "
         f"({bank}) FROZEN by {request.officer_id}"

@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react'
 import { Topbar, Sidebar, MobileNav } from './components/Shell'
 import TriageFeed from './pages/TriageFeed'
 import useWebSocket from './hooks/useWebSocket'
+import { ToastProvider } from './components/Toast'
 
 // Leaflet and React Flow are the two heaviest dependencies in the bundle and
 // neither is needed for the landing screen. Splitting them keeps the triage
@@ -11,21 +12,22 @@ import useWebSocket from './hooks/useWebSocket'
 const TacticalMap = lazy(() => import('./pages/TacticalMap'))
 const ForensicGraph = lazy(() => import('./pages/ForensicGraph'))
 const Interception = lazy(() => import('./pages/Interception'))
+const ModelPerformance = lazy(() => import('./pages/ModelPerformance'))
 
 function NotFound({ onHome }) {
   return (
     <div className="p-10 grid place-items-center text-center">
-      <div className="mono">
-        <div className="text-[13px] text-zinc-300 font-bold">Screen not found</div>
+      <div>
+        <div className="text-[13px] text-zinc-200 font-semibold">Screen not found</div>
         <div className="text-[11px] text-zinc-500 mt-1.5">
-          <span className="text-zinc-400">{window.location.pathname}</span> is not a console route.
+          <span className="mono text-zinc-400">{window.location.pathname}</span> is not a route in this console.
         </div>
         <button
           onClick={onHome}
-          className="mt-4 px-3 py-1.5 rounded border border-aegis-green/50 bg-ink-panel
-                     text-[11px] text-white hover:bg-ink-surface transition"
+          className="mt-4 px-3 py-1.5 rounded border border-ink-border bg-ink-panel
+                     text-[12px] text-zinc-200 hover:border-zinc-600 hover:text-white transition-colors"
         >
-          Back to triage queue
+          Back to cases
         </button>
       </div>
     </div>
@@ -34,9 +36,9 @@ function NotFound({ onHome }) {
 
 function RouteFallback() {
   return (
-    <div className="p-10 grid place-items-center mono text-[12px] text-zinc-500">
+    <div className="p-10 grid place-items-center text-[12.5px] text-zinc-500">
       <span className="flex items-center gap-2">
-        <Loader2 size={14} className="animate-spin" /> Loading module…
+        <Loader2 size={14} className="animate-spin" /> Loading…
       </span>
     </div>
   )
@@ -154,6 +156,16 @@ function Layout() {
     )
   }, [navigate])
 
+  // A case whose status or assignee changed has to update in the queue too,
+  // or the row an analyst just acted on still reads as untouched beside the
+  // panel that says otherwise.
+  const handleCaseUpdated = useCallback((record) => {
+    if (!record?.ticket_id) return
+    setComplaints(prev => prev.map(c => (
+      c.ticket_id === record.ticket_id ? { ...c, ...record } : c
+    )))
+  }, [])
+
   const handleIngested = useCallback((record) => {
     if (!record?.ticket_id) return
     setComplaints(prev =>
@@ -169,8 +181,9 @@ function Layout() {
   const backendDown = !!loadError && complaints.length === 0
 
   const contextValue = useMemo(() => ({
-    complaints, selected, onSelect: handleSelect, onIngested: handleIngested, backendDown,
-  }), [complaints, selected, handleSelect, handleIngested, backendDown])
+    complaints, selected, onSelect: handleSelect, onIngested: handleIngested,
+    onCaseUpdated: handleCaseUpdated, backendDown,
+  }), [complaints, selected, handleSelect, handleIngested, handleCaseUpdated, backendDown])
 
   return (
     <div className="h-screen flex flex-col bg-ink-bg overflow-hidden">
@@ -194,9 +207,9 @@ function Layout() {
           <MobileNav onNavigate={goTo} pathname={location.pathname} />
 
           {backendDown && (
-            <div className="m-3 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 mono text-[11px] text-red-300">
-              <span className="font-bold">BACKEND UNREACHABLE</span> — {loadError}. Start the API with
-              <span className="text-white"> python -m uvicorn backend.main:app --port 8000</span>
+            <div className="m-3 rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-[12px] text-red-300">
+              <span className="font-semibold">Cannot reach the service</span> — {loadError}. Start it with
+              <span className="mono text-white"> python -m uvicorn backend.main:app --port 8000</span>
             </div>
           )}
 
@@ -206,6 +219,7 @@ function Layout() {
               <Route path="/map" element={<TacticalMap />} />
               <Route path="/graph" element={<ForensicGraph />} />
               <Route path="/intercept" element={<Interception />} />
+              <Route path="/model" element={<ModelPerformance />} />
               {/* Without a catch-all, an unknown URL rendered the shell around an
                   empty <main> -- a blank console with no indication anything was
                   wrong. A mistyped link should say so and offer the way back. */}
@@ -215,9 +229,9 @@ function Layout() {
         </main>
       </div>
 
-      <footer className="h-6 border-t border-ink-border bg-ink-panel flex items-center justify-between px-3 mono text-[10px] text-zinc-500 shrink-0">
-        <span>SIH26184 · MHA / I4C · MuleShield AI v3.0 · GraphSAGE 64-d + XGBoost v2</span>
-        <span className="hidden md:block">Real-Time Law Enforcement Interdiction</span>
+      <footer className="h-6 border-t border-ink-border bg-ink-panel flex items-center justify-between px-3 text-[10.5px] text-zinc-500 shrink-0">
+        <span>MuleShield AI · SIH26184 · MHA / I4C</span>
+        <span className="hidden md:block">v3.0</span>
       </footer>
     </div>
   )
@@ -226,7 +240,9 @@ function Layout() {
 export default function App() {
   return (
     <BrowserRouter>
-      <Layout />
+      <ToastProvider>
+        <Layout />
+      </ToastProvider>
     </BrowserRouter>
   )
 }

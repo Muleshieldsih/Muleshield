@@ -142,6 +142,12 @@ async def predict_cashout(complaint_id: str) -> PredictionResponse:
             bank=str(atm_meta.get("bank_name", atm_meta.get("bank", "Unknown"))),
             address=str(atm_meta.get("address", f"ATM {pred['atm_id']}")),
             historical_fraud_count=int(atm_meta.get("historical_fraud_count", 0)),
+            city=str(atm_meta.get("city", "") or ""),
+            district=str(atm_meta.get("district", "") or ""),
+            state=str(atm_meta.get("state", "") or ""),
+            opening_time=str(atm_meta.get("opening_time", "") or ""),
+            closing_time=str(atm_meta.get("closing_time", "") or ""),
+            cashout_risk_score=float(atm_meta.get("cashout_risk_score", 0) or 0),
         ))
 
     zone_raw = raw_result.get("search_zone")
