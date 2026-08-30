@@ -124,9 +124,10 @@ Notes:
   dialog silently breaking freeze coverage: the sweep opened the dialog, the
   generic modal handling clicked Cancel, and the most destructive control in the
   product was dismissed every run while reporting as exercised.
-- **`test_full_graph_build_within_budget` flakes under CPU load.** It fails if a
-  frontend build is running concurrently and passes in isolation (~12 s). Check
-  what else is running before assuming a regression.
+- **`test_full_graph_build_within_budget` no longer flakes** (fixed 30 Aug). It
+  calibrates the machine first and skips with a stated reason when the box is too
+  contended to measure. A skip there is not a failure — it means "not measured".
+  It still fails on a genuine regression.
 
 Full suite: `python -m pytest tests/ backend/tests/ -q` → **290 tests**.
 

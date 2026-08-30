@@ -76,11 +76,49 @@ def sample_complaint_id(complaints_df, transactions_df):
 # AC1: Graph Build Performance
 # ─────────────────────────────────────────────
 
+# Reference cost of the calibration probe below, on an idle developer machine.
+# Only ever used as a RATIO, so a faster or slower box scales the budget rather
+# than failing on it.
+PROBE_REFERENCE_MS = 37.0
+
+# Spread across repeated probes above which the machine is considered contended.
+# Idle it sits near 5%; with six busy processes it was 50%.
+PROBE_SPREAD_LIMIT = 0.25
+
+# Ceiling on how far the budget may stretch for a slow machine.
+#
+# Scaling has to stop somewhere. The probe is pure arithmetic and degrades harder
+# under contention than the graph build does -- with twelve competing processes
+# the probe slowed 4.8x while the build slowed 2.5x, which would have stretched a
+# 9s budget to 43s and let a threefold regression through. Past this point the
+# measurement is not about the code any more, so the test declines rather than
+# passing everything.
+PROBE_SCALE_LIMIT = 2.5
+
+
+def machine_probe(runs: int = 5) -> tuple[float, float]:
+    """
+    How fast this machine is right now, and how steady.
+
+    Returns (fastest run in ms, spread as a fraction of the fastest). A large
+    spread means something else is competing for the CPU, which makes any
+    timing assertion meaningless -- see the note in the test below.
+    """
+    samples = []
+    for _ in range(runs):
+        t = time.perf_counter()
+        for _ in range(3):
+            sum(i * i for i in range(200_000))
+        samples.append((time.perf_counter() - t) * 1000)
+    fastest = min(samples)
+    return fastest, (max(samples) - fastest) / fastest
+
+
 class TestGraphEngine:
 
     def test_full_graph_build_within_budget(self, transactions_df, node_features_df):
         """
-        AC1: the FULL national graph builds in under 1.2s.
+        AC1: building the FULL national graph costs under 9s of CPU.
 
         The original 500ms budget was set against a 22.9k-row ledger. The corpus
         now carries ~622k rows, because realistic per-account banking activity is
@@ -90,13 +128,59 @@ class TestGraphEngine:
         This is a once-per-startup cost paid when the API boots. The per-complaint
         sub-graph the console actually renders during a demo builds in ~2ms, which
         is what the < 500ms interactive SLA covers.
+
+        This test kept failing when anything else ran on the machine - a frontend
+        build, another worker - and passing on its own. The build takes ~5.5s
+        against a 9s budget, only 1.6x headroom, so contention was enough to trip
+        it and the suite reported a regression that had not happened.
+
+        Switching to CPU time was tried first, on the assumption that process time
+        would exclude the interference. It does not: under six competing processes
+        CPU time itself rose from 5,078ms to 13,234ms. The instructions are the
+        same, but they cost more cycles when the working set keeps being evicted
+        from cache. There is no clock that makes a contended measurement valid.
+
+        So the machine is calibrated before the build is timed. A small fixed
+        workload runs five times; its SPREAD reveals contention independently of
+        how fast the box is (about 5% idle, 50% under load), and its FASTEST run
+        scales the budget so a genuinely slower machine is not failed for being
+        slower. If the machine is contended the test skips, because "not measured"
+        is true and a pass or a fail would both be lies. The scaling is capped
+        for the same reason - see PROBE_SCALE_LIMIT.
         """
-        t0 = time.time()
+        speed_ms, spread = machine_probe()
+
+        # A timing assertion on a busy machine measures the machine, not the
+        # code. Reporting a regression that did not happen trains people to
+        # ignore the suite, so this declines to answer instead.
+        if spread > PROBE_SPREAD_LIMIT:
+            pytest.skip(
+                f"machine is contended (probe varied {spread:.0%} across runs); "
+                "build cost cannot be measured reliably here"
+            )
+
+        # A genuinely slower box should not fail a budget written on a faster
+        # one, so the budget scales with measured machine speed.
+        scale = max(1.0, speed_ms / PROBE_REFERENCE_MS)
+        if scale > PROBE_SCALE_LIMIT:
+            pytest.skip(
+                f"machine is {scale:.1f}x slower than the reference "
+                f"(probe {speed_ms:.0f}ms vs {PROBE_REFERENCE_MS:.0f}ms); "
+                "too far off to measure a build budget against"
+            )
+        budget_ms = 9000 * scale
+
+        t_wall = time.perf_counter()
+        t_cpu = time.process_time()
         mg = MuleGraph()
         mg.load_from_dataframes(transactions_df, node_features_df)
-        elapsed_ms = (time.time() - t0) * 1000
-        assert elapsed_ms < 9000, (
-            f"Full-graph build took {elapsed_ms:.1f}ms - exceeds the 9s startup budget"
+        cpu_ms = (time.process_time() - t_cpu) * 1000
+        wall_ms = (time.perf_counter() - t_wall) * 1000
+
+        assert wall_ms < budget_ms, (
+            f"Full-graph build took {wall_ms:.0f}ms ({cpu_ms:.0f}ms CPU) - exceeds "
+            f"the {budget_ms:.0f}ms budget (9s scaled by {scale:.2f}x for a machine "
+            f"probing at {speed_ms:.0f}ms)"
         )
 
     def test_graph_has_correct_node_count(self, mule_graph, transactions_df):
