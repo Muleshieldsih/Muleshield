@@ -15,16 +15,9 @@ export default {
           panel: '#141717',
           border: '#1e2323',
           border2: '#252a2a',
-          muted: '#6b7280',
-          dim: '#9ca3af',
         },
         aegis: {
           green: '#7cf000',
-          lime: '#a3ff12',
-          cyan: '#00e5cc',
-          red: '#ff3b3b',
-          orange: '#ff8c42',
-          blue: '#58a6ff',
         }
       },
       // Motion an operator benefits from, and nothing else. `pulseDot` and

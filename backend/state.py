@@ -124,14 +124,34 @@ def load_all() -> None:
         logger.warning(f"[STATE] {COMPLAINTS_CSV} not found — starting with empty complaint store.")
 
     # 2. Transactions — index by complaint_id
+    #
+    # Only rows that belong to a complaint are kept. The corpus is 622,188 rows
+    # but 599,987 of them are the legitimate banking activity the generator
+    # creates so that mule behaviour is not trivially separable — they carry no
+    # complaint_id and so can never be returned, because every read here is
+    # get_transactions_for(complaint_id), a keyed lookup.
+    #
+    # Loading them anyway cost 380 MB of process memory to hold 6 MB of
+    # reachable data. They still matter on disk: the generator writes them and
+    # the models train on them. They just have no business being resident in an
+    # API process that can only ever serve the other 4%.
     if TRANSACTIONS_CSV.exists():
         txn_df = pd.read_csv(TRANSACTIONS_CSV)
+        skipped = 0
         for _, row in txn_df.iterrows():
-            cid = str(row["complaint_id"])
-            txn = row.to_dict()
-            transactions_by_complaint.setdefault(cid, []).append(txn)
+            cid = row["complaint_id"]
+            # pandas gives NaN for a blank cell, and str(nan) is the truthy
+            # "nan" — so this has to test the value, not its string form.
+            if cid is None or (isinstance(cid, float) and cid != cid) or not str(cid).strip():
+                skipped += 1
+                continue
+            transactions_by_complaint.setdefault(str(cid), []).append(row.to_dict())
         total_txns = sum(len(v) for v in transactions_by_complaint.values())
-        logger.info(f"[STATE] Loaded {total_txns} transactions across {len(transactions_by_complaint)} complaints.")
+        logger.info(
+            f"[STATE] Loaded {total_txns:,} transactions across "
+            f"{len(transactions_by_complaint):,} complaints "
+            f"({skipped:,} unattached rows left on disk)."
+        )
     else:
         logger.warning(f"[STATE] {TRANSACTIONS_CSV} not found.")
 
