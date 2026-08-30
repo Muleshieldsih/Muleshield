@@ -60,3 +60,7 @@ frontend/dist-smoke/
 # expect. Not something to publish while the competition is running.
 docs/PITCH.md
 docs/PROJECT_INVENTORY.md
+docs/CONTEXT_HANDOFF.md
+
+# Superseded planning docs and UI-generator prompts. Kept locally, off GitHub.
+docs/archive/
