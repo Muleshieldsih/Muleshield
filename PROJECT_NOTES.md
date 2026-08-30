@@ -36,6 +36,17 @@ Last reviewed: 30 Aug 2026.
       relative to generation time — the queue currently reads "3d ago" and drifts
       further every day.
 
+### Scope is frozen (30 Aug)
+
+The prototype is done. Further UI or model polish has close to zero marginal
+return, and the thing that actually decides SIH — the deck and the video — is
+not in this repo. **Before adding anything here, check it beats spending the
+same hour on the pitch.**
+
+In particular: do not chase the model further. Top-1 sits exactly on the Bayes
+bound for this generator (see 2.3). There is nothing left to win, and a number
+that improves is more likely to be a leak than a gain.
+
 ### Worth doing if there is time
 
 - [ ] Persist the audit trail (see 2.1). In-memory is honest but thin.
@@ -151,7 +162,70 @@ Full suite: `python -m pytest tests/ backend/tests/ -q` → **290 tests**.
 
 ---
 
-## 5. Where things are
+## 5. Deployment
+
+### What it actually needs
+
+Measured on 30 Aug, backend fully loaded:
+
+| | |
+|---|---|
+| Resident memory | **1.53 GB** |
+| Prediction latency | 2 ms |
+| Committed models and artifacts | 45 MB |
+| Generated data (not in the repo) | 154 MB |
+| Python environment | 1.3 GB, almost all PyTorch |
+
+Three properties decide where this can go:
+
+1. **State is in memory.** Ingested cases, notes and the audit trail live in
+   process globals. Two instances behind a load balancer would disagree with
+   each other, so this runs as a **single process**.
+2. **There is a WebSocket** (`/ws/feed`), so the host must hold long-lived
+   connections.
+3. **1.5 GB resident**, before any headroom.
+
+Together those rule out serverless — Vercel Functions, Netlify, Lambda,
+Cloudflare Workers. Not "would be awkward on": cannot work on. Do not spend an
+evening trying.
+
+### Recommended
+
+**For the pitch itself: run it locally.** Venue wifi is the single biggest
+avoidable risk on the day, and the whole system runs on one laptop with no
+network dependency. This is not a fallback; it is the primary plan.
+
+**For a URL judges can revisit: Hugging Face Spaces, Docker SDK.**
+
+The free CPU tier gives 2 vCPU and 16 GB RAM — comfortable against 1.5 GB — it
+is built for exactly this kind of ML demo, it gives a public URL, and there is
+no cold-start billing to be surprised by. One Docker image serves the API and
+the built frontend together.
+
+Two things to get right in that image:
+
+- **Install the CPU-only PyTorch wheel**
+  (`--index-url https://download.pytorch.org/whl/cpu`). The default wheel pulls
+  the entire CUDA stack for a GPU the host does not have, which is most of the
+  1.3 GB environment.
+- **Run `scripts/generate_data.py` at image build time**, not at container
+  start. It takes minutes; a container that spends them booting will look
+  broken. The output is deterministic at seed 42, so baking it in is safe.
+
+**If full control is wanted instead:** Oracle Cloud's Always Free ARM instance
+(4 cores, 24 GB) or a small VPS such as Hetzner CX22. Both are single boxes
+running the same Docker image, which suits single-process state better than any
+platform-as-a-service.
+
+### Before any of that
+
+The three deployment blockers in section 1 still stand: no Dockerfile exists,
+`frontend/.env` is committed pointing at localhost, and there is no
+authentication on any endpoint — including the freeze.
+
+---
+
+## 6. Where things are
 
 | | |
 |---|---|
