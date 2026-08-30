@@ -200,27 +200,46 @@ evening trying.
 avoidable risk on the day, and the whole system runs on one laptop with no
 network dependency. This is not a fallback; it is the primary plan.
 
-**For a URL judges can revisit: Hugging Face Spaces, Docker SDK.**
+**A public URL is a nice-to-have, and it is not free.** Worth deciding
+deliberately rather than assuming — the requirement is 1.45 GB resident plus a
+persistent process plus WebSockets, and that combination is precisely what free
+tiers exclude.
 
-The free CPU tier gives 2 vCPU and 16 GB RAM — comfortable against 1.5 GB — it
-is built for exactly this kind of ML demo, it gives a public URL, and there is
-no cold-start billing to be surprised by. One Docker image serves the API and
-the built frontend together.
+| Option | RAM | Cost | Verdict |
+|---|---|---|---|
+| Render free, Koyeb free | 512 MB | free | **OOMs on the first prediction** |
+| Hugging Face Spaces (Docker) | 16 GB | **PRO only** | free tier is Static-only now |
+| Fly.io | 2 GB | ~$5/mo, card required | least friction that works |
+| Render Standard | 2 GB | ~$25/mo | works |
+| Oracle Cloud Always Free | 24 GB, 4 ARM cores | free, forever | only genuinely free fit |
 
-Two things to get right in that image:
+Two traps in that table:
 
-- **Install the CPU-only PyTorch wheel**
-  (`--index-url https://download.pytorch.org/whl/cpu`). The default wheel pulls
-  the entire CUDA stack for a GPU the host does not have, which is most of the
-  1.3 GB environment.
-- **Run `scripts/generate_data.py` at image build time**, not at container
-  start. It takes minutes; a container that spends them booting will look
-  broken. The output is deterministic at seed 42, so baking it in is safe.
+- **512 MB tiers do not fail at deploy.** They boot, serve the queue, and die the
+  moment someone opens a case — the feature builder lazy-loads on the first
+  prediction, taking the process from ~10 MB to 1.45 GB. It looks fine until a
+  judge touches it, which is the worst failure mode available.
+- **Oracle is ARM64.** The Dockerfile pulls the x86 CPU torch wheel; ARM needs a
+  different index. It also wants a card for identity checks and rejects some
+  signups without explanation.
 
-**If full control is wanted instead:** Oracle Cloud's Always Free ARM instance
-(4 cores, 24 GB) or a small VPS such as Hetzner CX22. Both are single boxes
-running the same Docker image, which suits single-process state better than any
-platform-as-a-service.
+**A note on how this file got it wrong:** it previously recommended Hugging Face
+Spaces on the free tier. That was based on stale knowledge — Docker Spaces now
+require PRO. Check a platform's current free tier before committing to it; this
+one changed without the docs I was working from changing.
+
+### Split frontend and backend (Vercel + Render, or similar)
+
+Perfectly reasonable, and the code already supports it: set `VITE_API_BASE_URL`
+at frontend build time and `wsUrl()` correctly derives `wss://` from that base
+rather than from the page origin.
+
+Two things to change if you go this way:
+
+1. `allow_origins=["*"]` in `backend/main.py` must be narrowed to the frontend
+   domain, or the browser blocks credentialed cross-origin requests.
+2. The backend still needs ≥2 GB, so the RAM table above still decides it. The
+   split does not make the free tier viable — it just moves the frontend off it.
 
 ### Before any of that
 
