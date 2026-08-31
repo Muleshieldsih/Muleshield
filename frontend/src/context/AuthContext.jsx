@@ -48,11 +48,11 @@ export function AuthProvider({ children }) {
     return () => setExpiryHandler(null)
   }, [])
 
-  const login = useCallback(async (username, password) => {
+  const login = useCallback(async (username, password, { persist = true } = {}) => {
     // Deliberately not try/catch'd into a boolean: the caller needs the message,
     // and the backend's 423 lockout text is the most useful thing we can show.
     const data = await endpoints.login(username, password)
-    setToken(data.access_token)
+    setToken(data.access_token, { persist })
     setUser(data.user)
     setExpired(false)
     return data.user

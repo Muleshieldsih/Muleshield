@@ -16,7 +16,7 @@ import stats from '../data/model_stats.json'
 const pct = (v, dp = 1) => `${(v * 100).toFixed(dp)}%`
 
 function Figure({ label, value, sub, tone = 'default' }) {
-  const tones = { default: 'text-zinc-100', good: 'text-aegis-green', warn: 'text-amber-400' }
+  const tones = { default: 'text-zinc-100', good: 'text-aegis-accent', warn: 'text-amber-400' }
   return (
     <div className="rounded border border-ink-border bg-ink-bg px-3 py-2.5">
       <div className="text-[11px] text-zinc-500">{label}</div>
@@ -80,7 +80,7 @@ export default function ModelPerformance() {
                 <tbody className="mono tnum">
                   <tr className="border-t border-ink-border">
                     <td className="px-3 py-1.5 text-zinc-400">Actually a mule</td>
-                    <td className="px-3 py-1.5 text-right text-aegis-green">{tp}</td>
+                    <td className="px-3 py-1.5 text-right text-aegis-accent">{tp}</td>
                     <td className="px-3 py-1.5 text-right text-amber-400">{fn}</td>
                   </tr>
                   <tr className="border-t border-ink-border">
@@ -123,10 +123,10 @@ export default function ModelPerformance() {
                     GraphSAGE (this system)
                   </span>
                   <div className="flex-1 h-2 bg-ink-bg border border-ink-border rounded overflow-hidden">
-                    <span className="block h-full bg-aegis-green"
+                    <span className="block h-full bg-aegis-accent"
                           style={{ width: `${stats.gnnF1 * 100}%` }} />
                   </div>
-                  <span className="mono tnum text-[11.5px] text-aegis-green w-12 text-right font-semibold">
+                  <span className="mono tnum text-[11.5px] text-aegis-accent w-12 text-right font-semibold">
                     {stats.gnnF1.toFixed(3)}
                   </span>
                 </div>

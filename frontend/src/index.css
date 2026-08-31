@@ -23,8 +23,8 @@ body { @apply bg-ink-bg text-zinc-200 font-sans antialiased; }
 .mono { font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; }
 
 /* Panel chrome */
-.aegis-panel { @apply bg-ink-surface border border-ink-border rounded-lg overflow-hidden; }
-.aegis-panel-header { @apply flex items-center justify-between px-3 py-2 border-b border-ink-border bg-ink-panel/60; }
+.aegis-panel { @apply bg-ink-surface border border-ink-border rounded-xl overflow-hidden; }
+.aegis-panel-header { @apply flex items-center justify-between px-3 py-2 border-b border-ink-border bg-ink-panel/40; }
 
 /* Tabular figures so amounts and timestamps align down a column. Enterprise
    tables are read by scanning vertically; proportional digits defeat that. */
@@ -41,7 +41,9 @@ body { @apply bg-ink-bg text-zinc-200 font-sans antialiased; }
 .data-table tbody tr:hover { @apply bg-ink-panel/50; }
 .data-table tbody tr[aria-selected='true'] { @apply bg-ink-panel; }
 
-/* Visible keyboard focus — an operator console has to be driveable without a mouse. */
+/* Visible keyboard focus — an operator console has to be driveable without a
+   mouse. The ring is the accent, which is the brightest thing in the palette
+   and so reads against every surface in it. */
 :where(button, a, input, select, [tabindex]):focus-visible {
   outline: 2px solid #7cf000;
   outline-offset: 2px;
@@ -100,4 +102,168 @@ body { @apply bg-ink-bg text-zinc-200 font-sans antialiased; }
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+/* ── Sign-in screen ───────────────────────────────────────────────────────
+   Full-bleed and deliberately outside the console's ink palette. It is the one
+   screen with no data on it, so it carries the product's face rather than its
+   chrome: a glass pane over a lit plate, with the mark standing in the light
+   beside it.
+
+   Classes rather than inline styles because every one of these has a state an
+   inline style cannot reach — focus, focus-within, autofill, disabled. */
+
+.login-field {
+  box-sizing: border-box;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 15px;
+  border-radius: 10px;
+  /* A hairline shell over the blurred plate, lit along the top edge only, the
+     way a real pane catches light. */
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.085);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  transition: border-color 130ms ease, background-color 130ms ease;
+}
+.login-field:focus-within {
+  border-color: rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.login-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: #ffffff;
+  font-size: 13.5px;
+  letter-spacing: 0.01em;
+}
+.login-input::placeholder { color: #56565a; }
+.login-input[type='password'] { letter-spacing: 0.3em; }
+
+/* Chrome paints a saved credential on a near-white ground, which puts a solid
+   opaque block where the glass should be. Repaint it dark and keep the caret
+   and text visible. */
+.login-input:-webkit-autofill,
+.login-input:-webkit-autofill:hover,
+.login-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #ffffff;
+  -webkit-box-shadow: inset 0 0 0 1000px #121214;
+  caret-color: #ffffff;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+.login-label {
+  font-size: 10px;
+  color: #7e7e82;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.login-glass {
+  background: linear-gradient(155deg,
+    rgba(255, 255, 255, 0.062) 0%,
+    rgba(255, 255, 255, 0.022) 46%,
+    rgba(255, 255, 255, 0.034) 100%);
+  backdrop-filter: blur(34px) saturate(135%);
+  -webkit-backdrop-filter: blur(34px) saturate(135%);
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.055), -34px 0 90px rgba(0, 0, 0, 0.42);
+}
+
+/* The lit top edge of the pane. */
+.login-glass::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.02));
+}
+
+/* The heading is the only place in the product that uses a gradient fill. It
+   is what makes the pane read as lit from the upper left. */
+.login-title {
+  font-weight: 200;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  background: linear-gradient(168deg, #ffffff 12%, rgba(255, 255, 255, 0.58) 96%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* One confident action, the full width of the form. */
+.login-submit {
+  width: 100%;
+  box-sizing: border-box;
+  height: 52px;
+  border: 0;
+  border-radius: 11px;
+  background: linear-gradient(180deg, #ffffff 0%, #e1e1e3 100%);
+  color: #060607;
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 12px 34px rgba(0, 0, 0, 0.45);
+  transition: filter 130ms ease;
+}
+.login-submit:hover:not(:disabled) { filter: brightness(1.06); }
+.login-submit:disabled { opacity: 0.42; cursor: not-allowed; box-shadow: none; }
+
+.login-rule {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.01));
+}
+
+.login-quiet { color: #9d9da0; transition: color 120ms ease; }
+.login-quiet:hover { color: #ffffff; }
+
+/* ── Case summary reveal ─────────────────────────────────────────────────────
+   The dossier reads out one claim at a time rather than appearing whole, so the
+   narrative lands in the order an investigator would build it: what was taken,
+   where it went, where it will surface.
+
+   A left-to-right wipe rather than character-by-character typing. The summary
+   carries styled spans -- bold amounts, account numbers -- and wraps to two
+   lines; typing it per character would mean flattening that to a plain string
+   and losing the emphasis that makes it scannable. The wipe keeps every span
+   intact and survives the wrap.
+
+   Deliberately quick. This is a golden-hour tool, and an officer waiting on an
+   animation to read a countdown is the animation costing them the thing the
+   product exists to give them. The whole sequence is under 600ms and the panel
+   can be clicked to finish it at once -- roughly 1.2s for the full sequence,
+   paced so each claim registers separately instead of the block arriving as
+   one flicker. */
+@keyframes caseLineIn {
+  from { opacity: 0; transform: translateY(3px); clip-path: inset(0 100% 0 0); }
+  to   { opacity: 1; transform: translateY(0);   clip-path: inset(0 0 0 0); }
+}
+.case-line { animation: caseLineIn 460ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* The write head, parked after the last line until the sequence finishes. */
+@keyframes caseCaret { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+.case-caret {
+  display: inline-block;
+  width: 6px;
+  height: 12px;
+  margin-left: 3px;
+  vertical-align: -1px;
+  background: currentColor;
+  animation: caseCaret 900ms step-end infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .case-line { animation: none; }
+  .case-caret { animation: none; opacity: 0; }
 }

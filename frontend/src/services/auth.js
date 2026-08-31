@@ -14,8 +14,10 @@
  * The trade being made: localStorage is readable by any script that gets injected
  * into this origin. It is mitigated by a 12-hour expiry and by the fact that
  * sessions are revocable server-side — logout kills the row, so a stolen token
- * does not outlive the shift. sessionStorage would be marginally safer and would
- * sign the officer out on every new tab, which is worse in a control room.
+ * does not outlive the shift. sessionStorage is marginally safer and signs the
+ * officer out on every new tab, which is worse in a control room — so it is the
+ * opt-in, not the default: the sign-in screen's "keep me signed in this shift"
+ * box is checked by default and unchecking it moves the token here.
  */
 
 export const TOKEN_KEY = 'muleshield:token'
@@ -24,9 +26,13 @@ export const TOKEN_KEY = 'muleshield:token'
 // without a flash of the login screen while a hook hydrates.
 let cached = read()
 
+// sessionStorage wins when both hold a token: it is the narrower, more recent
+// choice, and a stale localStorage copy must not outrank it.
 function read() {
   try {
-    return window.localStorage.getItem(TOKEN_KEY) || ''
+    return window.sessionStorage.getItem(TOKEN_KEY)
+      || window.localStorage.getItem(TOKEN_KEY)
+      || ''
   } catch {
     return ''
   }
@@ -36,11 +42,21 @@ export function getToken() {
   return cached
 }
 
-export function setToken(token) {
+/**
+ * `persist: false` keeps the token in sessionStorage, so it dies with the tab.
+ * Both stores are cleared first either way — otherwise signing in without the
+ * box ticked would leave the previous shift's localStorage copy behind, and
+ * closing the tab would not sign the officer out at all.
+ */
+export function setToken(token, { persist = true } = {}) {
   cached = token || ''
   try {
-    if (cached) window.localStorage.setItem(TOKEN_KEY, cached)
-    else window.localStorage.removeItem(TOKEN_KEY)
+    window.localStorage.removeItem(TOKEN_KEY)
+    window.sessionStorage.removeItem(TOKEN_KEY)
+    if (cached) {
+      const store = persist ? window.localStorage : window.sessionStorage
+      store.setItem(TOKEN_KEY, cached)
+    }
   } catch {
     /* private browsing: the in-memory copy still carries this session */
   }

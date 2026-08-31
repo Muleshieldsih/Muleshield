@@ -322,7 +322,7 @@ export default function TacticalMap() {
                 </div>
 
                 <div className="absolute bottom-3 left-3 bg-ink-panel border border-ink-border px-3 py-1.5 rounded text-[11px] text-zinc-400 z-[1000] flex items-center gap-2">
-                  <Navigation size={13} className="text-aegis-green" />
+                  <Navigation size={13} className="text-aegis-accent" />
                   Click a pin or a card to retarget
                 </div>
               </>
