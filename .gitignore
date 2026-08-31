@@ -54,3 +54,13 @@ data/_*.npy
 # Isolated build used by scripts/smoke_ui.py. It points at a throwaway backend
 # port, so it must never be served to anyone.
 frontend/dist-smoke/
+
+# Pitch material stays local. It is strategy, not source -- what we lead with,
+# what we volunteer about our own weaknesses, and how we answer the questions we
+# expect. Not something to publish while the competition is running.
+docs/PITCH.md
+docs/PROJECT_INVENTORY.md
+docs/CONTEXT_HANDOFF.md
+
+# Superseded planning docs and UI-generator prompts. Kept locally, off GitHub.
+docs/archive/

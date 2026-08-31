@@ -25,7 +25,6 @@ body { @apply bg-ink-bg text-zinc-200 font-sans antialiased; }
 /* Panel chrome */
 .aegis-panel { @apply bg-ink-surface border border-ink-border rounded-lg overflow-hidden; }
 .aegis-panel-header { @apply flex items-center justify-between px-3 py-2 border-b border-ink-border bg-ink-panel/60; }
-.aegis-dot { @apply w-1.5 h-1.5 rounded-full; }
 
 /* Tabular figures so amounts and timestamps align down a column. Enterprise
    tables are read by scanning vertically; proportional digits defeat that. */

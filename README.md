@@ -5,7 +5,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688.svg)](https://fastapi.tiangolo.com/)
 [![PyTorch Geometric](https://img.shields.io/badge/PyG-GraphSAGE-orange.svg)](https://pytorch-geometric.readthedocs.io/)
 [![XGBoost](https://img.shields.io/badge/ML-XGBoost%20v2-green.svg)](https://xgboost.readthedocs.io/)
-[![Tests](https://img.shields.io/badge/Tests-275%2F275%20Passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-290%20passed%20%C2%B7%201%20skipped-brightgreen.svg)]()
 [![SIH 2026](https://img.shields.io/badge/SIH-2026%20Problem%20ID%3A%20SIH26184-red.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -16,56 +16,78 @@
 
 ## 🖥️ Tactical Command Center Dashboard
 
-Four screens, captured from a **live run** against the real backend — `scripts/capture_screens.py`
+Five screens, captured from a **live run** against the real backend — `scripts/capture_screens.py`
 drives a headless browser over the running console, so what is below is what the system renders,
 not a mockup. Every figure on screen is read from `data/metrics.json`, which only the training and
 evaluation scripts write.
 
 <div align="center">
-  <h3>1. 1930 Helpline Triage &amp; Intake Queue</h3>
-  <img src="docs/screens/01-triage-queue.png" alt="MuleShield AI — 1930 triage queue" width="100%" />
-  <p><em>Severity-ranked complaint queue with Golden-Hour badges, live pipeline status read from
-  <code>/health</code>, and one-click ingestion. The intake badge reads <strong>connected</strong>,
-  not "live" — the socket being open is not the same as complaints arriving, and offline there is no
-  NCRP feed pushing them.</em></p>
+  <h3>1. Case Queue &amp; Triage</h3>
+  <img src="docs/screens/01-case-queue.png" alt="MuleShield AI — case queue and triage" width="100%" />
+  <p><em>The working queue: 60 cases loaded of 2,500 on the national feed, with the amount at risk
+  across them. Severity is banded against the <strong>percentiles of the queue actually loaded</strong>,
+  not fixed rupee cuts — a flat ₹1.5L threshold marked 43% of this corpus CRITICAL and carried no
+  signal. Each case moves through a real status workflow (New → Under Review → Investigating →
+  Intervention Required → Resolved / Closed), can be assigned and annotated, and every action is
+  written to an audit trail. The right panel opens with a plain-language brief an officer can act on
+  without reading a model output.</em></p>
 </div>
 
 <br/>
 
 <div align="center">
-  <h3>2. Tactical GIS — Priority Search Locations</h3>
-  <img src="docs/screens/02-priority-search-locations.png" alt="MuleShield AI — priority search locations" width="100%" />
-  <p><em>The <strong>Top-5 ranked candidate cash-out locations</strong> for the traced terminal
-  account, each with its relative score, distance from the mule and prior-incident count, plus the
-  aggregated search zone (here 7.72 km covering 5 ATMs at 84% probability mass). These are
-  <strong>prioritized candidates, not a predicted ATM</strong>.</em></p>
-</div>
-
-<br/>
-
-<div align="center">
-  <h3>3. Forensic Money-Flow Graph (DAG)</h3>
-  <img src="docs/screens/03-money-flow-graph.png" alt="MuleShield AI — forensic money-flow graph" width="100%" />
-  <p><em>Victim ➔ layering mules ➔ terminal cash-out, with a per-node GraphSAGE risk inspector.
-  The mule probabilities shown are <code>sigmoid(Wh + b)</code> over the account's cached 64-d
-  embedding, passed through isotonic calibration — verified against held-out labels, see
+  <h3>2. Transaction Trail</h3>
+  <img src="docs/screens/02-transaction-trail.png" alt="MuleShield AI — transaction trail" width="100%" />
+  <p><em>Victim ➔ layering mules ➔ terminal cash-out account, with a per-node GraphSAGE risk
+  inspector. The mule probabilities are <code>sigmoid(Wh + b)</code> over the account’s cached 64-d
+  embedding, passed through isotonic calibration and verified against held-out labels — see
   <a href="OVERNIGHT_ML_AUDIT.md">§10b of the audit</a>.</em></p>
 </div>
 
 <br/>
 
 <div align="center">
-  <h3>4. Interception Control &amp; Police Dispatch</h3>
-  <img src="docs/screens/04-interception.png" alt="MuleShield AI — interception control" width="100%" />
-  <p><em>All five ranked candidates, the live cash-out countdown, 1-click bank micro-freeze and PCR
-  dispatch. The status badge tracks real inference state (ARMED / COMPUTING / STANDBY) rather than
-  being permanently lit, and the dispatch alert carries "a ranked candidate, not a confirmed
-  location".</em></p>
+  <h3>3. Cash-out Locations</h3>
+  <img src="docs/screens/03-cash-out-locations.png" alt="MuleShield AI — ranked cash-out locations" width="100%" />
+  <p><em>The <strong>five ranked candidate cash-out locations</strong> for the traced terminal
+  account, each with its relative score, distance from the mule and prior-incident count, plus the
+  aggregated search zone. These are <strong>prioritised candidates, not a predicted ATM</strong>, and
+  the console says so on screen. ATMs closed at the predicted hour are flagged for the officer but
+  are deliberately not re-ranked — doing that in the UI would break the correspondence between the
+  shipped system and its published evaluation.</em></p>
 </div>
 
-> **Regenerate:** start the backend and `npm run preview`, then
-> `python scripts/capture_screens.py`. The script resolves a complaint from the live queue rather
-> than pinning a ticket id, because a pinned id outlives the dataset it points at.
+<br/>
+
+<div align="center">
+  <h3>4. Intervention</h3>
+  <img src="docs/screens/04-intervention.png" alt="MuleShield AI — intervention and dispatch" width="100%" />
+  <p><em>All five ranked candidates, the cash-out countdown, one-click bank micro-freeze and PCR
+  dispatch. The countdown only runs where it is real: complaints ingested through the console carry a
+  zone-qualified timestamp and genuinely tick, while the historical corpus is marked
+  <em>window closed</em> rather than shown a fake clock. Dispatch alerts carry the words
+  “a ranked candidate, not a confirmed location”.</em></p>
+</div>
+
+<br/>
+
+<div align="center">
+  <h3>5. Model Performance</h3>
+  <img src="docs/screens/05-model-performance.png" alt="MuleShield AI — model performance" width="100%" />
+  <p><em>The evaluation, in the product rather than only in a document. Mule detection scores
+  <strong>F1 0.8955</strong> against 0.8423 for the best non-graph model, with the confusion matrix
+  over 7,500 held-out accounts read as an alert queue: of 219 flagged, 197 are mules. The Top-K
+  containment curve is shown in full, and the panel states the finding that works against us —
+  <strong>at K=5 the ranker does not beat sorting by distance (71.4% vs 72.2%), and the difference is
+  not significant at any K</strong>. The defensible claim is the narrowing, 1,000 ATMs to 5.</em></p>
+</div>
+
+> **Regenerate:** `cd frontend && npm run build`, start the backend, then
+> `python scripts/capture_screens.py`. Capture runs against **:8000** — FastAPI serves the built
+> console there, and the production bundle calls the API on relative paths, so `npm run preview`
+> alone would answer those calls with `index.html`. The script resolves a complaint from the live
+> queue rather than pinning a ticket id, and refuses to save a screenshot of a screen that never
+> rendered.
 
 ---
 
@@ -94,7 +116,7 @@ Cyber fraud incidents reported on the National Cybercrime Reporting Portal (**19
            ▼
 [ XGBoost Classifier & Regressor v2 ]
   ├── 📍 Search Zone (87.4% containment; 1,000 ATMs -> a median of 8)
-  ├── 📍 Top-3 ATM Ranking (Conditional Logit over 25 reachable candidates)
+  ├── 📍 Top-5 ATM Ranking (Conditional Logit over 25 reachable candidates)
   ├── ⏱️ Time-to-Cashout Countdown (MAE: 11.8 min, R² 0.17, q05-q95 band)
   └── 🔒 Real-time Micro-Freeze Action Recommendation (<25ms latency)
 ```
@@ -345,7 +367,7 @@ SIH2026/
 │   │   ├── complaint.py                # 1930 Complaint ingestion & listing
 │   │   ├── graph.py                    # React Flow money-flow DAG builder
 │   │   ├── embeddings.py               # GNN risk score ranking
-│   │   ├── predict.py                  # XGBoost Top-3 ATM + countdown inference
+│   │   ├── predict.py                  # XGBoost Top-5 ranked ATMs + countdown
 │   │   └── freeze.py                   # 1-Click Bank micro-freeze simulator
 │   └── tests/                          # Phase 3 backend test suite (51/51 passed)
 │
@@ -355,17 +377,18 @@ SIH2026/
 │   │   │   ├── TriageFeed.jsx          # Screen 1: Live 1930 Triage Queue
 │   │   │   ├── TacticalMap.jsx         # Screen 2: Tactical GIS Map (Leaflet)
 │   │   │   ├── ForensicGraph.jsx       # Screen 3: Money Flow Graph (React Flow)
-│   │   │   └── Interception.jsx        # Screen 4: 1-Click Freeze & Dispatch
+│   │   │   ├── Interception.jsx        # Screen 4: Intervention — freeze & dispatch
+│   │   │   └── ModelPerformance.jsx    # Screen 5: Evaluation, baselines & Top-K curve
 │   │   ├── components/                 # Reusable UI shells & navigation bars
 │   │   └── services/                   # Axios API & WebSocket connector
 │   └── package.json
 │
 ├── data/                               # Pan-India Banking & ATM Dataset (65+ Cities)
 │   ├── victim_complaints.csv           # 2,500 National 1930 Cybercrime complaints
-│   ├── transactions.csv                # 22,864 Multi-hop transactions (hops 1–4)
+│   ├── transactions.csv                # 622,188 transactions (fraud chains + legitimate)
 │   ├── atm_directory.csv               # 1,000 ATMs across 65+ Indian cities with GPS
-│   ├── graph_edges.csv                 # 22,864 Directed edges (NetworkX / PyG)
-│   └── node_features.csv               # 20,468 Nodes with behavioral & geographical stats
+│   ├── graph_edges.csv                 # 622,188 Directed edges (NetworkX / PyG)
+│   └── node_features.csv               # 49,999 Nodes with behavioral & geographical stats
 │
 ├── engine/                             # Core Hybrid AI Engines
 │   ├── graph_engine.py                 # NetworkX directed graph builder & BFS anomalies
@@ -373,23 +396,39 @@ SIH2026/
 │   ├── train_gnn.py                    # GNN offline training script
 │   ├── embed.py                        # 64-dim GraphSAGE embedding extractor & cache
 │   ├── feature_builder.py              # 80-dim Hybrid Feature Matrix Builder (v2)
-│   ├── xgb_model.py                    # MuleXGBPredictor (Top-3 ATM + countdown regressor)
+│   ├── xgb_model.py                    # MuleXGBPredictor (Top-5 ranked ATMs + countdown)
 │   └── train_xgb.py                    # XGBoost training & latency benchmarking
 │
 ├── models/                             # Serialized Trained Model Checkpoints
-│   ├── graphsage_mule.pt               # Trained GraphSAGE PyTorch checkpoint (20,468 nodes)
+│   ├── graphsage_mule.pt               # Trained GraphSAGE PyTorch checkpoint (49,999 nodes)
 │   └── xgb_cashout.pkl                 # Trained XGBoost predictor bundle
 │
 ├── embeddings/                         # Cached Node Embeddings
-│   └── node_embeddings.pkl             # 20,468 x 64-dim pre-computed risk vectors
+│   └── node_embeddings.pkl             # 49,999 x 64-dim pre-computed risk vectors
 │
-├── tests/                              # Comprehensive Pytest Regression Suites (184 tests)
-│   ├── test_phase1.py                  # Phase 1 tests (84 tests - Data generation & schema)
-│   ├── test_phase2a.py                 # Phase 2a tests (47 tests - GraphSAGE & graph engine)
-│   └── test_phase2b.py                 # Phase 2b tests (53 tests - XGBoost & 80-dim inference)
+├── tests/                              # Pytest regression suites (291 tests total)
+│   ├── test_phase1.py                  # Data generation, schema & generator invariants
+│   ├── test_phase2a.py                 # GraphSAGE & graph engine
+│   ├── test_phase2b.py                 # XGBoost & 80-dim inference
+│   ├── test_ranked_candidates.py       # Top-K contract; guards the search-zone/Top-5 mix-up
+│   ├── test_calibration_transfer.py    # Cached embeddings must match the training forward pass
+│   └── test_metrics_ledger.py          # No figure on screen that a script did not write
 │
-├── prd.md                              # Product Requirements Document
-├── phases.md                           # SIH development phases & milestone tracking
+├── backend/tests/
+│   ├── test_phase3.py                  # API surface & prediction endpoints
+│   └── test_case_workflow.py           # Status transitions, notes & audit trail
+│
+├── scripts/                            # Data generation, evaluation & capture
+│   ├── generate_data.py                # Rebuilds the corpus (required after clone)
+│   ├── evaluate_baselines.py           # Non-graph baselines for the detection claim
+│   ├── topk_curve.py                   # Top-K containment on the shipped checkpoint
+│   ├── export_metrics.py               # Refresh data/metrics.json without retraining
+│   ├── smoke_ui.py                     # Isolated end-to-end control sweep
+│   └── capture_screens.py              # README screenshots from a live run
+│
+├── Dockerfile                          # Single container, single process (see header note)
+├── PROJECT_NOTES.md                    # Standing decisions & outstanding work
+├── OVERNIGHT_ML_AUDIT.md               # Leakage audit, Bayes bound, Top-K analysis
 └── README.md                           # Project documentation
 ```
 
@@ -463,7 +502,7 @@ a stale complaint id.
 ## 🗺️ Roadmap & Phase Completion
 
 - [x] **Phase 1: Synthetic Dataset Generator** *(84/84 Tests Passing)*
-  - 2,500 complaints, 22,864 multi-hop transactions, 1,000 ATMs across 65+ Indian cities.
+  - 2,500 complaints, 622,188 transactions, 1,000 ATMs across 65+ Indian cities.
   - Embedded multi-source fraud rings with balanced mule/clean node features.
 - [x] **Phase 2a: Graph Intelligence & GraphSAGE Engine** *(49/49 Tests Passing)*
   - NetworkX directed graph builder with BFS traversal (<185ms).

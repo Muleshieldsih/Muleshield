@@ -1,6 +1,20 @@
 import axios from 'axios'
 
-const BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+/**
+ * Where the API lives.
+ *
+ * Three cases, in order:
+ *   1. VITE_API_BASE_URL is set     -> use it (the isolated smoke build does this)
+ *   2. dev server                   -> localhost:8000, where uvicorn runs
+ *   3. production build             -> same origin, empty string
+ *
+ * Case 3 matters for deployment: the container serves this bundle from the same
+ * FastAPI process that answers the API, so requests must be relative. The old
+ * fallback was a hardcoded localhost:8000, which meant a deployed build asked
+ * the VIEWER'S machine for the API and failed for everyone.
+ */
+const BASE = import.meta.env.VITE_API_BASE_URL
+  ?? (import.meta.env.DEV ? 'http://localhost:8000' : '')
 
 export const api = axios.create({
   baseURL: BASE,
@@ -49,6 +63,8 @@ export const endpoints = {
 }
 
 export function wsUrl() {
-  const base = BASE.replace(/^http/, 'ws')
-  return `${base}/ws/feed`
+  // Same-origin build: BASE is empty, so the socket host comes from the page.
+  // Keeps wss:// on an https deployment, which a hardcoded ws:// would break.
+  const origin = BASE || window.location.origin
+  return `${origin.replace(/^http/, 'ws')}/ws/feed`
 }

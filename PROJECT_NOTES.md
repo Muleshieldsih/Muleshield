@@ -16,14 +16,19 @@ Last reviewed: 30 Aug 2026.
 
 - [ ] **Merge `sameer` into `main`.** Six commits of Phase 1–6 work live only on
       the branch. Nothing is lost; it is a decision, not a task.
-- [ ] **A fresh clone cannot run.** `data/transactions.csv` (114 MB) and
-      `data/graph_edges.csv` (40 MB) exceed GitHub's limit and are gitignored, so
-      `python scripts/generate_data.py` must run first. Documented in the README,
-      but there is still no Dockerfile, Procfile or host config — nothing a
-      platform can build against.
-- [ ] **`frontend/.env` is committed with `VITE_API_BASE_URL=http://localhost:8000`.**
-      A production build would ship pointing at localhost. Read it from the host's
-      environment at build time instead.
+- [x] ~~No Dockerfile~~ — **written 30 Aug, but NOT BUILT.** Docker Desktop was
+      not running, so it is reviewed and unverified. Build it before trusting it;
+      the untested parts are the CPU-only torch index URL, `libgomp1` for XGBoost,
+      and how long `generate_data.py` takes inside the image.
+- [ ] **A fresh clone still needs `python scripts/generate_data.py` first.**
+      `data/transactions.csv` (114 MB) and `data/graph_edges.csv` (40 MB) exceed
+      GitHub's limit and are gitignored. The Dockerfile handles this at build
+      time; a local clone does not.
+- [x] ~~`frontend/.env` committed with a localhost API base~~ — **fixed 30 Aug.**
+      It was baking `localhost:8000` into every production build, so a deployed
+      console would have asked the *viewer's own machine* for the API. `.env` is
+      deleted; the bundle now uses relative URLs. `wsUrl()` had the same defect
+      and would have opened an insecure `ws://` socket on an https deployment.
 - [ ] **No authentication on any endpoint, including freeze.** Acceptable for a
       judged demo; make it a conscious decision before anything is public.
 - [ ] CORS is `allow_origins=["*"]` (`backend/main.py`).
@@ -35,6 +40,17 @@ Last reviewed: 30 Aug 2026.
 - [ ] **Regenerate the dataset shortly before demoing.** Complaint timestamps are
       relative to generation time — the queue currently reads "3d ago" and drifts
       further every day.
+
+### Scope is frozen (30 Aug)
+
+The prototype is done. Further UI or model polish has close to zero marginal
+return, and the thing that actually decides SIH — the deck and the video — is
+not in this repo. **Before adding anything here, check it beats spending the
+same hour on the pitch.**
+
+In particular: do not chase the model further. Top-1 sits exactly on the Bayes
+bound for this generator (see 2.3). There is nothing left to win, and a number
+that improves is more likely to be a leak than a gain.
 
 ### Worth doing if there is time
 
@@ -124,9 +140,10 @@ Notes:
   dialog silently breaking freeze coverage: the sweep opened the dialog, the
   generic modal handling clicked Cancel, and the most destructive control in the
   product was dismissed every run while reporting as exercised.
-- **`test_full_graph_build_within_budget` flakes under CPU load.** It fails if a
-  frontend build is running concurrently and passes in isolation (~12 s). Check
-  what else is running before assuming a regression.
+- **`test_full_graph_build_within_budget` no longer flakes** (fixed 30 Aug). It
+  calibrates the machine first and skips with a stated reason when the box is too
+  contended to measure. A skip there is not a failure — it means "not measured".
+  It still fails on a genuine regression.
 
 Full suite: `python -m pytest tests/ backend/tests/ -q` → **290 tests**.
 
@@ -150,7 +167,89 @@ Full suite: `python -m pytest tests/ backend/tests/ -q` → **290 tests**.
 
 ---
 
-## 5. Where things are
+## 5. Deployment
+
+### What it actually needs
+
+Measured on 30 Aug, backend fully loaded:
+
+| | |
+|---|---|
+| Resident memory | **1.53 GB** |
+| Prediction latency | 2 ms |
+| Committed models and artifacts | 45 MB |
+| Generated data (not in the repo) | 154 MB |
+| Python environment | 1.3 GB, almost all PyTorch |
+
+Three properties decide where this can go:
+
+1. **State is in memory.** Ingested cases, notes and the audit trail live in
+   process globals. Two instances behind a load balancer would disagree with
+   each other, so this runs as a **single process**.
+2. **There is a WebSocket** (`/ws/feed`), so the host must hold long-lived
+   connections.
+3. **1.5 GB resident**, before any headroom.
+
+Together those rule out serverless — Vercel Functions, Netlify, Lambda,
+Cloudflare Workers. Not "would be awkward on": cannot work on. Do not spend an
+evening trying.
+
+### Recommended
+
+**For the pitch itself: run it locally.** Venue wifi is the single biggest
+avoidable risk on the day, and the whole system runs on one laptop with no
+network dependency. This is not a fallback; it is the primary plan.
+
+**A public URL is a nice-to-have, and it is not free.** Worth deciding
+deliberately rather than assuming — the requirement is 1.45 GB resident plus a
+persistent process plus WebSockets, and that combination is precisely what free
+tiers exclude.
+
+| Option | RAM | Cost | Verdict |
+|---|---|---|---|
+| Render free, Koyeb free | 512 MB | free | **OOMs on the first prediction** |
+| Hugging Face Spaces (Docker) | 16 GB | **PRO only** | free tier is Static-only now |
+| Fly.io | 2 GB | ~$5/mo, card required | least friction that works |
+| Render Standard | 2 GB | ~$25/mo | works |
+| Oracle Cloud Always Free | 24 GB, 4 ARM cores | free, forever | only genuinely free fit |
+
+Two traps in that table:
+
+- **512 MB tiers do not fail at deploy.** They boot, serve the queue, and die the
+  moment someone opens a case — the feature builder lazy-loads on the first
+  prediction, taking the process from ~10 MB to 1.45 GB. It looks fine until a
+  judge touches it, which is the worst failure mode available.
+- **Oracle is ARM64.** The Dockerfile pulls the x86 CPU torch wheel; ARM needs a
+  different index. It also wants a card for identity checks and rejects some
+  signups without explanation.
+
+**A note on how this file got it wrong:** it previously recommended Hugging Face
+Spaces on the free tier. That was based on stale knowledge — Docker Spaces now
+require PRO. Check a platform's current free tier before committing to it; this
+one changed without the docs I was working from changing.
+
+### Split frontend and backend (Vercel + Render, or similar)
+
+Perfectly reasonable, and the code already supports it: set `VITE_API_BASE_URL`
+at frontend build time and `wsUrl()` correctly derives `wss://` from that base
+rather than from the page origin.
+
+Two things to change if you go this way:
+
+1. `allow_origins=["*"]` in `backend/main.py` must be narrowed to the frontend
+   domain, or the browser blocks credentialed cross-origin requests.
+2. The backend still needs ≥2 GB, so the RAM table above still decides it. The
+   split does not make the free tier viable — it just moves the frontend off it.
+
+### Before any of that
+
+The three deployment blockers in section 1 still stand: no Dockerfile exists,
+`frontend/.env` is committed pointing at localhost, and there is no
+authentication on any endpoint — including the freeze.
+
+---
+
+## 6. Where things are
 
 | | |
 |---|---|
@@ -167,8 +266,32 @@ Full suite: `python -m pytest tests/ backend/tests/ -q` → **290 tests**.
 ```bash
 python scripts/generate_data.py                     # required — not in the repo
 python -m uvicorn backend.main:app --port 8000
-cd frontend && npm install && npm run dev
+cd frontend && npm install && npm run dev           # console on :5173
 ```
+
+### Which URL to open (this changed on 30 Aug)
+
+| What you want | Open | Notes |
+|---|---|---|
+| Develop, with hot reload | `npm run dev` → **:5173** | Vite proxies `/api` and `/ws` to :8000 |
+| See the production build | **:8000** | FastAPI serves `frontend/dist` after `npm run build` |
+| `npm run preview` → :4173 | **needs an env var** | see below |
+
+`npm run preview` no longer works on its own. The production bundle now uses
+**relative** API URLs — correct, because the deployed container serves the
+console from the same process that answers the API — so a preview on :4173 asks
+:4173 for `/api`, and nothing is there. Vite's proxy config applies to the dev
+server, not `preview`.
+
+Two ways round it, and the first is better:
+
+```bash
+npm run build && open http://127.0.0.1:8000      # exactly what the container does
+VITE_API_BASE_URL=http://127.0.0.1:8000 npm run build && npm run preview
+```
+
+The smoke test already sets that variable for its isolated build, so it is
+unaffected.
 
 Models are committed, so training is optional:
 

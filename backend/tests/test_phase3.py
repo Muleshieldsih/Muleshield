@@ -88,12 +88,35 @@ class TestHealthAndRoot:
         assert resp.json()["active_complaints"] >= 0
 
     def test_root_returns_200(self, client):
-        resp = client.get("/")
-        assert resp.status_code == 200
+        """
+        "/" answers either way.
 
-    def test_root_has_docs_link(self, client):
-        resp = client.get("/")
-        assert "docs" in resp.json()
+        With a frontend build present it serves the console; without one it
+        falls through to the API index. Both are 200 — what must never happen
+        is a 404 at the root.
+        """
+        assert client.get("/").status_code == 200
+
+    def test_api_index_has_docs_link(self, client):
+        """
+        The JSON index moved to /api when the console took over "/".
+
+        One process serves both so a deployment is one container on one port,
+        which means the root belongs to the thing a human opens.
+        """
+        body = client.get("/api").json()
+        assert "docs" in body
+
+    def test_api_routes_are_not_shadowed_by_the_console(self, client):
+        """
+        The console is mounted as a catch-all, so it could swallow the API.
+
+        FastAPI matches in declaration order and the mount is registered last,
+        but that is an ordering invariant a later edit could silently break --
+        and the failure would be the whole API 404ing at once.
+        """
+        for path in ("/health", "/api", "/openapi.json", "/api/v1/complaint/list"):
+            assert client.get(path).status_code == 200, f"{path} was shadowed"
 
 
 # ─────────────────────────────────────────────

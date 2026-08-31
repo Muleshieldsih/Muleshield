@@ -28,6 +28,9 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 import backend.state as state
+from pathlib import Path
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from backend.routers import complaint, graph, embeddings, predict, freeze, audit
 from backend.websocket import manager
 
@@ -155,11 +158,44 @@ async def health_check():
     }
 
 
-@app.get("/", tags=["System"])
-async def root():
+@app.get("/api", tags=["System"])
+async def api_root():
+    """API index. The bare "/" serves the console when a build is present."""
     return {
         "message": "MuleShield AI Backend is running.",
         "docs": "/docs",
         "health": "/health",
-        "websocket": "ws://localhost:8000/ws/feed",
+        "websocket": "/ws/feed",
     }
+
+
+# ── Console ──────────────────────────────────────────────────────────────────
+#
+# One process serves the API and the built frontend, so a deployment is one
+# container on one port. Registered LAST so it cannot shadow /api/v1, /ws,
+# /health or /docs -- FastAPI matches routes in declaration order.
+#
+# Absent in development: `npm run dev` serves the console on its own port and
+# this block is skipped, which is why it is guarded rather than assumed.
+_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+
+if (_DIST / "index.html").exists():
+    app.mount("/assets", StaticFiles(directory=_DIST / "assets"), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_console(full_path: str):
+        """
+        Hand every unmatched path to the SPA.
+
+        React Router owns /map, /graph, /intercept and /model. Without this a
+        refresh on any of them 404s from the server, because those paths exist
+        only in the browser.
+        """
+        candidate = _DIST / full_path
+        if full_path and candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(_DIST / "index.html")
+
+    logger.info(f"[STARTUP] Serving console from {_DIST}")
+else:
+    logger.info("[STARTUP] No frontend build found - API only.")
