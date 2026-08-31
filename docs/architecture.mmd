@@ -1,0 +1,78 @@
+flowchart TD
+    %% ============ INPUT ============
+    IN["Victim files complaint<br/>1930 helpline / NCRP portal<br/>7 fields — no transaction history"]
+
+    %% ============ STAGE 1 — NOT ML ============
+    subgraph S1 ["STAGE 1 — Deterministic graph traversal (not machine learning)"]
+        direction TB
+        BFS["BFS Trace<br/>walk transaction edges outward from the victim"]
+        CHAIN["Money-hopping chain<br/>every account the funds passed through"]
+        TERM["Terminal account<br/>no outgoing transfer — cash exits here"]
+        BFS --> CHAIN --> TERM
+    end
+
+    %% ============ STAGE 2 — DETECTION ============
+    subgraph S2 ["STAGE 2 — Detection"]
+        direction TB
+        GNN["GraphSAGE GNN<br/>2 layers · 64-dim · 10,561 params<br/>scores accounts by their neighbourhood"]
+        RISK["Mule probability per account<br/>F1 0.8955 — plus 0.053 over best non-graph"]
+        GNN --> RISK
+    end
+
+    %% ============ STAGE 3 — LOCATION ============
+    subgraph S3 ["STAGE 3 — Location: Conditional Logit (not XGBoost)"]
+        direction TB
+        DIR["ATM directory<br/>1,000 real locations"]
+        CAND["Nearest 25 candidates<br/>by haversine distance"]
+        LOGIT["Conditional Logit<br/>softmax over 6 log-features<br/>distance · risk · same-bank · crew priors"]
+        TOP5["Top-5 ranked ATMs<br/>71.4% containment"]
+        ZONE["Search zone<br/>~10 km radius · median 8 ATMs<br/>87.4% containment"]
+        DIR --> CAND --> LOGIT
+        LOGIT --> TOP5
+        LOGIT --> ZONE
+    end
+
+    %% ============ STAGE 4 — TIMING ============
+    subgraph S4 ["STAGE 4 — Timing"]
+        direction TB
+        XGB["XGBoost Regressor<br/>plus q05 / q95 quantile models"]
+        CLOCK["Countdown with confidence band<br/>MAE 11.86 min · median 42 min lead"]
+        XGB --> CLOCK
+    end
+
+    %% ============ OUTPUT ============
+    CONSOLE["OPERATOR CONSOLE<br/>end-to-end inference 7.5 ms"]
+    FREEZE["Freeze request to bank<br/>targets the terminal account"]
+    DISPATCH["Dispatch field team<br/>to Top-5 ATMs / search zone"]
+    AUDIT["Audit trail<br/>timestamped and attributed"]
+
+    %% ============ FLOW ============
+    IN --> BFS
+    CHAIN -- "all accounts" --> GNN
+    TERM -- "location and bank" --> DIR
+    TERM -- "account features" --> XGB
+    RISK -- "crew structure" --> LOGIT
+    TOP5 -- "winning candidate" --> XGB
+
+    RISK --> CONSOLE
+    TOP5 --> CONSOLE
+    ZONE --> CONSOLE
+    CLOCK --> CONSOLE
+
+    CONSOLE --> FREEZE
+    CONSOLE --> DISPATCH
+    FREEZE --> AUDIT
+    DISPATCH --> AUDIT
+
+    %% ============ STYLING ============
+    classDef input fill:#1f2933,stroke:#58a6ff,stroke-width:2px,color:#e6edf3
+    classDef nonml fill:#132a1a,stroke:#3fb950,stroke-width:2px,color:#e6edf3
+    classDef model fill:#2b1d10,stroke:#ff8c42,stroke-width:2px,color:#e6edf3
+    classDef result fill:#1c1f26,stroke:#8b949e,stroke-width:1px,color:#e6edf3
+    classDef action fill:#2d1418,stroke:#ff3b3b,stroke-width:2px,color:#e6edf3
+
+    class IN input
+    class BFS,CHAIN,TERM nonml
+    class GNN,LOGIT,XGB model
+    class RISK,DIR,CAND,TOP5,ZONE,CLOCK result
+    class CONSOLE,FREEZE,DISPATCH,AUDIT action
