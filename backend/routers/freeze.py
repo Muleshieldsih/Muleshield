@@ -13,8 +13,9 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from backend.auth import actor_for, optional_user
 from backend.models.schemas import FreezeRequest, FreezeResponse
 from backend.websocket import manager
 import backend.state as state
@@ -29,7 +30,10 @@ router = APIRouter(prefix="/api/v1/bank", tags=["Freeze"])
     response_model=FreezeResponse,
     summary="Emergency micro-freeze on a mule account",
 )
-async def micro_freeze(request: FreezeRequest) -> FreezeResponse:
+async def micro_freeze(
+    request: FreezeRequest,
+    user: dict | None = Depends(optional_user),
+) -> FreezeResponse:
     """
     Simulates an emergency card freeze on a flagged mule account.
 
@@ -40,6 +44,12 @@ async def micro_freeze(request: FreezeRequest) -> FreezeResponse:
     Response:
         { "status": "FROZEN", "account": "...", "timestamp": "..." }
     """
+    # Who gets the blame for an irreversible action against a person's account.
+    # A signed-in officer's verified identity always beats the officer_id in the
+    # request body; without a token the body still stands, so every existing
+    # caller keeps working exactly as before.
+    actor = actor_for(user, request.officer_id, "OFFICER-001")
+
     freeze_ref = f"FRZ-{str(uuid.uuid4())[:8].upper()}"
     ts = datetime.now(timezone.utc).isoformat()
 
@@ -56,7 +66,7 @@ async def micro_freeze(request: FreezeRequest) -> FreezeResponse:
         bank=bank,
         complaint_id=request.complaint_id,
         timestamp=ts,
-        officer_id=request.officer_id,
+        officer_id=actor,
         freeze_reference=freeze_ref,
     )
 
@@ -65,14 +75,14 @@ async def micro_freeze(request: FreezeRequest) -> FreezeResponse:
     # so on its own it left an irreversible action with no readable trace of who
     # ordered it or against which case. The audit trail is that record.
     state.record_audit(
-        actor=request.officer_id,
+        actor=actor,
         action="Froze account",
         obj=f"{request.account_id} ({bank}) - {freeze_ref}",
         case_id=request.complaint_id,
     )
     logger.info(
         f"[FREEZE] {freeze_ref}: Account {request.account_id} "
-        f"({bank}) FROZEN by {request.officer_id}"
+        f"({bank}) FROZEN by {actor}"
     )
 
     # Broadcast freeze event to all connected dashboards
@@ -84,7 +94,7 @@ async def micro_freeze(request: FreezeRequest) -> FreezeResponse:
             "account": request.account_id,
             "bank": bank,
             "timestamp": ts,
-            "officer_id": request.officer_id,
+            "officer_id": actor,
         },
     })
 

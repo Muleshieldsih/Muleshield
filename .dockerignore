@@ -24,3 +24,10 @@ docs/screens/
 *.log
 .env
 .env.local
+
+# Officer credentials. Never commit this -- it holds password hashes and live
+# session tokens, and a committed copy would put a working login for every
+# deployment into a public repository.
+data/muleshield.db
+data/muleshield.db-wal
+data/muleshield.db-shm

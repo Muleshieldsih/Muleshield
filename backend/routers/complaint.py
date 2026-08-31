@@ -15,7 +15,9 @@ GET  /api/v1/complaint/{id}/transactions  — The money trail, every row
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import Depends, APIRouter, HTTPException, Query
+
+from backend.auth import actor_for, optional_user
 
 from backend.models.schemas import (
     ComplaintIngestRequest, ComplaintResponse, CaseUpdateRequest,
@@ -112,7 +114,11 @@ def _decorate(record: dict) -> dict:
     response_model=ComplaintResponse,
     summary="Update a case's status or assignment",
 )
-async def update_case(complaint_id: str, payload: CaseUpdateRequest) -> ComplaintResponse:
+async def update_case(
+    complaint_id: str,
+    payload: CaseUpdateRequest,
+    user: dict | None = Depends(optional_user),
+) -> ComplaintResponse:
     """
     Move a case through the workflow. Every change is written to the audit trail
     with the actor who made it.
@@ -124,7 +130,7 @@ async def update_case(complaint_id: str, payload: CaseUpdateRequest) -> Complain
             complaint_id,
             status=payload.status,
             assignee=payload.assignee,
-            actor=payload.actor,
+            actor=actor_for(user, payload.actor),
         )
     except ValueError as e:
         # A bad status is the caller's mistake, and naming the valid set is more
@@ -147,8 +153,13 @@ async def update_case(complaint_id: str, payload: CaseUpdateRequest) -> Complain
     response_model=NoteResponse,
     summary="Attach an investigation note to a case",
 )
-async def create_note(complaint_id: str, payload: NoteRequest) -> NoteResponse:
-    note = state.add_note(complaint_id, payload.text.strip(), payload.author)
+async def create_note(
+    complaint_id: str,
+    payload: NoteRequest,
+    user: dict | None = Depends(optional_user),
+) -> NoteResponse:
+    note = state.add_note(complaint_id, payload.text.strip(),
+                          actor_for(user, payload.author))
     if note is None:
         raise HTTPException(status_code=404, detail=f"Complaint '{complaint_id}' not found.")
     return NoteResponse(**note)

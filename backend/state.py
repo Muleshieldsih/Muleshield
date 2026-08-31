@@ -609,3 +609,70 @@ def add_note(complaint_id: str, text: str, author: str) -> Optional[dict]:
 
 def get_notes(complaint_id: str) -> list[dict]:
     return list(reversed(case_notes.get(complaint_id, [])))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CROSS-CASE INTELLIGENCE
+# ─────────────────────────────────────────────────────────────────────────────
+
+def atm_intelligence(limit: int = 25) -> list[dict]:
+    """
+    Rank ATMs by how many distinct complaints they appear in.
+
+    Every other screen in this console answers a question about ONE case. This
+    answers the one I4C asks across a district: which machines keep coming back.
+
+    The models already consume this history -- `atm_prior_count` and
+    `historical_hotspot_density` are ranking features -- but nothing surfaced it
+    to a person, so a claim about spotting the network rather than the incident
+    had nothing behind it on screen.
+
+    Ranked by DISTINCT COMPLAINTS rather than raw cash-out count. One chain that
+    splits four ways and converges on a single terminal produces four cash-outs
+    at one machine; that is one case, not four, and counting it as four would
+    make an ordinary pooling pattern look like a hotspot.
+    """
+    by_atm: dict[str, dict] = {}
+
+    for cid, rows in transactions_by_complaint.items():
+        for t in rows:
+            if int(t.get("is_terminal", 0) or 0) != 1:
+                continue
+            atm_id = str(t.get("cashout_atm_id") or "").strip()
+            if not atm_id or atm_id.lower() == "nan":
+                continue
+
+            rec = by_atm.get(atm_id)
+            if rec is None:
+                rec = by_atm[atm_id] = {
+                    "atm_id": atm_id,
+                    "cashouts": 0,
+                    "_complaints": set(),
+                    "total_amount": 0.0,
+                    "last_seen": "",
+                }
+            rec["cashouts"] += 1
+            rec["_complaints"].add(cid)
+            rec["total_amount"] += float(t.get("amount", 0.0) or 0.0)
+            ts = str(t.get("timestamp") or "")
+            if ts > rec["last_seen"]:
+                rec["last_seen"] = ts
+
+    out: list[dict] = []
+    for rec in by_atm.values():
+        atm = atm_directory.get(rec["atm_id"], {})
+        out.append({
+            "atm_id": rec["atm_id"],
+            "cashouts": rec["cashouts"],
+            "distinct_complaints": len(rec["_complaints"]),
+            "total_amount": round(rec["total_amount"], 2),
+            "city": str(atm.get("city", "")),
+            "state": str(atm.get("state", "")),
+            "lat": float(atm.get("lat", 0.0) or 0.0),
+            "lon": float(atm.get("long", atm.get("lon", 0.0)) or 0.0),
+            "cashout_risk_score": float(atm.get("cashout_risk_score", 0.0) or 0.0),
+            "last_seen": rec["last_seen"],
+        })
+
+    out.sort(key=lambda r: (r["distinct_complaints"], r["cashouts"]), reverse=True)
+    return out[:limit]

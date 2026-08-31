@@ -31,7 +31,9 @@ import backend.state as state
 from pathlib import Path
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from backend.routers import complaint, graph, embeddings, predict, freeze, audit
+from backend.routers import (auth, complaint, graph, embeddings, predict,
+                             freeze, audit, intel)
+from backend import db
 from backend.websocket import manager
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -56,6 +58,9 @@ async def lifespan(app: FastAPI):
     logger.info("  MuleShield AI Backend | SIH26184 | MHA / I4C")
     logger.info("=" * 60)
     state.load_all()
+    # Credentials are the one thing in this system that cannot live in memory:
+    # an account that vanishes on restart is not an account.
+    db.init()
     logger.info("[STARTUP] Server ready. Swagger UI → http://localhost:8000/docs")
     yield
     logger.info("[SHUTDOWN] MuleShield AI shutting down.")
@@ -91,12 +96,16 @@ app.add_middleware(
 )
 
 # ── Routers ───────────────────────────────────────────────────────────────────
+# Every one of these must be registered ABOVE the SPA catch-all further down,
+# or the console's index.html answers /api/v1/... with a 200 and an HTML body.
+app.include_router(auth.router)
 app.include_router(complaint.router)
 app.include_router(graph.router)
 app.include_router(embeddings.router)
 app.include_router(predict.router)
 app.include_router(freeze.router)
 app.include_router(audit.router)
+app.include_router(intel.router)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

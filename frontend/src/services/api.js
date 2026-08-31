@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { getToken, clearToken, notifyExpired } from './auth'
 
 /**
  * Where the API lives.
@@ -22,6 +23,31 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' }
 })
 
+// Attach the bearer token to every request that has one.
+api.interceptors.request.use(config => {
+  const token = getToken()
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
+
+// One place to handle "your session is over".
+//
+// The /auth/login exclusion matters: a rejected sign-in is a form error, not an
+// expired session. Without it, typing the wrong password would clear the token
+// and bounce the officer to the login screen they are already looking at, and
+// the error message would be lost in the remount.
+api.interceptors.response.use(
+  response => response,
+  error => {
+    const url = error?.config?.url || ''
+    if (error?.response?.status === 401 && !url.includes('/auth/login')) {
+      clearToken()
+      notifyExpired()
+    }
+    return Promise.reject(error)
+  }
+)
+
 /**
  * Normalise an axios failure into something the UI can show an operator.
  * A console that silently swaps in demo data when the backend is down is worse
@@ -41,6 +67,32 @@ export function describeError(err) {
 }
 
 export const endpoints = {
+  // auth
+  login: (username, password) =>
+    api.post('/api/v1/auth/login', { username, password }).then(r => r.data),
+  logout: () => api.post('/api/v1/auth/logout').then(r => r.data),
+  me: () => api.get('/api/v1/auth/me').then(r => r.data),
+  forgotPassword: username =>
+    api.post('/api/v1/auth/forgot-password', { username }).then(r => r.data),
+  resetPassword: (token, newPassword) =>
+    api.post('/api/v1/auth/reset-password',
+             { token, new_password: newPassword }).then(r => r.data),
+
+  // administrator
+  listUsers: () => api.get('/api/v1/auth/users').then(r => r.data),
+  createUser: payload => api.post('/api/v1/auth/users', payload).then(r => r.data),
+  unlockUser: id => api.post(`/api/v1/auth/users/${id}/unlock`).then(r => r.data),
+  listResetRequests: (status = 'pending') =>
+    api.get('/api/v1/auth/reset-requests', { params: { status } }).then(r => r.data),
+  approveReset: id =>
+    api.post(`/api/v1/auth/reset-requests/${id}/approve`).then(r => r.data),
+  denyReset: id =>
+    api.post(`/api/v1/auth/reset-requests/${id}/deny`).then(r => r.data),
+
+  // cross-case intelligence
+  listAtmIntel: (limit = 25) =>
+    api.get('/api/v1/intel/atms', { params: { limit } }).then(r => r.data),
+
   health: () => api.get('/health').then(r => r.data),
   listComplaints: (limit = 60, offset = 0) =>
     api.get('/api/v1/complaint/list', { params: { limit, offset } }).then(r => r.data),

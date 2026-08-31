@@ -1,7 +1,8 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { Shield, Activity, GitBranch, MapPinned, Zap, BarChart3, Radio, Circle, WifiOff } from 'lucide-react'
+import { Shield, Activity, GitBranch, MapPinned, Zap, BarChart3, Radio, Circle, WifiOff, LayoutDashboard, LogOut } from 'lucide-react'
 import { useMemo } from 'react'
 import { amountShort, formatTicket } from '../utils/constants'
+import { useAuth } from '../context/AuthContext'
 import { timeAgo, useNow } from '../hooks/useCountdown'
 
 /** Compact city code for the ticker, derived from the city name itself. */
@@ -158,12 +159,44 @@ export function Topbar({ wsConnected, complaintId, backendDown, lastEvent }) {
             <span className="mono tnum font-semibold text-zinc-100">{formatTicket(complaintId)}</span>
           </div>
         )}
+
+        <OfficerChip />
       </div>
     </header>
   )
 }
 
+/**
+ * Who is signed in, and the way out.
+ *
+ * Worth showing prominently rather than tucking in a menu: every freeze and every
+ * status change now carries this name into the audit trail, so an officer should
+ * never be unsure whose account they are acting under.
+ */
+function OfficerChip() {
+  const { user, logout } = useAuth()
+  if (!user) return null
+  return (
+    <div className="flex items-center gap-1.5 shrink-0">
+      <div className="hidden sm:flex flex-col items-end leading-tight border border-ink-border rounded px-3 py-1 bg-ink-panel">
+        <span className="text-[11px] text-zinc-200">{user.display_name}</span>
+        <span className="mono text-[9.5px] text-zinc-500">
+          {user.username}{user.is_admin ? ' · ADMIN' : ''}
+        </span>
+      </div>
+      <button
+        onClick={logout}
+        title="Sign out"
+        aria-label="Sign out"
+        className="p-1.5 rounded border border-ink-border text-zinc-500 hover:text-white hover:border-ink-border2 transition-colors">
+        <LogOut size={14} />
+      </button>
+    </div>
+  )
+}
+
 const NAV_ITEMS = [
+  ['/dashboard', <LayoutDashboard size={15} key="i" />, 'Dashboard', 'Overview and intelligence'],
   ['/', <Activity size={15} key="i" />, 'Cases', 'Queue and triage'],
   ['/graph', <GitBranch size={15} key="i" />, 'Transaction trail', 'Fund movement'],
   ['/map', <MapPinned size={15} key="i" />, 'Locations', 'Cash-out points'],

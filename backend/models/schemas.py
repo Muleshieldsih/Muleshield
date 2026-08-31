@@ -299,3 +299,117 @@ class TransactionRow(BaseModel):
     is_terminal: bool = False
     cashout_atm_id: Optional[str] = None
     minutes_from_first: float = 0.0
+
+
+# ---------------------------------------------------------------------------
+# Authentication
+# ---------------------------------------------------------------------------
+
+class LoginRequest(BaseModel):
+    """Credentials posted as JSON.
+
+    JSON rather than an OAuth2 form because the form flow needs python-multipart,
+    which is not among this project's dependencies. Adding it would mean touching
+    the Dockerfile's pip layer for no functional gain.
+    """
+    username: str = Field(..., min_length=1, max_length=64)
+    password: str = Field(..., min_length=1, max_length=256)
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {"username": "officer", "password": "your-password"}
+        }
+    }
+
+
+class UserOut(BaseModel):
+    """An officer, as shown to the client. Carries no hash and no session."""
+    id: int
+    username: str
+    display_name: str
+    is_admin: bool = False
+    locked: bool = False
+    created_at: str = ""
+    last_login: Optional[str] = None
+
+
+class LoginResponse(BaseModel):
+    """Bearer token plus the officer it belongs to.
+
+    The field names mirror the OAuth2 response shape so the payload reads as
+    conventional, even though the request was JSON. `expires_at` lets the console
+    pre-empt an expiry instead of discovering it through a failed request.
+    """
+    access_token: str
+    token_type: str = "bearer"
+    expires_at: str
+    user: UserOut
+
+
+class ForgotPasswordRequest(BaseModel):
+    username: str = Field(..., min_length=1, max_length=64)
+
+
+class CreateUserRequest(BaseModel):
+    """Credentials an administrator issues to a new officer.
+
+    There is no self-registration. An officer has an account because somebody
+    with authority created one.
+    """
+    username: str = Field(..., min_length=1, max_length=64)
+    display_name: str = Field(..., min_length=1, max_length=120)
+    password: str = Field(..., min_length=8, max_length=256)
+    is_admin: bool = False
+
+
+class ResetRequestOut(BaseModel):
+    """One queued reset, as an administrator sees it."""
+    id: int
+    username: str
+    display_name: str
+    status: str
+    requested_at: str
+    decided_by: Optional[str] = None
+    decided_at: Optional[str] = None
+    expires_at: Optional[str] = None
+
+
+class ResetApprovalResponse(BaseModel):
+    """Returned ONCE, to the approving administrator.
+
+    The token is not stored in the clear and cannot be retrieved again. It is
+    handed to the officer by whatever channel the administrator already trusts.
+    """
+    detail: str
+    reset_token: str
+    expires_in_minutes: int
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=8, max_length=256,
+                              description="Minimum eight characters.")
+
+
+# ---------------------------------------------------------------------------
+# Cross-case intelligence
+# ---------------------------------------------------------------------------
+
+class ATMIntelRow(BaseModel):
+    """One ATM, summarised across every case in the corpus.
+
+    The per-case screens answer "where will this withdrawal happen". This answers
+    the question I4C actually cares about across a district: which machines keep
+    coming back. The model already consumes that history as a feature
+    (`atm_prior_count`); until now nothing surfaced it to a person.
+    """
+    atm_id: str
+    cashouts: int
+    distinct_complaints: int
+    total_amount: float
+    city: str = ""
+    state: str = ""
+    lat: float = 0.0
+    lon: float = 0.0
+    cashout_risk_score: float = 0.0
+    last_seen: str = ""
