@@ -407,9 +407,83 @@ class ATMIntelRow(BaseModel):
     cashouts: int
     distinct_complaints: int
     total_amount: float
+    bank_name: str = ""
     city: str = ""
+    district: str = ""
     state: str = ""
     lat: float = 0.0
     lon: float = 0.0
     cashout_risk_score: float = 0.0
     last_seen: str = ""
+
+
+# ---------------------------------------------------------------------------
+# Forward hotspot surface
+# ---------------------------------------------------------------------------
+
+class HotspotWindow(BaseModel):
+    """One forecast window for one cell.
+
+    The three money fields are the point of this model and are kept apart
+    deliberately. conditional_rupees is forecast mass contributed by complaints
+    open right now; prior_rupees is the capped historical term. A reader -- an
+    officer, or a judge -- can see at a glance which one is carrying the cell,
+    and that is the difference between a forecast and a density map.
+    """
+    window_start_min: int
+    window_end_min: int
+    score: float = 0.0
+    conditional_rupees: float = 0.0
+    prior_rupees: float = 0.0
+    prior_share: float = 0.0
+    case_count: int = 0
+
+
+class HotspotCell(BaseModel):
+    """One cash-out cell: a cluster of machines a single team could cover.
+
+    Not a district. 1,000 ATMs across 78 districts averages 12.8 machines per
+    district, and a district is an administrative boundary rather than a
+    deployable one. district and state ride along as roll-up keys so the
+    dashboard drill-down is a group-by rather than a second model.
+    """
+    cell_id: str
+    lat: float = 0.0
+    lon: float = 0.0
+    district: str = ""
+    state: str = ""
+    city: str = ""
+    atm_count: int = 0
+    score: float = 0.0
+    conditional_rupees: float = 0.0
+    prior_rupees: float = 0.0
+    prior_share: float = 0.0
+    case_count: int = 0
+    # Which complaints, not just how many. The console lists them with links back
+    # into triage, so an officer reading a hot cell can open the cases driving it
+    # rather than taking the number on trust.
+    complaint_ids: list[str] = []
+    windows: list[HotspotWindow] = []
+
+
+class HotspotSurfaceResponse(BaseModel):
+    """The national forward surface.
+
+    degraded is load-bearing rather than cosmetic. With no complaints open the
+    surface is entirely historical -- and a historical density map presented as
+    a forecast is precisely what this component exists not to be. When it is
+    true the console says "no live cases; this is history only" instead of
+    drawing circles that imply prediction.
+    """
+    as_of: str
+    degraded: bool = False
+    prior_weight: float = 0.15
+    cell_radius_km: float = 12.0
+    n_cells: int = 0
+    n_open_complaints: int = 0
+    windows_min: list[list[int]] = []
+    total_conditional_rupees: float = 0.0
+    total_prior_rupees: float = 0.0
+    prior_share_national: float = 0.0
+    filters: dict = {}
+    cells: list[HotspotCell] = []

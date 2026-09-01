@@ -33,20 +33,14 @@ if str(ROOT / "engine") not in sys.path:
 from backend import db                       # noqa: E402
 from backend.main import app                 # noqa: E402
 
-PASSWORD = "test-password-not-a-secret"
+from backend.tests.conftest import ADMIN_PASSWORD as PASSWORD  # noqa: E402
+from backend.tests.conftest import ADMIN_USER                 # noqa: E402
 
 
-@pytest.fixture(scope="module")
-def client():
-    # Point the credential store at a throwaway file BEFORE the lifespan runs, so
-    # these tests never touch the real data/muleshield.db or its live sessions.
-    db.close()
-    db.DB_PATH = Path(tempfile.mkdtemp()) / "auth_test.db"
-    os.environ["MULESHIELD_ADMIN_USER"] = "testofficer"
-    os.environ["MULESHIELD_ADMIN_PASSWORD"] = PASSWORD
-    with TestClient(app) as c:
-        yield c
-    db.close()
+# `client` (anonymous) now comes from backend/tests/conftest.py, which owns the
+# throwaway credential store and the pinned admin for the whole suite. This module
+# keeps the ANONYMOUS client under that name, because most of what it asserts is
+# what happens to a caller with no token.
 
 
 @pytest.fixture
@@ -59,7 +53,7 @@ def admin(client):
     as "attribution is broken" when nothing is.
     """
     r = client.post("/api/v1/auth/login",
-                    json={"username": "testofficer", "password": PASSWORD})
+                    json={"username": ADMIN_USER, "password": PASSWORD})
     assert r.status_code == 200, r.text
     return {"Authorization": f"Bearer {r.json()['access_token']}"}
 
@@ -365,8 +359,8 @@ class TestPasswordReset:
 class TestAttribution:
     """The point of the whole exercise."""
 
-    def _a_complaint(self, client):
-        rows = client.get("/api/v1/complaint/list?limit=1").json()
+    def _a_complaint(self, client, admin):
+        rows = client.get("/api/v1/complaint/list?limit=1", headers=admin).json()
         if not rows:
             pytest.skip("no complaints loaded")
         return rows[0]["ticket_id"]
@@ -377,7 +371,7 @@ class TestAttribution:
         This is the property the audit trail previously could not offer: it
         recorded faithfully whatever it was told, and it was told by the client.
         """
-        cid = self._a_complaint(client)
+        cid = self._a_complaint(client, admin)
         acct = f"TEST-{uuid.uuid4().hex[:8]}"
         r = client.post("/api/v1/bank/micro-freeze", headers=admin, json={
             "account_id": acct, "complaint_id": cid,
@@ -386,28 +380,40 @@ class TestAttribution:
         assert r.status_code == 200
         assert r.json()["officer_id"] != "SOMEONE-ELSE"
 
-        mine = [e for e in client.get(f"/api/v1/audit/{cid}").json()
+        mine = [e for e in client.get(f"/api/v1/audit/{cid}", headers=admin).json()
                 if acct in e.get("object", "")]
         assert mine, "the freeze left no audit entry"
         assert mine[0]["actor"] == "Duty Officer"
 
-    def test_unauthenticated_freeze_still_works(self, client):
-        """Backwards compatibility, deliberately.
+    def test_unauthenticated_freeze_is_refused(self, client):
+        """The reversal of a deliberate earlier decision, recorded not hidden.
 
-        Every caller that predates authentication keeps working, and the body's
-        officer_id still stands when nobody has proven who they are. Removing this
-        would break seven existing tests and would claim, falsely, that the old
-        audit trail was worthless -- it recorded exactly what it was given.
+        This test previously asserted that an anonymous freeze WORKED. The
+        reasoning was that every caller predating authentication should keep
+        working, and that the old audit trail was not worthless -- it recorded
+        exactly what it was given, it simply could not verify it. Both arguments
+        were sound while the only thing at stake was attribution.
+
+        Neither survives the observation that POST /api/v1/bank/micro-freeze is
+        the one irreversible action in the product, taken against a real
+        person's bank account, and that it was accepting it from anybody with
+        curl and no credentials at all.
+
+        What did NOT change: the body's `officer_id` still names the audit actor
+        when no verified identity overrides it. See
+        test_authenticated_actor_overrides_the_body. It just no longer serves as
+        authorisation.
         """
-        cid = self._a_complaint(client)
-        acct = f"TEST-{uuid.uuid4().hex[:8]}"
         r = client.post("/api/v1/bank/micro-freeze", json={
-            "account_id": acct, "complaint_id": cid, "officer_id": "IO-LEGACY"})
-        assert r.status_code == 200
-        assert r.json()["officer_id"] == "IO-LEGACY"
+            "account_id": "TEST-0001",
+            "complaint_id": "any",
+            "officer_id": "IO-LEGACY",
+        })
+        assert r.status_code == 401, r.text
+        assert "bearer" in r.headers.get("www-authenticate", "").lower()
 
     def test_authenticated_note_is_attributed(self, client, admin):
-        cid = self._a_complaint(client)
+        cid = self._a_complaint(client, admin)
         r = client.post(f"/api/v1/complaint/{cid}/note", headers=admin,
                         json={"text": "Checked the terminal account.",
                               "author": "NOT-ME"})

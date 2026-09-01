@@ -1,5 +1,5 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { Activity, GitBranch, MapPinned, Zap, BarChart3, Radio, Circle, WifiOff, LogOut } from 'lucide-react'
+import { Activity, GitBranch, MapPinned, Zap, BarChart3, Flame, Radio, Circle, WifiOff, LogOut } from 'lucide-react'
 import { useMemo } from 'react'
 import { amountShort, formatTicket } from '../utils/constants'
 import { useAuth } from '../context/AuthContext'
@@ -205,6 +205,7 @@ const NAV_ITEMS = [
   ['/graph', <GitBranch size={15} key="i" />, 'Transaction trail', 'Fund movement'],
   ['/map', <MapPinned size={15} key="i" />, 'Locations', 'Cash-out points'],
   ['/intercept', <Zap size={15} key="i" />, 'Intervention', 'Freeze and escalate'],
+  ['/risk', <Flame size={15} key="i" />, 'Risk heatmap', 'National to district'],
   ['/model', <BarChart3 size={15} key="i" />, 'Model performance', 'Detection accuracy'],
 ]
 

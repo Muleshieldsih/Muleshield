@@ -125,6 +125,83 @@
   "zoneMedianErrorKm": 5.494746475710523,
   "countdownR2": 0.16735311297406008,
   "leadTimeMedianMin": 41.855000000000004,
+  "hotspotHitRateAt5": 0.9337,
+  "hotspotPaiAt5": 28.168,
+  "hotspotPeiAt5": 0.9337,
+  "hotspotRupeesCoveredAt5": 0.943,
+  "hotspotBaselinePai": 0.954,
+  "hotspotBaselineHitRate": 0.0534,
+  "hotspotNearestCellHitRate": 1.0,
+  "hotspotLeadTimeMedianMin": 42.5,
+  "hotspotLeadActionableRate": 0.8579,
+  "hotspotCells": 222,
+  "hotspotOperatingK": 5,
+  "hotspotPriorWeight": 0.15,
+  "hotspotPriorShare": 0.1304,
+  "hotspotFlaggedAtmShareAt5": 0.03315,
+  "hotspotPrecisionCurve": [
+    {
+      "k": 1,
+      "coverage": 0.4693,
+      "precision": 0.46926,
+      "false_cells_per_hit": 1.13,
+      "pai": 66.959,
+      "pei": 0.4693,
+      "rupees_covered": 0.5147,
+      "flagged_atm_share": 0.00701
+    },
+    {
+      "k": 2,
+      "coverage": 0.7136,
+      "precision": 0.3568,
+      "false_cells_per_hit": 1.8,
+      "pai": 55.64,
+      "pei": 0.7136,
+      "rupees_covered": 0.7348,
+      "flagged_atm_share": 0.01283
+    },
+    {
+      "k": 3,
+      "coverage": 0.835,
+      "precision": 0.27832,
+      "false_cells_per_hit": 2.59,
+      "pai": 45.822,
+      "pei": 0.835,
+      "rupees_covered": 0.8659,
+      "flagged_atm_share": 0.01822
+    },
+    {
+      "k": 5,
+      "coverage": 0.9337,
+      "precision": 0.18673,
+      "false_cells_per_hit": 4.36,
+      "pai": 28.168,
+      "pei": 0.9337,
+      "rupees_covered": 0.943,
+      "flagged_atm_share": 0.03315
+    },
+    {
+      "k": 10,
+      "coverage": 0.9968,
+      "precision": 0.09968,
+      "false_cells_per_hit": 9.03,
+      "pai": 13.181,
+      "pei": 0.9968,
+      "rupees_covered": 0.9979,
+      "flagged_atm_share": 0.07562
+    },
+    {
+      "k": 20,
+      "coverage": 1.0,
+      "precision": 0.05,
+      "false_cells_per_hit": 19.0,
+      "pai": 6.308,
+      "pei": 1.0,
+      "rupees_covered": 1.0,
+      "flagged_atm_share": 0.15853
+    }
+  ],
+  "hotspotNTestCashouts": 618,
   "inferenceMeanMs": 7.4892449378967285,
-  "measuredUtc": "2026-08-29T17:11:54Z"
+  "measuredUtc": "2026-09-01T10:23:39Z"
 }

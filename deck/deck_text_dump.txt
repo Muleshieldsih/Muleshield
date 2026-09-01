@@ -1,0 +1,146 @@
+--- page 1 ---
+TITLE PAGE
+SMART INDIA HACKATHON 2025
+Problem Statement ID – SIH26184
+Problem Statement Title – Development of a Predictive Analytics Framework for 
+Cybercrime Complaints to Forecast Likely Cash Withdrawal Locations in Advance, 
+Enabling Generation of Actionable Intelligence for Timely and Proactive Cybercrime 
+Intervention.
+Theme – Blockchain & Cybersecurity
+PS Category – Software
+Team ID – [TEAM ID]
+Team Name – [TEAM NAME]
+MuleShield AI
+Forecasting where stolen money will be withdrawn — while there is still time to stop it.
+
+--- page 2 ---
+IDEA TITLE
+2
+@SIH Idea submission- Template
+[TEAM
+NAME]
+▬Proposed solution
+The gap: a 1930 complaint tells you a crime happened. It does not tell you 
+where the cash will leave the system, or when.
+MuleShield AI turns that complaint into a ranked, time-bounded search: five 
+ATMs, in order, with a countdown.
+▬How it addresses the problem
+Traces the money. Builds the transaction graph and follows the chain to the 
+mule account still holding the funds.
+Scores every account. A GraphSAGE network reads who-paid-whom, not just 
+per-account behaviour — F1 0.8955.
+Narrows the ground. 1,000 ATMs → 25 reachable → 5 worth searching, in 
+7.5 ms.
+Starts the clock. Median 42 minutes of warning before the predicted 
+withdrawal.
+▬Innovation and uniqueness
+Ranked retrieval, not a guess — a list a field team can cover, never one predicted ATM.
+Graph-native detection — the graph is worth +5 F1 points over the best non-graph model.
+Published honestly — the console shows its own baselines and limits on screen.
+Zero new data — runs on the fields an NCRP complaint already carries.
+
+--- page 3 ---
+TECHNICAL APPROACH
+3
+@SIH Idea submission- Template
+[TEAM
+NAME]
+▬Technologies used
+ML: PyTorch · PyTorch Geometric (GraphSAGE) · XGBoost v2 · scikit-learn · 
+NetworkX · pandas / NumPy
+Backend: Python 3.13 · FastAPI · Uvicorn · Pydantic · WebSockets
+Frontend: React 19 · Vite · Tailwind · Leaflet (GIS) · React Flow · Recharts
+Quality: pytest (291 tests) · Playwright · Docker (single container, single process)
+Working prototype — the case queue
+Methodology and implementation
+
+--- page 4 ---
+FEASIBILITY AND VIABILITY
+4
+@SIH Idea submission- Template
+[TEAM
+NAME]
+▬Feasibility
+Technical: already built and measured — 291 passing tests, 7.5 ms inference, 
+runs on one CPU container.
+Data: consumes the fields NCRP already collects; no new citizen-facing process.
+Operational: delivers into the existing 1930 workflow — a queue, a case, an 
+action, an audit trail.
+Economic: open-source stack end to end; one container, no GPU at inference.
+▬Challenges and how we handle them
+Leakage inflating results. Found in our own first build (98.5% claimed). Rebuilt 
+the generator, re-baselined, and added a test that fails if a retracted figure 
+returns.
+A model that looks confident and is wrong. Isotonic calibration, verified against 
+held-out labels by a dedicated test.
+Synthetic training data. Generated to be hard — 2% label noise, overlapping 
+classes, complaint-level splits. Pipeline retrains on real I4C data unchanged.
+Acting on a wrong location. The system returns candidates, never a verdict; the 
+UI and every dispatch alert say so.
+Single-process state. Documented limit — case state is in-memory; a database 
+swap is a day's work when multi-user is needed.
+Viability — measured, not asserted
+
+--- page 5 ---
+IMPACT AND BENEFITS
+5
+@SIH Idea submission- Template
+[TEAM
+NAME]
+▬Who it affects
+Victims of cyber-financial fraud — 1930 / NCRP callers, 
+nationwide.
+Cyber-crime police acting inside the golden hour.
+I4C and MHA — pattern intelligence across cases, not one 
+complaint at a time.
+Banks receiving a specific account to freeze.
+▬Benefits
+Social: recovery becomes possible for ordinary complainants, 
+not only large-value cases.
+Economic: cash stopped before withdrawal is money 
+recovered; narrower freezes mean fewer legitimate accounts 
+locked.
+Operational: finite patrol capacity aimed at 5 locations instead 
+of a district.
+Governance: every freeze and dispatch attributed, 
+timestamped and auditable.
+Strategic: recurring cash-out ATMs surface across cases — the 
+mule network, not just the incident.
+Impact figures are held-out measurements, not projections.
+
+--- page 6 ---
+RESEARCH  AND REFERENCES
+6
+@SIH Idea submission- Template
+[TEAM
+NAME]
+▬Problem context
+I4C, MHA — Indian Cyber Crime Coordination Centre; 1930 helpline and the NCRP complaint 
+pipeline this system consumes.
+https://i4c.mha.gov.in/ ·  https://cybercrime.gov.in/
+RBI — Master Directions on Fraud Risk Management and mule-account controls in commercial 
+banks.
+https://www.rbi.org.in/Scripts/BS_ViewMasDirections.aspx
+NCRB — Crime in India: cyber-fraud incidence and disposal statistics used to frame the golden-
+hour problem.
+https://www.ncrb.gov.in/crime-in-india.html
+▬Methods
+Hamilton, Ying & Leskovec (2017) — Inductive Representation Learning on Large Graphs 
+(GraphSAGE). The detection model.
+https://arxiv.org/abs/1706.02216
+▬Methods (continued)
+McFadden (1974) — Conditional Logit Analysis of Qualitative Choice Behavior. The discrete-
+choice basis of the ATM ranker.
+Chen & Guestrin (2016) — XGBoost: A Scalable Tree Boosting System. The countdown 
+regressor.
+https://arxiv.org/abs/1603.02754
+Zadrozny & Elkan (2002) — Transforming classifier scores into accurate multiclass 
+probability estimates. Isotonic calibration.
+Weber et al. (2019) — Anti-Money Laundering in Bitcoin: graph convolutional networks for 
+financial forensics. Precedent for GNNs on money-laundering graphs.
+https://arxiv.org/abs/1908.02591
+▬Our own work
+Source and evaluation — full implementation, 291 tests, and the leakage audit that 
+retracted our first results.
+https://github.com/hotshot0104/SIH2026
+

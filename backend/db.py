@@ -33,7 +33,14 @@ from typing import Optional
 logger = logging.getLogger("muleshield.db")
 
 ROOT = Path(__file__).parent.parent
-DB_PATH = ROOT / "data" / "muleshield.db"
+
+# Overridable so a test run, the UI smoke sweep and a container can each point at
+# their own store. It defaults to the real one, so nothing that does not set the
+# variable changes behaviour. Before this, `backend/tests/test_phase3.py` and
+# `test_case_workflow.py` wrote officers into the live credential store, and
+# scripts/smoke_ui.py's "isolated" stack did too -- isolated in every respect
+# except the one file that holds password hashes.
+DB_PATH = Path(os.environ.get("MULESHIELD_DB_PATH", str(ROOT / "data" / "muleshield.db")))
 
 # OWASP's current floor for PBKDF2-HMAC-SHA256. Costs roughly 0.2s per login on a
 # laptop, which is the point: it is the attacker's cost that matters.

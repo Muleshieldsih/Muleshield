@@ -32,10 +32,14 @@ from backend.main import app
 # ─────────────────────────────────────────────
 
 @pytest.fixture(scope="module")
-def client():
-    """Synchronous TestClient — triggers lifespan startup (loads all data)."""
-    with TestClient(app) as c:
-        yield c
+def client(auth_client):
+    """Every test in this module acts as a signed-in officer.
+
+    Not a convenience: every endpoint exercised here now requires a token. The
+    anonymous client is still available under the name `anon` (see
+    backend/tests/conftest.py) for tests that assert what a stranger gets.
+    """
+    return auth_client
 
 
 @pytest.fixture(scope="module")
@@ -107,16 +111,24 @@ class TestHealthAndRoot:
         body = client.get("/api").json()
         assert "docs" in body
 
-    def test_api_routes_are_not_shadowed_by_the_console(self, client):
+    def test_api_routes_are_not_shadowed_by_the_console(self, client, anon):
         """
         The console is mounted as a catch-all, so it could swallow the API.
 
         FastAPI matches in declaration order and the mount is registered last,
         but that is an ordering invariant a later edit could silently break --
         and the failure would be the whole API 404ing at once.
+
+        This used to prove the point by asserting 200 anonymously on a protected
+        path. Now that the path requires a token, asserting 401 proves it MORE
+        strongly: the catch-all serves index.html with a 200, so a 200 from an
+        anonymous caller here would be precisely the failure this test exists to
+        catch, rather than the pass it used to look like.
         """
-        for path in ("/health", "/api", "/openapi.json", "/api/v1/complaint/list"):
-            assert client.get(path).status_code == 200, f"{path} was shadowed"
+        for path in ("/health", "/api", "/openapi.json"):
+            assert anon.get(path).status_code == 200, f"{path} was shadowed"
+        assert anon.get("/api/v1/complaint/list").status_code == 401,             "the console answered a protected API path"
+        assert client.get("/api/v1/complaint/list").status_code == 200
 
 
 # ─────────────────────────────────────────────

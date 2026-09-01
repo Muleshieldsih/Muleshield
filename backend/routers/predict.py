@@ -19,8 +19,9 @@ import time
 from pathlib import Path
 
 import numpy as np
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from backend.auth import current_user
 from backend.models.schemas import ATMPrediction, PredictionResponse, SearchZone
 from backend.websocket import manager
 import backend.state as state
@@ -38,7 +39,10 @@ router = APIRouter(prefix="/api/v1/predict", tags=["Prediction"])
     response_model=PredictionResponse,
     summary="Ranked candidate cash-out locations + countdown",
 )
-async def predict_cashout(complaint_id: str) -> PredictionResponse:
+async def predict_cashout(
+    complaint_id: str,
+    user: dict = Depends(current_user),
+) -> PredictionResponse:
     """
     Runs the full XGBoost inference pipeline for a given complaint.
 

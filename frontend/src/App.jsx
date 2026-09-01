@@ -15,6 +15,7 @@ const TacticalMap = lazy(() => import('./pages/TacticalMap'))
 const ForensicGraph = lazy(() => import('./pages/ForensicGraph'))
 const Interception = lazy(() => import('./pages/Interception'))
 const ModelPerformance = lazy(() => import('./pages/ModelPerformance'))
+const RiskHeatmap = lazy(() => import('./pages/RiskHeatmap'))
 
 function NotFound({ onHome }) {
   return (
@@ -222,6 +223,7 @@ function Layout() {
               <Route path="/graph" element={<ForensicGraph />} />
               <Route path="/intercept" element={<Interception />} />
               <Route path="/model" element={<ModelPerformance />} />
+              <Route path="/risk" element={<RiskHeatmap />} />
               {/* Without a catch-all, an unknown URL rendered the shell around an
                   empty <main> -- a blank console with no indication anything was
                   wrong. A mistyped link should say so and offer the way back. */}

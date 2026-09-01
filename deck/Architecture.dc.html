@@ -1,0 +1,123 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; }
+    a { color: #3d8b00; } a:hover { color: #2f6b00; }
+
+    /* One box = one step. Kept to a single line of label plus a small tech tag,
+       so the whole chart reads at a glance from the back of a room. */
+    .box {
+      border: 1.6px solid #b9c2bf; background: #ffffff; border-radius: 7px;
+      padding: 6px 12px; text-align: center; line-height: 1.22;
+    }
+    .box .t { font-size: 14.5px; font-weight: 600; color: #0f1111; }
+    .box .k { font-family: 'JetBrains Mono', monospace; font-size: 10.5px;
+              font-weight: 700; letter-spacing: 0.05em; color: #6b7474; margin-top: 2px; }
+    .ml   { border-color: #9ed456; background: #eefbdd; }
+    .ml .k { color: #3d8b00; }
+    .act  { border-color: #0f1111; background: #0f1111; }
+    .act .t { color: #ffffff; }
+    .act .k { color: #7cf000; }
+    .row  { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .down { display: flex; justify-content: center; }
+  </style>
+</helmet>
+
+<div style="width: 640px; height: 556px; box-sizing: border-box; padding: 16px 18px; background: #ffffff; color: #0f1111; display: flex; flex-direction: column; gap: 5px">
+
+  <div style="font-size: 17px; font-weight: 700; letter-spacing: -0.01em; text-align: center; margin-bottom: 2px">System flow</div>
+
+  <div class="box">
+    <div class="t">Cybercrime complaint</div>
+    <div class="k">1930 HELPLINE / NCRP PORTAL</div>
+  </div>
+
+  <div class="down"><svg width="13" height="14" viewBox="0 0 14 17" fill="none" stroke="#9aa3a1" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 0v12"></path><path d="M2.5 9L7 13.5 11.5 9"></path></svg></div>
+
+  <div class="box">
+    <div class="t">Build the transaction graph</div>
+    <div class="k">NETWORKX</div>
+  </div>
+
+  <div class="down"><svg width="13" height="14" viewBox="0 0 14 17" fill="none" stroke="#9aa3a1" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 0v12"></path><path d="M2.5 9L7 13.5 11.5 9"></path></svg></div>
+
+  <div class="box ml">
+    <div class="t">Score every account for mule risk</div>
+    <div class="k">GRAPHSAGE &middot; F1 0.8955</div>
+  </div>
+
+  <div class="down"><svg width="13" height="14" viewBox="0 0 14 17" fill="none" stroke="#9aa3a1" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 0v12"></path><path d="M2.5 9L7 13.5 11.5 9"></path></svg></div>
+
+  <div class="box">
+    <div class="t">Terminal mule account holding the money</div>
+  </div>
+
+  <!-- the flow splits: where, and when -->
+  <div class="down">
+    <svg width="360" height="17" viewBox="0 0 360 20" fill="none" stroke="#9aa3a1" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M180 0v5"></path><path d="M90 5h180"></path>
+      <path d="M90 5v10"></path><path d="M85.5 11L90 15.5 94.5 11"></path>
+      <path d="M270 5v10"></path><path d="M265.5 11L270 15.5 274.5 11"></path>
+    </svg>
+  </div>
+
+  <div class="row">
+    <div class="box ml">
+      <div class="t">Rank the 25 reachable ATMs</div>
+      <div class="k">CONDITIONAL LOGIT &middot; TOP 5</div>
+    </div>
+    <div class="box ml">
+      <div class="t">Predict time to cash-out</div>
+      <div class="k">XGBOOST &middot; MAE 11.9 MIN</div>
+    </div>
+  </div>
+
+  <!-- and merges into what the officer sees -->
+  <div class="down">
+    <svg width="360" height="17" viewBox="0 0 360 20" fill="none" stroke="#9aa3a1" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M90 0v5"></path><path d="M270 0v5"></path>
+      <path d="M90 5h180"></path>
+      <path d="M180 5v10"></path><path d="M175.5 11L180 15.5 184.5 11"></path>
+    </svg>
+  </div>
+
+  <div class="box">
+    <div class="t">Investigation console &mdash; 5 ranked ATMs on a map, with a countdown</div>
+    <div class="k">FASTAPI + REACT &middot; 7.5 MS END TO END</div>
+  </div>
+
+  <div class="down">
+    <svg width="360" height="17" viewBox="0 0 360 20" fill="none" stroke="#9aa3a1" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M180 0v5"></path><path d="M90 5h180"></path>
+      <path d="M90 5v10"></path><path d="M85.5 11L90 15.5 94.5 11"></path>
+      <path d="M270 5v10"></path><path d="M265.5 11L270 15.5 274.5 11"></path>
+    </svg>
+  </div>
+
+  <div class="row">
+    <div class="box act">
+      <div class="t">Freeze the mule account</div>
+      <div class="k">BANK</div>
+    </div>
+    <div class="box act">
+      <div class="t">Dispatch to the ATMs</div>
+      <div class="k">POLICE</div>
+    </div>
+  </div>
+
+  <div style="text-align: center; font-size: 11.5px; color: #6b7474; margin-top: 4px; line-height: 1.35">
+    Every action is written to an append-only <strong style="color: #0f1111">audit trail</strong> against the case.
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

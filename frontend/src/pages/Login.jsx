@@ -23,8 +23,13 @@ import { endpoints, describeError } from '../services/api'
  * so the wordmark and the provenance line move into the pane instead.
  */
 
-/** The lit plate everything sits on: two soft pools, construction lines the
- *  glass has to bend, and grain so the large soft fields do not band. */
+/** The lit plate everything sits on: two soft pools and grain so the large soft
+ *  fields do not band.
+ *
+ *  The construction lines that used to run through here are gone. They read as a
+ *  drafting grid on a wide desktop, but the layout collapses to one column below
+ *  lg -- and stacked, every line converged on the mark and turned it into the hub
+ *  of a starburst. The mark is a reticle; giving it rays makes it a sun. */
 function Backdrop() {
   return (
     <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
@@ -38,22 +43,6 @@ function Backdrop() {
         }}
       />
 
-      {/* Full width, not just the left half. With nothing behind it, a blurred
-          pane is indistinguishable from a flat fill. */}
-      <svg
-        className="absolute inset-0 w-full h-full"
-        viewBox="0 0 1600 900"
-        preserveAspectRatio="xMidYMid slice"
-      >
-        <g stroke="#ffffff" strokeOpacity="0.045" strokeWidth="1">
-          <path d="M352 34v832M34 450h1566" />
-          <path d="M34 34l318 416M670 34L352 450M34 866l318-416M670 866L352 450" />
-          <path d="M900 0v900M1180 0v900M1460 0v900" />
-        </g>
-        <g stroke="#ffffff" strokeOpacity="0.028" strokeWidth="1">
-          <path d="M760 -120L1600 720M760 1020L1600 180" />
-        </g>
-      </svg>
 
       <svg
         className="absolute inset-0 w-full h-full"

@@ -189,7 +189,11 @@ body { @apply bg-ink-bg text-zinc-200 font-sans antialiased; }
 .login-title {
   font-weight: 200;
   letter-spacing: -0.03em;
-  line-height: 1;
+  /* Not 1. At 62px a line-height of 1 puts the line box level with the baseline,
+     so the descender of the "g" in "Sign" is cut clean off -- and because the
+     fill is a background clipped to the glyphs, the crop shows as a hard edge
+     rather than as a slightly tight line. */
+  line-height: 1.14;
   background: linear-gradient(168deg, #ffffff 12%, rgba(255, 255, 255, 0.58) 96%);
   -webkit-background-clip: text;
   background-clip: text;

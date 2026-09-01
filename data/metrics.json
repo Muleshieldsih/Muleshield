@@ -53,7 +53,7 @@
     "test_precision": 0.8995433789954338,
     "test_recall": 0.8914027149321267,
     "test_accuracy": 0.9938666666666667,
-    "measured_utc": "2026-08-29T17:11:54Z",
+    "measured_utc": "2026-09-01T10:23:39Z",
     "source": "python engine/train_gnn.py"
   },
   "ranking": {
@@ -176,5 +176,179 @@
     "missed_rate": 0.1086,
     "measured_utc": "2026-08-29T17:06:17Z",
     "source": "python scripts/export_confusion.py"
+  },
+  "hotspot": {
+    "n_cells": 222,
+    "cell_radius_km": 12.0,
+    "n_atms": 1000,
+    "n_test_cashouts": 618,
+    "n_test_complaints": 250,
+    "windows_min": [
+      [
+        0,
+        30
+      ],
+      [
+        30,
+        60
+      ],
+      [
+        60,
+        120
+      ]
+    ],
+    "operating_k_cells": 5,
+    "open_minutes": 120,
+    "hit_rate_at_k": {
+      "1": 0.4693,
+      "2": 0.7136,
+      "3": 0.835,
+      "5": 0.9337,
+      "10": 0.9968,
+      "20": 1.0
+    },
+    "pai_at_k": {
+      "1": 66.959,
+      "2": 55.64,
+      "3": 45.822,
+      "5": 28.168,
+      "10": 13.181,
+      "20": 6.308
+    },
+    "pei_at_k": {
+      "1": 0.4693,
+      "2": 0.7136,
+      "3": 0.835,
+      "5": 0.9337,
+      "10": 0.9968,
+      "20": 1.0
+    },
+    "rupees_covered_at_k": {
+      "1": 0.5147,
+      "2": 0.7348,
+      "3": 0.8659,
+      "5": 0.943,
+      "10": 0.9979,
+      "20": 1.0
+    },
+    "flagged_atm_share_at_k": {
+      "1": 0.00701,
+      "2": 0.01283,
+      "3": 0.01822,
+      "5": 0.03315,
+      "10": 0.07562,
+      "20": 0.15853
+    },
+    "flagged_area_km2_at_k": {
+      "1": 452.4,
+      "2": 904.8,
+      "3": 1357.2,
+      "5": 2261.9,
+      "10": 4523.9,
+      "20": 9047.8
+    },
+    "baseline_historical_density": {
+      "hit_rate_at_5": 0.0534,
+      "pai_at_5": 0.954,
+      "rupees_covered_at_5": 0.0587
+    },
+    "baseline_static_count": {
+      "hit_rate_at_5": 0.0696,
+      "pai_at_5": 1.2,
+      "rupees_covered_at_5": 0.0857
+    },
+    "baseline_nearest_cell": {
+      "hit_rate_at_5": 1.0,
+      "pai_at_5": 43.341,
+      "rupees_covered_at_5": 1.0,
+      "hit_rate_at_k": {
+        "1": 0.6472,
+        "2": 0.9029,
+        "3": 0.9773,
+        "5": 1.0,
+        "10": 1.0,
+        "20": 1.0
+      },
+      "_note": "Distance from the TRACED TERMINAL ACCOUNT. The strong baseline; see the printed verdict [2]."
+    },
+    "baseline_victim_city": {
+      "hit_rate_at_5": 0.021,
+      "pai_at_5": 0.921,
+      "rupees_covered_at_5": 0.0198,
+      "_note": "Victim city only, no graph trace. The no-model floor."
+    },
+    "beats_historical_density": true,
+    "beats_nearest_cell": false,
+    "pei_is_hit_rate": true,
+    "lead_time_median_min": 42.5,
+    "lead_time_p10_min": 5.28,
+    "lead_actionable_rate": 0.8579,
+    "precision_coverage_curve": [
+      {
+        "k": 1,
+        "coverage": 0.4693,
+        "precision": 0.46926,
+        "false_cells_per_hit": 1.13,
+        "pai": 66.959,
+        "pei": 0.4693,
+        "rupees_covered": 0.5147,
+        "flagged_atm_share": 0.00701
+      },
+      {
+        "k": 2,
+        "coverage": 0.7136,
+        "precision": 0.3568,
+        "false_cells_per_hit": 1.8,
+        "pai": 55.64,
+        "pei": 0.7136,
+        "rupees_covered": 0.7348,
+        "flagged_atm_share": 0.01283
+      },
+      {
+        "k": 3,
+        "coverage": 0.835,
+        "precision": 0.27832,
+        "false_cells_per_hit": 2.59,
+        "pai": 45.822,
+        "pei": 0.835,
+        "rupees_covered": 0.8659,
+        "flagged_atm_share": 0.01822
+      },
+      {
+        "k": 5,
+        "coverage": 0.9337,
+        "precision": 0.18673,
+        "false_cells_per_hit": 4.36,
+        "pai": 28.168,
+        "pei": 0.9337,
+        "rupees_covered": 0.943,
+        "flagged_atm_share": 0.03315
+      },
+      {
+        "k": 10,
+        "coverage": 0.9968,
+        "precision": 0.09968,
+        "false_cells_per_hit": 9.03,
+        "pai": 13.181,
+        "pei": 0.9968,
+        "rupees_covered": 0.9979,
+        "flagged_atm_share": 0.07562
+      },
+      {
+        "k": 20,
+        "coverage": 1.0,
+        "precision": 0.05,
+        "false_cells_per_hit": 19.0,
+        "pai": 6.308,
+        "pei": 1.0,
+        "rupees_covered": 1.0,
+        "flagged_atm_share": 0.15853
+      }
+    ],
+    "prior_weight": 0.15,
+    "prior_share_national": 0.1304,
+    "total_area_km2": 100430.4,
+    "measured_utc": "2026-09-01T10:23:29Z",
+    "source": "python scripts/evaluate_hotspots.py"
   }
 }

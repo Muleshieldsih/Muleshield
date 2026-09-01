@@ -10,20 +10,39 @@ Two dependencies, and the difference between them is the whole design:
     optional_user  returns None instead of raising. For the existing
                    case-workflow endpoints.
 
-`optional_user` exists because this system had no authentication for its whole
-life and the API contract is already relied upon -- by the console, by the
-smoke-test script, and by 67 backend tests, seven of which post an `officer_id`
-or `actor` in the request body and assert it comes back in the audit trail.
+`optional_user` was introduced when this system had no authentication at all, to
+let a token upgrade the audit trail from "asserted" to "verified" without
+breaking the callers that predated it. That was the right call while the only
+thing at stake was attribution.
 
-Hard-requiring a token would break all seven and would say, falsely, that the
-audit trail was previously worthless. It was not: it recorded exactly what it
-was given. What it could not do was *verify* the claim. So the rule is:
+It stopped being the right call once someone noticed that POST
+/api/v1/bank/micro-freeze -- the one irreversible action in the product, taken
+against a real person's bank account -- accepted a request from anybody with
+curl, as did every endpoint returning a victim's name and account number. A
+login form in the React app is not access control; it is a suggestion to
+browsers.
 
-    an authenticated identity, when present, overrides whatever the client
-    claimed; when absent, the client's claim stands as before.
+ENDPOINT POLICY, and the line it draws
+--------------------------------------
+    Tier A  current_user   401 without a token. Everything that mutates state,
+                           returns PII, or reveals forward operational
+                           intelligence -- freeze, complaints, graph,
+                           embeddings, predictions, the audit trail, hotspots
+                           and alerts.
+    Tier B  open           GET /api/v1/intel/atms ONLY. Aggregate counts over
+                           machines: no account numbers, no victims, no case
+                           ids. See that router's own docstring.
+    Tier C  no dependency  /health, /api, /docs, the SPA catch-all.
 
-That upgrades the trail from "asserted" to "verified" for anyone who logs in,
-without invalidating a single existing caller.
+The line is: **retrospective aggregates stay open, forward operational forecasts
+close.** Knowing which machines have historically seen cash-outs is a statistic.
+Knowing where a patrol is about to be sent in the next ninety minutes is
+operational intelligence, and it is exactly what an offender would like to read.
+
+`optional_user` is kept because that upgrade rule is still correct and still
+used: `actor_for()` below applies it. A verified identity beats the body's
+claimed `officer_id` for the AUDIT ACTOR. What the body can no longer do is
+serve as authorisation.
 """
 
 from typing import Optional

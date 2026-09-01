@@ -178,3 +178,58 @@ def test_matrix_card_reads_every_headline_from_data():
     offenders = re.findall(r'"\s*\d+\.\d+\s*%', cards)
     assert not offenders, f"hardcoded headline on a card: {offenders}"
     assert "of 1,000" not in cards, "ATM denominator hardcoded on the card"
+
+
+def test_forward_forecast_beats_historical_density(ledger):
+    """The differentiating claim, as a number rather than as prose.
+
+    I4C already runs Pratibimb, which maps cybercrime geographically. Ranking
+    cells by decayed historical cash-out density IS that system, functionally.
+    If the forward forecast does not clear it, this component has rebuilt
+    something the judges already own and the deck must not claim otherwise.
+    """
+    h = ledger["hotspot"]
+    fwd = h["pai_at_k"]["5"]
+    base = h["baseline_historical_density"]["pai_at_5"]
+    assert fwd > base, (
+        f"forward forecast PAI@5 {fwd} does not beat historical density {base} "
+        f"-- the differentiating claim has failed and the pitch must change"
+    )
+
+
+def test_prior_does_not_dominate_the_surface(ledger):
+    """The historical term may reorder cells; it may never carry them.
+
+    prior_share_national is MEASURED from a real surface at the busiest epoch,
+    not computed algebraically from prior_weight -- an algebraic value would
+    make this test tautological, which is the failure mode that let the
+    retracted figures survive for weeks.
+    """
+    h = ledger["hotspot"]
+    assert h["prior_share_national"] <= h["prior_weight"] + 1e-6, (
+        f"prior carries {h['prior_share_national']:.4f} of the surface, above "
+        f"the {h['prior_weight']} cap -- the forecast has drifted into being a "
+        f"density map"
+    )
+
+
+def test_hotspot_reports_the_baseline_it_does_not_beat(ledger):
+    """The nearest-cell baseline must stay in the ledger even though it wins.
+
+    Distance from the traced terminal account beats the forecast on per-complaint
+    hit rate. That is the same ceiling OVERNIGHT_ML_AUDIT.md found for Top-K, and
+    the project's standing rule is that a losing comparison is published rather
+    than dropped. This test fails the build if someone removes it.
+    """
+    h = ledger["hotspot"]
+    assert "baseline_nearest_cell" in h, "the strong baseline was removed"
+    assert "beats_nearest_cell" in h
+    assert isinstance(h["beats_nearest_cell"], bool)
+
+
+def test_lead_time_is_reported_and_positive(ledger):
+    """"In Advance" is the phrase the problem statement turns on. It needs a
+    number attached to it, not an adjective."""
+    h = ledger["hotspot"]
+    assert h["lead_time_median_min"] > 0
+    assert 0.0 <= h["lead_actionable_rate"] <= 1.0

@@ -116,6 +116,8 @@ def require(ledger: Mapping[str, Any], section: str, key: str) -> Any:
             "detection": "python engine/train_gnn.py",
             "detection_baselines": "python scripts/evaluate_baselines.py",
             "location": "python engine/train_xgb.py",
+            "ranking": "python scripts/topk_curve.py",
+            "hotspot": "python scripts/evaluate_hotspots.py",
         }.get(section, "the training scripts")
         raise MetricsMissing(
             f"data/metrics.json has no '{section}.{key}'. Run: {cmd}"
@@ -172,6 +174,26 @@ def write_frontend_stats(path: Path = FRONTEND_STATS_PATH,
         "zoneMedianErrorKm": require(m, "location", "zone_median_error_km"),
         "countdownR2": require(m, "location", "time_r2"),
         "leadTimeMedianMin": require(m, "location", "lead_time_median_min"),
+        # Forward hotspot forecast. hotspotBaselinePai is the historical-density
+        # ranking -- functionally what I4C's Pratibimb already provides -- and it
+        # is projected alongside the headline on purpose: the console shows the
+        # comparison, not just the number.
+        "hotspotHitRateAt5": require(m, "hotspot", "hit_rate_at_k")["5"],
+        "hotspotPaiAt5": require(m, "hotspot", "pai_at_k")["5"],
+        "hotspotPeiAt5": require(m, "hotspot", "pei_at_k")["5"],
+        "hotspotRupeesCoveredAt5": require(m, "hotspot", "rupees_covered_at_k")["5"],
+        "hotspotBaselinePai": require(m, "hotspot", "baseline_historical_density")["pai_at_5"],
+        "hotspotBaselineHitRate": require(m, "hotspot", "baseline_historical_density")["hit_rate_at_5"],
+        "hotspotNearestCellHitRate": require(m, "hotspot", "baseline_nearest_cell")["hit_rate_at_5"],
+        "hotspotLeadTimeMedianMin": require(m, "hotspot", "lead_time_median_min"),
+        "hotspotLeadActionableRate": require(m, "hotspot", "lead_actionable_rate"),
+        "hotspotCells": require(m, "hotspot", "n_cells"),
+        "hotspotOperatingK": require(m, "hotspot", "operating_k_cells"),
+        "hotspotPriorWeight": require(m, "hotspot", "prior_weight"),
+        "hotspotPriorShare": require(m, "hotspot", "prior_share_national"),
+        "hotspotFlaggedAtmShareAt5": require(m, "hotspot", "flagged_atm_share_at_k")["5"],
+        "hotspotPrecisionCurve": require(m, "hotspot", "precision_coverage_curve"),
+        "hotspotNTestCashouts": require(m, "hotspot", "n_test_cashouts"),
         "inferenceMeanMs": require(m, "location", "inference_mean_ms"),
         "measuredUtc": require(m, "detection", "measured_utc"),
     }

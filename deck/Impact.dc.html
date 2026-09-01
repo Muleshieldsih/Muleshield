@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; }
+    a { color: #3d8b00; } a:hover { color: #2f6b00; }
+    .num { font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+  </style>
+</helmet>
+
+<div style="width: 880px; height: 538px; box-sizing: border-box; padding: 20px 22px; background: #ffffff; color: #0f1111; display: flex; flex-direction: column; gap: 13px">
+
+  <div style="font-size: 20px; font-weight: 700; letter-spacing: -0.01em">What changes for the officer on the case</div>
+
+  <!-- BEFORE / AFTER -->
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 13px">
+    <div style="border: 1.5px solid #f2b8b8; background: #fdeaea; border-radius: 8px; padding: 13px 14px; display: flex; flex-direction: column; gap: 7px">
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; color: #d62828">TODAY</div>
+      <div style="font-size: 14.5px; font-weight: 600; line-height: 1.3">A complaint, a bank freeze request, and an hour of guessing</div>
+      <div style="font-size: 12.5px; color: #6b5555; line-height: 1.45">The money is somewhere among 1,000 ATMs. No ranking, no clock, no way to know which mule account still holds it.</div>
+    </div>
+    <div style="border: 1.5px solid #cbeda0; background: #eefbdd; border-radius: 8px; padding: 13px 14px; display: flex; flex-direction: column; gap: 7px">
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; color: #3d8b00">WITH MULESHIELD AI</div>
+      <div style="font-size: 14.5px; font-weight: 600; line-height: 1.3">Five ranked ATMs, the account to freeze, and time on the clock</div>
+      <div style="font-size: 12.5px; color: #3f5230; line-height: 1.45">Delivered in 7.5 ms from the complaint that already exists on the NCRP portal.</div>
+    </div>
+  </div>
+
+  <!-- FUNNEL -->
+  <div style="border: 1.5px solid #d8dedc; border-radius: 8px; padding: 14px 16px; display: flex; align-items: center; gap: 14px">
+    <div style="text-align: center; flex-shrink: 0">
+      <div class="num" style="font-size: 28px; color: #545c5c; line-height: 1">1,000</div>
+      <div style="font-size: 11px; color: #6b7474; margin-top: 3px">ATMs nationwide</div>
+    </div>
+    <svg width="30" height="16" viewBox="0 0 30 16" fill="none" stroke="#9aa3a1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M1 8h26"></path><path d="M22 3l5 5-5 5"></path></svg>
+    <div style="text-align: center; flex-shrink: 0">
+      <div class="num" style="font-size: 28px; color: #545c5c; line-height: 1">25</div>
+      <div style="font-size: 11px; color: #6b7474; margin-top: 3px">reachable from the mule</div>
+    </div>
+    <svg width="30" height="16" viewBox="0 0 30 16" fill="none" stroke="#9aa3a1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M1 8h26"></path><path d="M22 3l5 5-5 5"></path></svg>
+    <div style="text-align: center; flex-shrink: 0; background: #0f1111; border-radius: 7px; padding: 9px 18px">
+      <div class="num" style="font-size: 30px; color: #7cf000; line-height: 1">5</div>
+      <div style="font-size: 11px; color: #a8b0ae; margin-top: 3px">to search, in order</div>
+    </div>
+    <div style="border-left: 1.5px solid #e3e8e6; padding-left: 14px; margin-left: 2px; flex-grow: 1">
+      <div style="font-size: 12.5px; color: #545c5c; line-height: 1.45"><strong style="color: #0f1111">99.5% less ground to cover</strong>, with the actual cash-out among those five <strong style="color: #0f1111">71.4%</strong> of the time &mdash; and a median <strong style="color: #0f1111">42 minutes</strong> of warning to get there.</div>
+    </div>
+  </div>
+
+  <!-- BENEFIT COLUMNS -->
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; flex-grow: 1">
+    <div style="border: 1.5px solid #d8dedc; border-radius: 8px; padding: 12px 13px; display: flex; flex-direction: column; gap: 7px">
+      <div style="display: flex; align-items: center; gap: 7px">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3d8b00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3.4 9.1-8 10-4.6-.9-8-5-8-10V6z"></path></svg>
+        <div style="font-size: 13.5px; font-weight: 700">Citizen</div>
+      </div>
+      <div style="font-size: 12px; color: #545c5c; line-height: 1.45">Money stopped while it is still recoverable, instead of a complaint number and a wait. Every 1930 caller is triaged by how much time is left, not by who called first.</div>
+    </div>
+    <div style="border: 1.5px solid #d8dedc; border-radius: 8px; padding: 12px 13px; display: flex; flex-direction: column; gap: 7px">
+      <div style="display: flex; align-items: center; gap: 7px">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3d8b00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"></path><path d="M10 20V4"></path><path d="M16 20v-7"></path><path d="M22 20H2"></path></svg>
+        <div style="font-size: 13.5px; font-weight: 700">Police &amp; I4C</div>
+      </div>
+      <div style="font-size: 12px; color: #545c5c; line-height: 1.45">Finite patrol capacity aimed at five locations instead of a district. Prior-incident counts surface the ATMs that recur across cases &mdash; the network, not just the case.</div>
+    </div>
+    <div style="border: 1.5px solid #d8dedc; border-radius: 8px; padding: 12px 13px; display: flex; flex-direction: column; gap: 7px">
+      <div style="display: flex; align-items: center; gap: 7px">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3d8b00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M3 10h18"></path><path d="M8 15h4"></path></svg>
+        <div style="font-size: 13.5px; font-weight: 700">Banks</div>
+      </div>
+      <div style="font-size: 12px; color: #545c5c; line-height: 1.45">A ranked, calibrated mule account to freeze rather than a blanket hold &mdash; fewer legitimate customers locked out, and an audit trail behind every action taken.</div>
+    </div>
+  </div>
+
+  <div style="border-top: 1px solid #e3e8e6; padding-top: 9px; font-size: 12px; color: #6b7474; line-height: 1.4">
+    Deploys as a single container against data the NCRP portal already collects &mdash; <strong style="color: #0f1111">no new reporting burden on the citizen, and no change to how a complaint is filed.</strong>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,16 @@
+y0=22.4 y1=62.2 (0.31in-0.86in): 'FEASIBILITY AND VIABILITY\n'
+y0=41.5 y1=63.5 (0.58in-0.88in): '[TEAM\nNAME]\n'
+y0=98.6 y1=115.2 (1.37in-1.60in): '▬Feasibility\n'
+y0=122.5 y1=147.6 (1.70in-2.05in): 'Technical: already built and measured — 291 passing tests, 7.5 ms infe'
+y0=155.2 y1=166.7 (2.16in-2.32in): 'Data: consumes the fields NCRP already collects; no new citizen-facing'
+y0=174.1 y1=199.1 (2.42in-2.77in): 'Operational: delivers into the existing 1930 workflow — a queue, a cas'
+y0=206.6 y1=218.1 (2.87in-3.03in): 'Economic: open-source stack end to end; one container, no GPU at infer'
+y0=232.4 y1=249.1 (3.23in-3.46in): '▬Challenges and how we handle them\n'
+y0=256.4 y1=295.3 (3.56in-4.10in): 'Leakage inflating results. Found in our own first build (98.5% claimed'
+y0=302.8 y1=327.9 (4.21in-4.55in): 'A model that looks confident and is wrong. Isotonic calibration, verif'
+y0=335.5 y1=360.5 (4.66in-5.01in): 'Synthetic training data. Generated to be hard — 2% label noise, overla'
+y0=368.0 y1=393.1 (5.11in-5.46in): 'Acting on a wrong location. The system returns candidates, never a ver'
+y0=400.6 y1=425.7 (5.56in-5.91in): 'Single-process state. Documented limit — case state is in-memory; a da'
+y0=433.1 y1=481.2 (6.01in-6.68in): 'No inter-bank feed today. A live complaint carries no transaction trai'
+page height pt: 540.0 in: 7.5
+footer-rule limit 6.90in = 496.8 pt

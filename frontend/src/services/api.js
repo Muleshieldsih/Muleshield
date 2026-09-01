@@ -93,6 +93,33 @@ export const endpoints = {
   listAtmIntel: (limit = 25) =>
     api.get('/api/v1/intel/atms', { params: { limit } }).then(r => r.data),
 
+  // forward hotspot surface
+  //
+  // Params are passed through axios rather than hand-built with URLSearchParams
+  // so that undefined keys drop out on their own and the bearer interceptor
+  // above still applies -- this endpoint is Tier A and 401s without it.
+  //
+  // `fraud_type` is comma-separated; `state` filters the SOURCE complaints by
+  // the victim's state, which is not what the console's drill-down does. The
+  // breadcrumb scopes CELLS by cell.state, client-side, because the response is
+  // already a complete national aggregate of ~222 cells.
+  listHotspots: ({ windowStartMin, windowEndMin, fraudTypes, asOf, openMinutes } = {}) =>
+    api.get('/api/v1/hotspots/cells', {
+      params: {
+        window_start_min: windowStartMin,
+        window_end_min: windowEndMin,
+        fraud_type: fraudTypes?.length ? fraudTypes.join(',') : undefined,
+        as_of: asOf || undefined,
+        open_minutes: openMinutes,
+      },
+    }).then(r => r.data),
+
+  // Phase 4 (alerting) owns this route. It is declared here so /risk's
+  // "Raise for review" needs no frontend change when the service lands; until
+  // then the screen catches the 404 and says the queue is not enabled yet
+  // rather than reporting a success it did not get.
+  raiseAlert: payload => api.post('/api/v1/alerts', payload).then(r => r.data),
+
   health: () => api.get('/health').then(r => r.data),
   listComplaints: (limit = 60, offset = 0) =>
     api.get('/api/v1/complaint/list', { params: { limit, offset } }).then(r => r.data),

@@ -1,0 +1,289 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Inter', system-ui, sans-serif; }
+    a { color: #7cf000; text-decoration: none; }
+    a:hover { color: #a5ff4d; }
+    .m { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+    .hd { font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: #5c6660; }
+    .fr { position: relative; }
+    .fr::before, .fr::after { content: ''; position: absolute; width: 9px; height: 9px; pointer-events: none; }
+    .fr::before { top: -1px; left: -1px; border-top: 1px solid #7cf000; border-left: 1px solid #7cf000; }
+    .fr::after  { bottom: -1px; right: -1px; border-bottom: 1px solid #7cf000; border-right: 1px solid #7cf000; }
+    /* The info bars from the reference: a colour-coded edge, a label cell, a value
+       cell. Reads at a distance, which is what a wall display needs. */
+    .bar { display: flex; align-items: stretch; background: rgba(6, 9, 9, 0.88); border: 1px solid #16201c; }
+    .bar > .k { display: flex; align-items: center; gap: 8px; padding: 7px 12px; border-right: 1px solid #16201c; }
+    .bar > .v { display: flex; align-items: center; padding: 7px 14px; }
+  </style>
+</helmet>
+
+<div style="width: 1600px; height: 900px; box-sizing: border-box; background: #050607; color: #d4d8d6; display: flex; flex-direction: column; font-size: 12px; overflow: hidden">
+
+  <!-- top strip -->
+  <div style="height: 34px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid #161c1c; background: #070909; z-index: 2">
+    <div style="display: flex; align-items: center; gap: 14px">
+      <div style="display: flex; align-items: center; gap: 7px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <g stroke="#7cf000" stroke-width="2.1" stroke-linecap="butt">
+            <path d="M12 1.4V7.4"></path><path d="M12 16.6V22.6"></path>
+            <path d="M1.4 12H7.4"></path><path d="M16.6 12H22.6"></path>
+          </g>
+          <g stroke="#7cf000" stroke-width="1.6" stroke-linecap="butt" opacity="0.9">
+            <path d="M5.1 5.1L8.3 8.3"></path><path d="M18.9 5.1L15.7 8.3"></path>
+            <path d="M5.1 18.9L8.3 15.7"></path><path d="M18.9 18.9L15.7 15.7"></path>
+          </g>
+          <circle cx="12" cy="12" r="1.15" fill="#7cf000"></circle>
+        </svg>
+        <span style="font-size: 12px; font-weight: 700; color: #ffffff">MULESHIELD AI</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 6px; border: 1px solid #1a2222; padding: 3px 9px; background: #0a0c0c">
+        <span class="hd" style="font-size: 9px">Case</span>
+        <span class="m" style="font-size: 10.5px; color: #e8ece9">1930-4C7A21</span>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 16px">
+      <span class="m" style="font-size: 9.5px; color: #ff3b3b; letter-spacing: 0.1em">● INTERCEPT WINDOW 13:47</span>
+      <span class="m" style="font-size: 10px; color: #8b948f">02:41:17 IST</span>
+    </div>
+  </div>
+
+  <!-- ── map field ─────────────────────────────────────────────────────── -->
+  <div style="position: relative; flex-grow: 1; min-height: 0; background: #070a09; overflow: hidden">
+
+    <!-- terrain: drawn, not photographed. An abstract street network reads as a
+         city without pretending to be imagery this system does not have. -->
+    <svg width="1600" height="840" viewBox="0 0 1600 840" style="position: absolute; inset: 0" aria-hidden="true">
+      <g stroke="#101614" fill="none" stroke-width="7">
+        <path d="M-20 250 C 220 210, 380 300, 560 268 S 900 200, 1140 246 S 1450 300, 1640 268"></path>
+        <path d="M-20 560 C 260 600, 420 520, 640 552 S 980 620, 1220 574 S 1480 520, 1640 548"></path>
+        <path d="M300 -20 C 330 200, 268 380, 306 560 S 340 760, 320 860"></path>
+        <path d="M980 -20 C 1010 190, 950 370, 992 548 S 1030 750, 1010 860"></path>
+      </g>
+      <g stroke="#0d1211" fill="none" stroke-width="2.5">
+        <path d="M-20 120h1640M-20 380h1640M-20 690h1640"></path>
+        <path d="M140 -20v880M470 -20v880M700 -20v880M840 -20v880M1180 -20v880M1400 -20v880"></path>
+        <path d="M-20 180 C 300 160, 700 210, 1100 176 S 1500 150, 1640 168"></path>
+        <path d="M-20 460 C 340 490, 720 430, 1080 470 S 1440 500, 1640 476"></path>
+      </g>
+      <!-- river -->
+      <path d="M1180 -20 C 1120 160, 1290 300, 1210 460 C 1140 600, 1300 720, 1240 860"
+            stroke="#0b1418" stroke-width="26" fill="none"></path>
+      <path d="M1180 -20 C 1120 160, 1290 300, 1210 460 C 1140 600, 1300 720, 1240 860"
+            stroke="#0e1a1f" stroke-width="13" fill="none"></path>
+      <!-- blocks -->
+      <g fill="#0a0f0e">
+        <rect x="360" y="300" width="86" height="52"></rect><rect x="470" y="296" width="64" height="60"></rect>
+        <rect x="360" y="380" width="120" height="44"></rect><rect x="520" y="392" width="70" height="48"></rect>
+        <rect x="740" y="300" width="78" height="66"></rect><rect x="866" y="316" width="92" height="44"></rect>
+        <rect x="742" y="404" width="104" height="50"></rect><rect x="880" y="396" width="60" height="62"></rect>
+        <rect x="200" y="600" width="96" height="54"></rect><rect x="330" y="612" width="72" height="44"></rect>
+        <rect x="1420" y="330" width="88" height="58"></rect><rect x="1330" y="430" width="74" height="46"></rect>
+      </g>
+    </svg>
+
+    <!-- survey grid: hairlines, tick crosses, node squares -->
+    <div style="position: absolute; inset: 0; background-image: linear-gradient(rgba(124,240,0,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(124,240,0,0.045) 1px, transparent 1px); background-size: 116px 116px"></div>
+    <svg width="1600" height="840" viewBox="0 0 1600 840" style="position: absolute; inset: 0" aria-hidden="true">
+      <g fill="#243028">
+        <rect x="230" y="112" width="4" height="4"></rect><rect x="578" y="112" width="4" height="4"></rect>
+        <rect x="926" y="112" width="4" height="4"></rect><rect x="1274" y="112" width="4" height="4"></rect>
+        <rect x="230" y="460" width="4" height="4"></rect><rect x="1274" y="460" width="4" height="4"></rect>
+        <rect x="230" y="692" width="4" height="4"></rect><rect x="578" y="692" width="4" height="4"></rect>
+        <rect x="926" y="692" width="4" height="4"></rect><rect x="1274" y="692" width="4" height="4"></rect>
+      </g>
+      <g stroke="#2a382e" stroke-width="1">
+        <path d="M114 108v8M110 112h8"></path><path d="M462 344v8M458 348h8"></path>
+        <path d="M1158 576v8M1154 580h8"></path><path d="M1390 228v8M1386 232h8"></path>
+      </g>
+      <g class="m" fill="#243028" font-size="9" font-family="'JetBrains Mono', monospace">
+        <text x="120" y="132">21.19N</text><text x="1380" y="132">81.38E</text>
+        <text x="120" y="712">BHILAI / CG</text>
+      </g>
+    </svg>
+
+    <!-- ── the reticle ───────────────────────────────────────────────────
+         The four brackets ARE the deliverable, drawn: 1,000 machines in the
+         directory, narrowed to the eight inside this box. -->
+    <div style="position: absolute; left: 596px; top: 262px; width: 300px; height: 300px">
+
+      <!-- corner brackets -->
+      <div style="position: absolute; top: 0; left: 0; width: 46px; height: 46px; border-top: 2px solid #e8ece9; border-left: 2px solid #e8ece9"></div>
+      <div style="position: absolute; top: 0; right: 0; width: 46px; height: 46px; border-top: 2px solid #e8ece9; border-right: 2px solid #e8ece9"></div>
+      <div style="position: absolute; bottom: 0; left: 0; width: 46px; height: 46px; border-bottom: 2px solid #e8ece9; border-left: 2px solid #e8ece9"></div>
+      <div style="position: absolute; bottom: 0; right: 0; width: 46px; height: 46px; border-bottom: 2px solid #e8ece9; border-right: 2px solid #e8ece9"></div>
+
+      <!-- the zone itself -->
+      <div style="position: absolute; left: 62px; top: 62px; width: 176px; height: 176px; background: rgba(124,240,0,0.16); border: 1px solid rgba(124,240,0,0.55)">
+        <svg width="176" height="176" viewBox="0 0 176 176" style="position: absolute; inset: 0" aria-hidden="true">
+          <g stroke="rgba(124,240,0,0.28)" stroke-width="1">
+            <path d="M0 44h176M0 88h176M0 132h176M44 0v176M88 0v176M132 0v176"></path>
+          </g>
+          <!-- candidate machines inside the zone -->
+          <g fill="#7cf000">
+            <rect x="40" y="52" width="5" height="5"></rect><rect x="96" y="36" width="5" height="5"></rect>
+            <rect x="122" y="88" width="5" height="5"></rect><rect x="58" y="112" width="5" height="5"></rect>
+            <rect x="104" y="130" width="5" height="5"></rect><rect x="30" y="86" width="5" height="5"></rect>
+            <rect x="140" y="46" width="5" height="5"></rect><rect x="76" y="150" width="5" height="5"></rect>
+          </g>
+        </svg>
+      </div>
+
+      <!-- centre crosshair on the top-ranked machine -->
+      <div style="position: absolute; left: 150px; top: 150px; transform: translate(-50%, -50%)">
+        <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
+          <circle cx="17" cy="17" r="4.5" fill="none" stroke="#ffffff" stroke-width="1.4"></circle>
+          <circle cx="17" cy="17" r="1.6" fill="#ffffff"></circle>
+          <g stroke="#ffffff" stroke-width="1.2">
+            <path d="M17 0v7M17 27v7M0 17h7M27 17h7"></path>
+          </g>
+        </svg>
+      </div>
+
+      <!-- label, set beside the bracket like the reference -->
+      <div style="position: absolute; left: 316px; top: 132px; display: flex; flex-direction: column; gap: 2px">
+        <div class="m" style="font-size: 16px; letter-spacing: 0.20em; color: #7cf000">SEARCH ZONE</div>
+        <div class="m" style="font-size: 9.5px; letter-spacing: 0.12em; color: #3f5a2e">8 MACHINES / 9.98 KM</div>
+      </div>
+    </div>
+
+    <!-- terminal account origin, upstream of the zone -->
+    <div style="position: absolute; left: 470px; top: 620px">
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+        <circle cx="10" cy="10" r="5" fill="none" stroke="#ff3b3b" stroke-width="1.6"></circle>
+        <circle cx="10" cy="10" r="1.8" fill="#ff3b3b"></circle>
+      </svg>
+      <div class="m" style="position: absolute; left: 26px; top: 1px; white-space: nowrap; font-size: 9.5px; letter-spacing: 0.1em; color: #ff3b3b">TERMINAL 6944-5046-9211</div>
+    </div>
+    <svg width="1600" height="840" viewBox="0 0 1600 840" style="position: absolute; inset: 0; pointer-events: none" aria-hidden="true">
+      <path d="M480 626 C 560 560, 640 500, 728 434" stroke="#ff3b3b" stroke-width="1.2"
+            stroke-dasharray="5 5" fill="none" opacity="0.5"></path>
+    </svg>
+
+    <!-- ── info bars, lower left ─────────────────────────────────────────── -->
+    <div style="position: absolute; left: 22px; bottom: 22px; display: flex; flex-direction: column; gap: 5px">
+      <div class="bar">
+        <div class="k" style="width: 132px">
+          <div style="width: 3px; height: 13px; background: #7cf000"></div>
+          <span class="hd" style="color: #7cf000">Top machine</span>
+        </div>
+        <div class="v"><span class="m" style="font-size: 12.5px; color: #ffffff">ATM-2C0B6136</span>
+          <span style="font-size: 10.5px; color: #5c6660; margin-left: 10px">Civic Centre, Bhilai</span></div>
+      </div>
+      <div class="bar">
+        <div class="k" style="width: 132px">
+          <div style="width: 3px; height: 13px; background: #ff8c42"></div>
+          <span class="hd" style="color: #ff8c42">Prior cases</span>
+        </div>
+        <div class="v"><span class="m" style="font-size: 12.5px; color: #ffffff">25</span>
+          <span style="font-size: 10.5px; color: #5c6660; margin-left: 10px">distinct complaints at this machine</span></div>
+      </div>
+      <div class="bar">
+        <div class="k" style="width: 132px">
+          <div style="width: 3px; height: 13px; background: #ff3b3b"></div>
+          <span class="hd" style="color: #ff3b3b">Window</span>
+        </div>
+        <div class="v"><span class="m" style="font-size: 12.5px; color: #ffffff">13:47</span>
+          <span style="font-size: 10.5px; color: #5c6660; margin-left: 10px">to predicted withdrawal</span></div>
+      </div>
+    </div>
+
+    <!-- ── ranked candidates, right ──────────────────────────────────────── -->
+    <div class="fr" style="position: absolute; right: 22px; top: 22px; width: 288px; background: rgba(6, 9, 9, 0.92); border: 1px solid #1a2222; padding: 13px">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 11px">
+        <div style="display: flex; align-items: center; gap: 7px">
+          <div style="width: 2px; height: 11px; background: #7cf000"></div>
+          <span class="hd" style="font-size: 10px; color: #8b948f">Ranked candidates</span>
+        </div>
+        <span class="m" style="font-size: 9px; color: #3f4744">TOP 5</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <div style="display: flex; align-items: center; gap: 9px; background: #0b0e0c; border: 1px solid #2a3d22; padding: 7px 9px">
+          <span class="m" style="font-size: 10px; color: #7cf000">01</span>
+          <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 1px">
+            <span class="m" style="font-size: 10.5px; color: #ffffff">ATM-2C0B6136</span>
+            <span style="font-size: 9px; color: #454e4a">1.2 km · HDFC · same bank</span>
+          </div>
+          <span class="m" style="font-size: 11px; color: #7cf000">0.31</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 9px; background: #0a0c0c; border: 1px solid #1a2222; padding: 7px 9px">
+          <span class="m" style="font-size: 10px; color: #5c6660">02</span>
+          <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 1px">
+            <span class="m" style="font-size: 10.5px; color: #b9c0bc">ATM-8BBC5037</span>
+            <span style="font-size: 9px; color: #3f4744">2.6 km · SBI</span>
+          </div>
+          <span class="m" style="font-size: 11px; color: #6c7671">0.19</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 9px; background: #0a0c0c; border: 1px solid #1a2222; padding: 7px 9px">
+          <span class="m" style="font-size: 10px; color: #5c6660">03</span>
+          <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 1px">
+            <span class="m" style="font-size: 10.5px; color: #b9c0bc">ATM-46825D37</span>
+            <span style="font-size: 9px; color: #3f4744">3.4 km · crew prior</span>
+          </div>
+          <span class="m" style="font-size: 11px; color: #6c7671">0.14</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 9px; background: #0a0c0c; border: 1px solid #1a2222; padding: 7px 9px">
+          <span class="m" style="font-size: 10px; color: #5c6660">04</span>
+          <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 1px">
+            <span class="m" style="font-size: 10.5px; color: #b9c0bc">ATM-979E2531</span>
+            <span style="font-size: 9px; color: #3f4744">4.1 km · ICICI</span>
+          </div>
+          <span class="m" style="font-size: 11px; color: #6c7671">0.11</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 9px; background: #0a0c0c; border: 1px solid #1a2222; padding: 7px 9px">
+          <span class="m" style="font-size: 10px; color: #5c6660">05</span>
+          <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 1px">
+            <span class="m" style="font-size: 10.5px; color: #b9c0bc">ATM-07BBF9C8</span>
+            <span style="font-size: 9px; color: #3f4744">5.8 km · Axis</span>
+          </div>
+          <span class="m" style="font-size: 11px; color: #6c7671">0.08</span>
+        </div>
+      </div>
+
+      <div style="height: 1px; background: #161c1c; margin: 11px 0 9px"></div>
+
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <span style="font-size: 10px; color: #5c6660">Zone containment</span>
+        <span class="m" style="font-size: 11px; color: #7cf000">87.4%</span>
+      </div>
+      <div style="height: 3px; background: #131818; margin-top: 5px">
+        <div style="width: 87.4%; height: 100%; background: #7cf000"></div>
+      </div>
+      <div style="margin-top: 7px; font-size: 9px; color: #3f4744; line-height: 1.5">
+        Candidates, not a verdict. Measured on held-out cash-outs.
+      </div>
+    </div>
+
+    <!-- scale -->
+    <div style="position: absolute; right: 22px; bottom: 22px; display: flex; align-items: center; gap: 8px">
+      <div style="width: 76px; height: 1px; background: #2a382e; position: relative">
+        <div style="position: absolute; left: 0; top: -3px; width: 1px; height: 7px; background: #2a382e"></div>
+        <div style="position: absolute; right: 0; top: -3px; width: 1px; height: 7px; background: #2a382e"></div>
+      </div>
+      <span class="m" style="font-size: 9px; color: #2a382e; letter-spacing: 0.1em">5 KM</span>
+    </div>
+
+  </div>
+
+  <!-- bottom ticker -->
+  <div style="height: 26px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-top: 1px solid #161c1c; background: #070909; z-index: 2">
+    <div style="display: flex; align-items: center; gap: 18px">
+      <span class="m" style="font-size: 9px; color: #7cf000; letter-spacing: 0.1em">● ZONE RESOLVED / 1,000 &rarr; 8</span>
+      <span class="m" style="font-size: 9px; color: #3f4744; letter-spacing: 0.1em">CONDITIONAL LOGIT / 25 CANDIDATES SCORED</span>
+    </div>
+    <span class="m" style="font-size: 9px; color: #2c3431; letter-spacing: 0.1em">7.5 MS INFERENCE</span>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

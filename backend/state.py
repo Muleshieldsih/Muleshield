@@ -99,6 +99,10 @@ def load_all() -> None:
     transactions_by_complaint.clear()
     node_features.clear()
     atm_directory.clear()
+    _hotspot_cache.clear()
+    _cells.clear()
+    _atm_cell.clear()
+    _prior_share.clear()
     accounts_by_city.clear()
     mules_by_city.clear()
 
@@ -220,6 +224,20 @@ def load_all() -> None:
         logger.info("[STATE] XGBoost predictor warmed.")
     except Exception as e:
         logger.warning(f"[STATE] XGBoost warm-up failed: {e}")
+
+    # Hotspot geometry and the newest slice of posteriors. Warming here keeps the
+    # first /api/v1/hotspots/cells request off a cold path -- without it the
+    # first caller pays for 300 predictions and the console looks hung.
+    try:
+        _hotspot_geometry()
+        warm = [c["ticket_id"] for c in get_all_complaints()[:HOTSPOT_WARM_LIMIT]]
+        for cid in warm:
+            hotspot_entry(cid)
+        logger.info("[STATE] Hotspot cache warmed: %d/%d complaints (%d dropped "
+                    "on the India centroid).",
+                    len(_hotspot_cache), len(warm), _hotspot_dropped_centroid)
+    except Exception as e:
+        logger.warning(f"[STATE] Hotspot warm-up failed: {e}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -666,7 +684,12 @@ def atm_intelligence(limit: int = 25) -> list[dict]:
             "cashouts": rec["cashouts"],
             "distinct_complaints": len(rec["_complaints"]),
             "total_amount": round(rec["total_amount"], 2),
+            # bank_name and district sat unread in the directory. The console's
+            # recurring-machines table names the operator and the police unit
+            # that would be tasked, and neither is derivable from city alone.
+            "bank_name": str(atm.get("bank_name", "")),
             "city": str(atm.get("city", "")),
+            "district": str(atm.get("district", "")),
             "state": str(atm.get("state", "")),
             "lat": float(atm.get("lat", 0.0) or 0.0),
             "lon": float(atm.get("long", atm.get("lon", 0.0)) or 0.0),
@@ -676,3 +699,231 @@ def atm_intelligence(limit: int = 25) -> list[dict]:
 
     out.sort(key=lambda r: (r["distinct_complaints"], r["cashouts"]), reverse=True)
     return out[:limit]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FORWARD HOTSPOT SURFACE
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# The per-complaint posterior over candidate ATMs never changes -- it is a
+# function of the terminal account's position and the frozen checkpoint, neither
+# of which moves after ingestion. What changes every second is only how much of
+# that complaint's countdown distribution falls inside the window being asked
+# about.
+#
+# So the expensive half is computed ONCE per complaint and cached, and building a
+# surface is then pure arithmetic over cached posteriors: microseconds, not the
+# ~1s that re-running 60 predictions per request would cost.
+
+_cells: dict[str, dict] = {}            # cell_id -> cell metadata
+_atm_cell: dict[str, str] = {}          # atm_id  -> cell_id
+_prior_share: dict[str, float] = {}     # cell_id -> decayed historical share
+_hotspot_cache: dict[str, dict] = {}    # complaint_id -> cached posterior
+
+HOTSPOT_WARM_LIMIT = 300
+"""How many of the newest complaints to precompute at boot.
+
+The console loads 60 and the forward surface only ever considers the last two
+hours, so 300 is generous headroom. Warming all 2,500 would add minutes to
+startup for cases whose windows closed months ago.
+"""
+
+_hotspot_dropped_centroid = 0
+"""Complaints excluded because their terminal sits on India's centroid.
+
+state.synthesize_mule_chain writes (20.5937, 78.9629) when it cannot resolve a
+real account, so the candidate set for such a complaint is whatever ATMs happen
+to be near the middle of the country -- geographically meaningless. Counted so
+the exclusion is visible rather than silent; see the log line in load_all().
+"""
+
+
+def _hotspot_geometry() -> None:
+    """Build the cell grid and the historical prior. Idempotent."""
+    global _cells, _atm_cell, _prior_share
+    if str(ROOT / "engine") not in sys.path:
+        sys.path.insert(0, str(ROOT / "engine"))
+    from hotspot import build_cells, atm_to_cell, build_prior
+
+    _cells = build_cells(atm_directory.values())
+    _atm_cell = atm_to_cell(_cells)
+
+    # Every terminal cash-out in the corpus, for the decayed prior. This is the
+    # only place history enters the surface, and hotspot.PRIOR_WEIGHT caps how
+    # much of it can ever show through.
+    rows = []
+    for txns in transactions_by_complaint.values():
+        for t in txns:
+            if int(t.get("is_terminal", 0) or 0) == 1 and t.get("cashout_atm_id"):
+                rows.append(t)
+    _prior_share = build_prior(rows, _atm_cell, datetime.now())
+    logger.info("[STATE] Hotspot geometry: %d cells over %d ATMs; prior from %d cash-outs.",
+                len(_cells), len(_atm_cell), len(rows))
+
+
+def hotspot_entry(complaint_id: str) -> Optional[dict]:
+    """Posterior + countdown for one complaint, computed once and cached.
+
+    Returns None when the complaint cannot be placed -- no transactions, no
+    terminal account, or a terminal sitting on the India centroid that
+    synthesize_mule_chain writes as its fallback.
+    """
+    global _hotspot_dropped_centroid
+    if complaint_id in _hotspot_cache:
+        return _hotspot_cache[complaint_id]
+
+    from hotspot import INDIA_CENTROID, parse_ts, posterior_from_scores, project_to_cells
+
+    comp = complaints.get(complaint_id)
+    if not comp:
+        return None
+
+    terminal = get_terminal_accounts(complaint_id)
+    if not terminal:
+        allt = get_transactions_for(complaint_id)
+        if not allt:
+            return None
+        terminal = sorted(allt, key=lambda t: int(t.get("hop_depth", 0) or 0),
+                          reverse=True)[:1]
+    t0 = terminal[0]
+    acc = str(t0.get("dst_account", ""))
+    try:
+        lat = float(t0.get("lat", 0.0))
+        lon = float(t0.get("long", 0.0))
+    except (TypeError, ValueError):
+        return None
+
+    if (round(lat, 4), round(lon, 4)) == (round(INDIA_CENTROID[0], 4),
+                                          round(INDIA_CENTROID[1], 4)):
+        _hotspot_dropped_centroid += 1
+        return None
+
+    try:
+        fb = get_feature_builder()
+        predictor = get_xgb_predictor()
+        vec = fb.build_feature_vector(
+            terminal_account=acc,
+            complaint_id=complaint_id,
+            stolen_amount=float(comp.get("stolen_amount", 100000.0) or 0.0),
+        )
+        node = get_node_feature(acc) or {}
+        # top_k = the whole candidate set, not the operating K of 5. The surface
+        # needs the full distribution; truncating it to the five the console
+        # shows would throw away most of the probability mass.
+        res = predictor.predict(
+            vec,
+            top_k=predictor.candidate_k,
+            node_lat=lat, node_lon=lon,
+            node_bank=str(node.get("bank_name", "UNKNOWN")),
+            account=acc,
+        )
+    except Exception as e:                       # a single bad case must not
+        logger.debug("[HOTSPOT] %s skipped: %s", complaint_id, e)
+        return None
+
+    cands = res.get("ranked_candidates") or []
+    if not cands:
+        return None
+
+    # SERVING PARITY.
+    #
+    # The obvious shortcut is to read predict()'s `confidence` values, which are
+    # the same softmax. Two reasons not to:
+    #
+    #   1. predict() rounds them to 4 dp for display. Measured divergence from
+    #      the unrounded posterior is 5e-5 per ATM and 3e-4 of total mass --
+    #      immaterial to a rupee-weighted surface, but it means the number the
+    #      API serves is not quite the number the evaluation measured.
+    #   2. More importantly it would be a SECOND implementation of one quantity.
+    #      scripts/evaluate_hotspots.py calls posterior_from_scores; if serving
+    #      derived the same thing another way, the two could drift apart without
+    #      any test noticing -- which is the shape of every leakage defect this
+    #      project has already had to retract a number for.
+    #
+    # So both paths funnel through posterior_from_scores over the raw classifier
+    # scores. backend/tests/test_hotspot.py asserts they agree exactly.
+    try:
+        from xgb_model import MuleXGBPredictor
+        cand_idx, block = fb.candidate_block(lat, lon,
+                                             str(node.get("bank_name", "UNKNOWN")),
+                                             account=acc)
+        ids = [str(fb.atm_df.iloc[int(i)]["atm_id"]) for i in cand_idx]
+        raw = predictor.classifier.predict(MuleXGBPredictor.log_features(block))
+        atm_probs = posterior_from_scores(ids, list(raw))
+    except Exception as e:
+        logger.debug("[HOTSPOT] %s posterior failed: %s", complaint_id, e)
+        return None
+
+    cell_probs = project_to_cells(atm_probs, _atm_cell)
+    if not cell_probs:
+        return None
+
+    entry = {
+        "complaint_id": complaint_id,
+        "cell_probs": cell_probs,
+        "m": float(res.get("time_to_cashout_minutes") or 40.0),
+        "lo": res.get("time_to_cashout_low"),
+        "hi": res.get("time_to_cashout_high"),
+        "amount": float(comp.get("stolen_amount", 0.0) or 0.0),
+        "ts": parse_ts(comp.get("complaint_timestamp")),
+        "fraud_type": str(comp.get("fraud_type", "") or ""),
+        "state": str(comp.get("state", "") or ""),
+        "city": str(comp.get("city", "") or ""),
+    }
+    _hotspot_cache[complaint_id] = entry
+    return entry
+
+
+def hotspot_surface(*, window_start: int = 0, window_end: int = 120,
+                    fraud_type: str = "", state_filter: str = "",
+                    as_of: Optional[datetime] = None,
+                    open_minutes: int = 120) -> dict:
+    """The forward intensity surface over currently-open complaints.
+
+    "Open" means filed within `open_minutes` of `as_of`. A complaint older than
+    that has almost certainly already been cashed out, and the survival
+    renormalisation in hotspot.window_mass would give it near-zero mass anyway;
+    the cutoff just avoids paying for the arithmetic.
+
+    `as_of` exists for two reasons and both are honest ones: the evaluation
+    script replays historical epochs through this same function, and a demo
+    against a corpus generated days ago can point the surface at a time when
+    complaints were actually arriving. It is not a way to fake a live feed --
+    the response carries the as_of it used.
+    """
+    from hotspot import WINDOWS, build_hotspot_surface
+
+    if not _cells:
+        _hotspot_geometry()
+
+    now = as_of or datetime.now()
+    windows = [w for w in WINDOWS
+               if w[0] >= window_start and w[1] <= window_end] or list(WINDOWS)
+
+    # Comma-separated so the console's crime-category filter can select several
+    # at once. Merging several single-category surfaces on the client would have
+    # been wrong arithmetic, not just wasteful: the prior term is scaled against
+    # the TOTAL conditional mass in each window, so summing two surfaces would
+    # count the capped prior twice and quietly breach the 15% cap.
+    wanted = {t.strip() for t in fraud_type.split(",") if t.strip()}
+
+    open_set = []
+    for comp in get_all_complaints():
+        ts = None
+        cid = comp.get("ticket_id")
+        if wanted and str(comp.get("fraud_type", "")) not in wanted:
+            continue
+        if state_filter and str(comp.get("state", "")) != state_filter:
+            continue
+        entry = hotspot_entry(cid)
+        if entry is None or entry["ts"] is None:
+            continue
+        age = (now - entry["ts"]).total_seconds() / 60.0
+        if 0 <= age <= open_minutes:
+            open_set.append(entry)
+
+    surface = build_hotspot_surface(open_set, _cells, _prior_share, now,
+                                    windows=windows)
+    surface["filters"] = {"fraud_type": fraud_type, "state": state_filter,
+                          "open_minutes": open_minutes}
+    return surface

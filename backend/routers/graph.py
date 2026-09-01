@@ -15,8 +15,9 @@ import time
 from pathlib import Path
 
 import networkx as nx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from backend.auth import current_user
 from backend.models.schemas import GraphAnomalies, GraphNode, GraphEdge, GraphResponse
 import backend.state as state
 
@@ -115,7 +116,10 @@ def _detect_anomalies(txns: list[dict]) -> tuple[list[str], list[str], list[str]
     response_model=GraphResponse,
     summary="Get React Flow money-flow graph for a complaint",
 )
-async def get_graph(complaint_id: str) -> GraphResponse:
+async def get_graph(
+    complaint_id: str,
+    user: dict = Depends(current_user),
+) -> GraphResponse:
     """
     Builds the directed money-flow graph for a complaint from the
     transaction ledger. Returns nodes and edges in React Flow format.

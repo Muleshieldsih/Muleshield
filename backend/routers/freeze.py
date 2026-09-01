@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
 
-from backend.auth import actor_for, optional_user
+from backend.auth import actor_for, current_user
 from backend.models.schemas import FreezeRequest, FreezeResponse
 from backend.websocket import manager
 import backend.state as state
@@ -32,7 +32,7 @@ router = APIRouter(prefix="/api/v1/bank", tags=["Freeze"])
 )
 async def micro_freeze(
     request: FreezeRequest,
-    user: dict | None = Depends(optional_user),
+    user: dict = Depends(current_user),
 ) -> FreezeResponse:
     """
     Simulates an emergency card freeze on a flagged mule account.
