@@ -592,3 +592,118 @@ class RuleRunSummary(BaseModel):
     raised: int = 0
     dry_run: bool = False
     alerts: list[AlertOut] = []
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# EVIDENCE SCHEMAS
+# ─────────────────────────────────────────────────────────────────────────────
+
+class EvidenceItem(BaseModel):
+    """One artefact held against a case.
+
+    `sha256`, `prev_hash` and `entry_hash` are returned rather than kept
+    internal on purpose: an officer producing this in court has to be able to
+    read the hash off the screen and check it against the file they were given.
+    A chain nobody outside the system can inspect is a chain nobody has to trust.
+    """
+    id: str
+    case_id: str
+    seq: int = 0
+    filename: str = ""
+    content_type: str = ""
+    size_bytes: int = 0
+    sha256: str = ""
+    kind: str = "other"
+    description: str = ""
+    source: str = ""
+    collected_by: str = ""
+    collected_at: str = ""
+    withdrawn: bool = False
+    withdrawn_at: Optional[str] = None
+    withdrawn_by: Optional[str] = None
+    withdrawn_reason: Optional[str] = None
+    prev_hash: str = ""
+    entry_hash: str = ""
+
+
+class EvidenceWithdrawRequest(BaseModel):
+    """Withdrawal needs a reason. There is no delete.
+
+    An artefact removed without a stated reason is indistinguishable from one
+    that was made to disappear, which is precisely the doubt a custody record
+    exists to remove.
+    """
+    reason: str = Field(..., min_length=4, max_length=500)
+
+
+class EvidenceCheck(BaseModel):
+    id: str = ""
+    seq: int = 0
+    ok: bool = True
+    reason: str = ""
+    recorded: str = ""
+    actual: str = ""
+
+
+class EvidenceVerification(BaseModel):
+    case_id: str = ""
+    items: int = 0
+    content_ok: bool = True
+    chain_ok: bool = True
+    intact: bool = True
+    verified_at: str = ""
+    content: list[EvidenceCheck] = []
+    chain: list[EvidenceCheck] = []
+
+
+class EvidenceCertificate(BaseModel):
+    """BSA 2023 s.63 certificate, generated from the store.
+
+    Loosely typed on purpose: this is a document, and pinning every nested field
+    would mean editing two files every time a statement is reworded. What must
+    not drift -- the artefact hashes and the verification result -- comes
+    straight from `backend/evidence.py`, which reads the store.
+    """
+    statute: str = ""
+    statute_note: str = ""
+    case_id: str = ""
+    complaint: Optional[dict] = None
+    system: dict = {}
+    custodian: str = ""
+    produced_at: str = ""
+    artefact_count: int = 0
+    withdrawn_count: int = 0
+    total_bytes: int = 0
+    statements: list[str] = []
+    limitations: list[str] = []
+    verification: dict = {}
+    artefacts: list[dict] = []
+
+
+class CaseDossier(BaseModel):
+    """The police intelligence dossier for one case.
+
+    Loosely typed for the same reason `EvidenceCertificate` is, and the reason is
+    worth repeating rather than cross-referencing: this is a document. Pinning
+    every nested field would mean editing two files every time a caveat is
+    reworded, and the fields that must not drift -- the money trail, the forecast
+    and the custody chain -- come from `backend/dossier.py`, which reads the store
+    and calls the shipped model rather than accepting anything from a caller.
+
+    `forecast` is Optional and means it: a case whose bank feed has not landed
+    has no chain and therefore no terminal account, and the dossier prints the
+    rest of the case rather than refusing to render.
+    """
+    case_id: str = ""
+    produced_at: str = ""
+    produced_by: str = ""
+    system: dict = {}
+    complaint: dict = {}
+    money_trail: list[dict] = []
+    money_trail_count: int = 0
+    banks_involved: list[str] = []
+    detections: dict = {}
+    forecast: Optional[dict] = None
+    actions: list[dict] = []
+    evidence: dict = {}
+    caveats: list[str] = []

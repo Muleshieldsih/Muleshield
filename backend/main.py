@@ -35,7 +35,8 @@ from pathlib import Path
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from backend.routers import (auth, complaint, graph, embeddings, predict,
-                             freeze, audit, intel, hotspot, alerts)
+                             freeze, audit, intel, hotspot, alerts, evidence,
+                             dossier)
 from backend import db
 from backend.websocket import manager
 
@@ -205,6 +206,8 @@ app.include_router(audit.router)
 app.include_router(intel.router)
 app.include_router(hotspot.router)
 app.include_router(alerts.router)
+app.include_router(evidence.router)
+app.include_router(dossier.router)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

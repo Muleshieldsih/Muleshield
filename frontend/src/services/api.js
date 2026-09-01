@@ -105,6 +105,37 @@ export const endpoints = {
   evaluateAlerts: (params = {}) =>
     api.post('/api/v1/alerts/evaluate', null, { params }).then(r => r.data),
 
+  // evidence documentation
+  //
+  // The upload deletes the instance-level JSON Content-Type so the browser can
+  // set multipart/form-data WITH its boundary. Leaving the default on sends a
+  // body FastAPI cannot parse, and the failure looks like a validation error
+  // rather than a header problem.
+  //
+  // The timeout is raised for the same call: the instance default is 15s, which
+  // is generous for JSON and not for a 25 MB artefact on a station uplink.
+  listEvidence: (caseId, params = {}) =>
+    api.get(`/api/v1/evidence/case/${caseId}`, { params }).then(r => r.data),
+  collectEvidence: (caseId, formData, onProgress) =>
+    api.post(`/api/v1/evidence/${caseId}`, formData, {
+      headers: { 'Content-Type': undefined },
+      timeout: 120000,
+      onUploadProgress: onProgress,
+    }).then(r => r.data),
+  verifyEvidence: (caseId) =>
+    api.get(`/api/v1/evidence/case/${caseId}/verify`).then(r => r.data),
+  evidenceCertificate: (caseId) =>
+    api.get(`/api/v1/evidence/case/${caseId}/certificate`).then(r => r.data),
+  withdrawEvidence: (id, reason) =>
+    api.post(`/api/v1/evidence/${id}/withdraw`, { reason }).then(r => r.data),
+  // A plain <a href> cannot carry the bearer token, and this endpoint is Tier A.
+  // Fetch the bytes with the interceptor attached and hand back a blob for the
+  // caller to save.
+  downloadEvidence: (id) =>
+    api.get(`/api/v1/evidence/${id}/download`, {
+      responseType: 'blob', timeout: 120000,
+    }).then(r => ({ blob: r.data, sha256: r.headers['x-evidence-sha256'] || '' })),
+
   // forward hotspot surface
   //
   // Params are passed through axios rather than hand-built with URLSearchParams
@@ -141,6 +172,10 @@ export const endpoints = {
   getEmbeddings: (id, topN = 5) =>
     api.get(`/api/v1/embeddings/${id}`, { params: { top_n: topN } }).then(r => r.data),
   predictCashout: (id) => api.get(`/api/v1/predict/cashout/${id}`).then(r => r.data),
+  // Runs the full forecast server-side and embeds the s.63 certificate, so it is
+  // slower than the other reads. The default 15s timeout is enough on a warm
+  // model; it is called on an explicit click, never on render.
+  caseDossier: (id) => api.get(`/api/v1/dossier/${id}`).then(r => r.data),
   microFreeze: (payload) => api.post('/api/v1/bank/micro-freeze', payload).then(r => r.data),
   updateCase: (id, payload) =>
     api.patch(`/api/v1/complaint/${id}`, payload).then(r => r.data),

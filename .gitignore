@@ -34,8 +34,16 @@ frontend/dist/
 
 # ── Generated dataset ────────────────────────────────────────────────────────
 # transactions.csv is ~114 MB and graph_edges.csv ~40 MB at the current corpus
-# size, past GitHub's 100 MB limit. Both are fully reproducible and deterministic
-# (seed 42), so the generator is the source of truth rather than the artefact:
+# size, past GitHub's 100 MB limit. The generator is the source of truth rather
+# than the artefact:
+#
+# CAVEAT, because "deterministic (seed 42)" used to be claimed here and is not
+# quite true: the STRUCTURE is deterministic, but complaint and legitimate-txn
+# timestamps are stamped from an unseeded datetime.now(), so a rebuild differs in
+# the timestamp column and everything derived from it (hour-of-day, the night
+# penalty, the 120-minute live window). A given corpus is therefore NOT
+# byte-recoverable once overwritten -- copy the two files aside before
+# regenerating if the current one matters.
 #
 #     python scripts/generate_data.py
 #
@@ -57,6 +65,12 @@ data/_*.db
 data/_*.db-wal
 data/_*.db-shm
 
+# Collected evidence. Real artefacts are victim and bank material; they belong
+# in the deployment volume, never in the repository. The custody records live in
+# the database, which is also ignored.
+data/evidence/
+data/_evstore/
+
 # Isolated build used by scripts/smoke_ui.py. It points at a throwaway backend
 # port, so it must never be served to anyone.
 frontend/dist-smoke/
@@ -73,9 +87,22 @@ docs/DISCUSSION_NOTES.md
 # Superseded planning docs and UI-generator prompts. Kept locally, off GitHub.
 docs/archive/
 
+# Local project notes and internal PRD
+PRD.md
+prd.md
+PRD_SUMMARY.md
+prd_summary.md
+
 # Officer credentials. Never commit this -- it holds password hashes and live
 # session tokens, and a committed copy would put a working login for every
 # deployment into a public repository.
 data/muleshield.db
 data/muleshield.db-wal
 data/muleshield.db-shm
+
+# ── Pre-regeneration corpus archive ──────────────────────────────────────────
+# transactions.csv and graph_edges.csv are gitignored AND not byte-reproducible
+# (generate_data.py stamps complaint timestamps from an unseeded datetime.now()),
+# so a regeneration cannot be undone by git alone. Anything experimenting with
+# the corpus copies them here first. Local only -- never committed, 154 MB.
+.archive/

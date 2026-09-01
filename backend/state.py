@@ -891,7 +891,7 @@ def hotspot_surface(*, window_start: int = 0, window_end: int = 120,
     complaints were actually arriving. It is not a way to fake a live feed --
     the response carries the as_of it used.
     """
-    from hotspot import WINDOWS, build_hotspot_surface
+    from hotspot import WINDOWS, build_hotspot_surface, parse_ts
 
     if not _cells:
         _hotspot_geometry()
@@ -909,18 +909,41 @@ def hotspot_surface(*, window_start: int = 0, window_end: int = 120,
 
     open_set = []
     for comp in get_all_complaints():
-        ts = None
-        cid = comp.get("ticket_id")
         if wanted and str(comp.get("fraud_type", "")) not in wanted:
             continue
         if state_filter and str(comp.get("state", "")) != state_filter:
             continue
-        entry = hotspot_entry(cid)
+
+        # THE AGE TEST COMES BEFORE THE MODEL CALL, and that ordering is the
+        # whole cost of this function.
+        #
+        # hotspot_entry() runs the feature builder, the GraphSAGE head and the
+        # conditional-logit ranker over 25 candidate ATMs. An earlier revision
+        # called it for EVERY complaint in the store and only then discarded the
+        # result for being outside the window -- 2,498 full inferences thrown
+        # away on a 2,500-complaint corpus. Measured: 75.7 s cold against 7.9 ms
+        # warm, and the live API served the first /hotspots/cells in 67 s.
+        #
+        # Nothing caught it because bench_golden_hour.py warms the path before
+        # timing it, so every published latency was a warm number, and the
+        # 60-second scheduler tick simply overran its own interval on the first
+        # pass. What it cost was the demo: a judge opening the Risk Heatmap --
+        # the flagship screen -- waited over a minute on a blank map.
+        #
+        # The timestamp needed for the test is already on the complaint record,
+        # so the cheap filter can be applied first and the expensive one only to
+        # what survives it.
+        ts = parse_ts(comp.get("complaint_timestamp"))
+        if ts is None:
+            continue
+        age = (now - ts).total_seconds() / 60.0
+        if not (0 <= age <= open_minutes):
+            continue
+
+        entry = hotspot_entry(comp.get("ticket_id"))
         if entry is None or entry["ts"] is None:
             continue
-        age = (now - entry["ts"]).total_seconds() / 60.0
-        if 0 <= age <= open_minutes:
-            open_set.append(entry)
+        open_set.append(entry)
 
     surface = build_hotspot_surface(open_set, _cells, _prior_share, now,
                                     windows=windows)

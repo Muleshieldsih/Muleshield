@@ -67,10 +67,20 @@ def _isolated_env():
     os.environ["MULESHIELD_ADMIN_USER"] = ADMIN_USER
     os.environ["MULESHIELD_ADMIN_PASSWORD"] = ADMIN_PASSWORD
     os.environ["MULESHIELD_SCHEDULER"] = "off"
+    # Evidence bytes go to disk. Without this the suite would collect artefacts
+    # into data/evidence/ alongside real ones -- the file-store equivalent of the
+    # credential-store bug this fixture exists to prevent.
+    os.environ["MULESHIELD_EVIDENCE_DIR"] = str(tmp / "evidence")
 
     from backend import db
     db.close()
     db.DB_PATH = Path(os.environ["MULESHIELD_DB_PATH"])
+
+    # Same reason db.DB_PATH is reassigned: the module read the environment at
+    # import time, and a test that imported it earlier would otherwise keep the
+    # real store.
+    from backend import evidence as _evidence
+    _evidence.EVIDENCE_DIR = Path(os.environ["MULESHIELD_EVIDENCE_DIR"])
     yield
     db.close()
 

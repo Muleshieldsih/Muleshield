@@ -465,8 +465,16 @@ def main() -> dict:
             "rupees_covered": f["rupees_covered"],
             "flagged_atm_share": f["flagged_atm_share"],
         })
-    print(f"\n  At k={OPERATING_K}: {curve[K_GRID.index(OPERATING_K)]['false_cells_per_hit']} "
-          f"cells searched per genuine interception.")
+    # Two different numbers, and an earlier revision printed one under the other
+    # one's name: false_cells_per_hit is (k*n - hits)/hits, which is the cells
+    # visited that hold NOTHING per interception; cells searched per interception
+    # is k/hit_rate. At k=5 those are 4.25 and 5.25. The document quoted 5.25
+    # correctly while the program printed 4.25 as "cells searched", which is the
+    # more dangerous direction -- the program is what gets re-run.
+    _op = curve[K_GRID.index(OPERATING_K)]
+    _searched = OPERATING_K / fc[str(OPERATING_K)]["hit_rate"] if fc[str(OPERATING_K)]["hit_rate"] else 0.0
+    print(f"\n  At k={OPERATING_K}: {_searched:.2f} cells searched per genuine "
+          f"interception, of which {_op['false_cells_per_hit']:.2f} hold nothing.")
 
     # The cap, MEASURED rather than asserted. Build one real surface at a busy
     # epoch and read back what share of it the historical term actually carries.

@@ -173,8 +173,8 @@ Stated here so it is not discovered later.
 |---|---|---|
 | **Exposure-corrected training** | Forecasting Nuh sends officers to Nuh, which produces more Nuh detections, which raises the forecast for Nuh | Mitigated structurally today — the historical prior is capped at 15% and every alert requires live evidence — but a real deployment should weight historical cash-outs by inverse patrol presence. See the feedback-loop section of `engine/hotspot.py` |
 | **Branch-counter and bulk-payout cash-out** | ATM-only coverage | Nuh's 2025 figures name 1,400+ ATM IDs **and 75 cheque branches**. A cell is defined as a set of *cash-out points*, so a branch counter is a new point type, not a new model |
-| **Real DPDP controls** | Retention, purpose limitation, subject rights | The corpus is synthetic so nothing is at stake today. Production needs a retention schedule and access-purpose logging |
-| **Tamper-evident audit** | The trail is queryable but not hash-chained | An evidentiary export under BSA 2023 s.63 / IT Act s.65B would need one |
+| **Real DPDP controls** | Retention, purpose limitation, subject rights | The corpus is synthetic so nothing is at stake today. Production needs a retention schedule and access-purpose logging — and once real artefacts are collected, an evidence retention and disposal policy, since `case_evidence` is deliberately append-only and expires nothing |
+| **An external anchor for the evidence chain** | Collected evidence IS hash-chained per case and re-verified on every read, and `GET /api/v1/evidence/case/{id}/certificate` produces the BSA 2023 s.63 certificate. What the chain does not have is an anchor outside the operator's own store, so a party with write access to the whole table could recompute it | A deployment needs a signed daily digest, a notary, or an append-only log it does not own. The general CASE audit trail is separately still in memory and unchained |
 | **An alert budget agreed with the force** | The four rule thresholds are ours, not theirs | `R-HIGH-CONVERGE` fires on cells carrying 2.5x the current mean case count, `R-WATCH-SCORE` on the top 2%, with a Rs 1 lakh floor on HIGH and Rs 50 lakh on CRITICAL. At 8,000 complaints/day that yields ~23 alerts a pass. All four are environment-tunable (`MULESHIELD_CONVERGE_EXCESS`, `MULESHIELD_WATCH_PERCENTILE`, `MULESHIELD_HIGH_MIN_RUPEES`, `MULESHIELD_CRIT_RUPEES`) because how many alerts a shift can action is a fact about the force, not about the model |
 | **Horizontal scale** | Single process, in-memory case state | `PROJECT_NOTES.md` §5 explains why; alerts and credentials are already in SQLite, case workflow is not |
 
@@ -192,3 +192,5 @@ Stated here so it is not discovered later.
 | CFCFRMS / Samanvaya payloads | `backend/adapters/webhook.py` |
 | Recipient roster | `data/alert_recipients.csv` · table `alert_recipients` |
 | Delivery record | table `alert_deliveries` |
+| Evidence custody | `backend/evidence.py` · `backend/routers/evidence.py` · table `case_evidence` |
+| s.63 certificate | `backend/evidence.py` · `certificate()` · rendered by `frontend/src/components/EvidencePanel.jsx` |

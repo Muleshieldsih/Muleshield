@@ -6,7 +6,8 @@ Two kinds of thing live here. **Section 1** is work still to do. **Sections 2–
 are decisions already made deliberately — if someone reports one of them as a
 bug, the answer is in here, not in the code.
 
-Last reviewed: 30 Aug 2026.
+Last reviewed: 2 Sep 2026. Section 1's security items are closed; see
+`INDEPENDENT_AUDIT.md` for what was verified and how.
 
 ---
 
@@ -29,15 +30,24 @@ Last reviewed: 30 Aug 2026.
       console would have asked the *viewer's own machine* for the API. `.env` is
       deleted; the bundle now uses relative URLs. `wsUrl()` had the same defect
       and would have opened an insecure `ws://` socket on an https deployment.
-- [ ] **No authentication on any endpoint, including freeze.** Acceptable for a
-      judged demo; make it a conscious decision before anything is public.
-- [ ] CORS is `allow_origins=["*"]` (`backend/main.py`).
+- [x] ~~**No authentication on any endpoint, including freeze.**~~ — **closed.**
+      13+ endpoints now sit behind `Depends(current_user)`; anonymous
+      `POST /bank/micro-freeze` returns 401 with `WWW-Authenticate: Bearer`.
+      Verified live in `INDEPENDENT_AUDIT.md` §3.1, including token revocation
+      on logout.
+- [x] ~~CORS is `allow_origins=["*"]`~~ — **closed.** Env-driven allowlist in
+      `backend/main.py`; a foreign `Origin` receives no
+      `Access-Control-Allow-Origin`.
 
 ### For the SIH submission
 
 - [ ] **7-slide deck and 3-minute video.** Entirely untouched. Largest remaining
       gap for the submission itself.
-- [ ] **Regenerate the dataset shortly before demoing.** Complaint timestamps are
+- [ ] **Regenerate the dataset shortly before demoing.** Use
+      `--mule-concentration 0.8` — the default is 0.0, which reproduces the old
+      flat corpus. Copy `data/transactions.csv` and `data/graph_edges.csv` aside
+      first: they are gitignored AND not byte-reproducible, because complaint
+      timestamps come from an unseeded `datetime.now()`. Complaint timestamps are
       relative to generation time — the queue currently reads "3d ago" and drifts
       further every day.
 
@@ -137,7 +147,25 @@ at national load many cells clear ₹50 lakh, so **a deployment has to set
 environment variables because an alert budget belongs to the force running it,
 not to us.
 
-### 2.7 Every sqlite access takes the lock, reads included
+### 2.7 Evidence is append-only, and the chain says what it proves
+
+There is no delete endpoint on `case_evidence` and there must not be one.
+Withdrawal sets a status with an actor and a reason; the artefact, its hash and
+its position in the chain stay. Evidence that can be deleted is evidence that can
+be made to disappear between collection and trial.
+
+Two things about the chain that must not drift in the telling:
+
+* `verify_case` carries the **recomputed** hash forward, never the stored one.
+  The first version carried the stored hash, which made one rewritten row flag
+  itself and then resynchronise — every artefact after it verified clean. That is
+  a per-row checksum with extra steps, not a chain.
+* It proves the set is **internally consistent**. It is not anchored outside our
+  own store, so somebody with write access to the whole table could recompute it
+  end to end. That limit is in `db.chain_hash`, on the certificate under *Stated
+  limitations*, and in the audit. Do not describe it as tamper-proof.
+
+### 2.8 Every sqlite access takes the lock, reads included
 
 `backend/db.py` holds one connection and one `RLock`. Do not "optimise" a read by
 skipping the lock: only writes took it until the final build, and interleaving

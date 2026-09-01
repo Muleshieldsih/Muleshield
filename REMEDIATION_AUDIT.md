@@ -23,15 +23,15 @@ or test that establishes it.
 |---|---|---|---|
 | **a** | Predictive Analytics Engine | 🟡 ~60% | 🟢 **Met** |
 | **b** | Risk Heatmap Dashboard | 🔴 ~25% | 🟢 **Met** |
-| **c** | Law Enforcement Interface | 🟡 ~40% | 🟡 **Mostly met** — secure, alerts accessible; **evidence documentation is not built** (§9) |
+| **c** | Law Enforcement Interface | 🟡 ~40% | 🟢 **Met** — secure, alerts, and evidence documentation with a chain of custody (§4.6) |
 | **d** | Alert & Notification System | 🔴 ~15% | 🟢 **Met**, transport simulated and labelled; alert volume needs one threshold set (§4.4) |
 
-**7 BLOCKER → 0 open. 11 MAJOR → 1 open. 8 MINOR → 3 open.**
+**7 BLOCKER → 0 open. 11 MAJOR → 1 open. 8 MINOR → 2 open.**
 
-**Test suite: 401 passed, 1 skipped, 0 failed** (`python -m pytest -q`, 9m11s),
-up from 290 before this work and 397 before the final build. The single skip is
-the graph-build budget test declining to measure a contended machine, which is
-its designed behaviour rather than a gap.
+**Test suite: 449 passed, 0 failed, 0 skipped** (`python -m pytest -q`, 13m25s),
+up from 290 before this work, 397 before the final build, and 402 before evidence
+documentation. The graph-build budget test, which skips rather than measure a
+contended machine, ran and passed on this run.
 
 Everything below was re-measured after a full regeneration — corpus, GraphSAGE,
 embeddings, XGBoost, every evaluation script, the frontend bundle — so no figure
@@ -57,8 +57,8 @@ fix is what proved the diagnosis wrong, and §5.1 now records both.
 | 4.1 | **Authentication was a client-side gate; no endpoint required a token** | ✅ **Closed** | 13 endpoints on `Depends(current_user)`; live `curl` returns 401 + `WWW-Authenticate: Bearer` on `POST /bank/micro-freeze` |
 | 4.2 | `allow_origins=["*"]` with `allow_credentials=True` | ✅ **Closed** | Env-driven allowlist; foreign `Origin` receives no `Access-Control-Allow-Origin` |
 | 4.3 | No alert object existed | ✅ **Closed** | `alerts` table + `/api/v1/alerts` + `AlertInbox.jsx` |
-| 4.4 | No intelligence report could be produced | 🟡 **Partial** | Alert detail carries headline, cases, delivery record and disposition, and CFCFRMS/Samanvaya payloads are emitted. A printable case dossier is still not built |
-| 4.5 | No evidence documentation | ❌ **Open (MINOR)** | No file-attachment path. `python-multipart` still absent. Deliberately deferred |
+| 4.4 | No intelligence report could be produced | 🟡 **Partial** | Alert detail carries headline, cases, delivery record and disposition; CFCFRMS/Samanvaya payloads are emitted; and the s.63 certificate is a printable, generated document. A general case dossier covering the forecast and the graph is still not built |
+| 4.5 | No evidence documentation | ✅ **Closed** | `backend/evidence.py` + `case_evidence` + `/api/v1/evidence/*` + the Evidence panel on the case screen. Hash at collection, chain across the case, no delete, BSA 2023 s.63 certificate. §4.6 |
 | 5.1 | Zero of four named channels implemented | ✅ **Closed** | `backend/adapters/{sms,email,webhook}.py` with full delivery contract; transport simulated and labelled on screen |
 | 5.2 | No trigger engine — WebSocket only echoed user actions | ✅ **Closed** | `backend/notify.py` `RULES`, fired by the tick with no human present |
 | 6.2 | README claimed API schemas that did not exist | ✅ **Closed** | Claim withdrawn; `docs/INTEGRATION_SEAMS.md` publishes the actual mapping, versioned `v1-proposed` |
@@ -75,7 +75,7 @@ fix is what proved the diagnosis wrong, and §5.1 now records both.
 | 4.6 | No jurisdiction model | 🟡 **Partial** | `alert_recipients` scopes by state/district with LEA/I4C/BANK roles, so alerts route correctly. The `users` table still has only `is_admin` — officers are not yet scoped |
 | 4.7 | Audit trail in memory, dies on restart | ❌ **Open (MAJOR→MINOR)** | Alerts, deliveries and recipients are now in SQLite. The **case** audit trail is still `state.audit_log` in memory |
 | 4.8 | Audit omits logins, admin actions, case access | ❌ **Open** | Alert acknowledgement is now audited; logins and case views still are not |
-| 4.9 | Audit not tamper-evident | ❌ **Open** | No hash chain. Deferred |
+| 4.9 | Audit not tamper-evident | 🟡 **Partial** | Evidence IS hash-chained per case and verified on read (§4.6). The general case audit trail still is not, and the chain has no external anchor — both stated in `backend/db.chain_hash` |
 | 6.1 | ~8,000 complaints/day unaddressed | ✅ **Closed** | `scripts/bench_golden_hour.py`: **3,499 complaints/min = 5.04M/day, 630× headroom** |
 | 6.3 | Cross-jurisdiction sharing had no mechanism | ✅ **Closed** | Scoped recipients + Samanvaya dissemination payload |
 
@@ -193,12 +193,13 @@ It found §4.5 on the way.
 
 ---
 
-## 4 · The final build, and the five defects it found
+## 4 · The final build: eight defects found, and the last clause closed
 
 The build was regenerated end to end — corpus, GraphSAGE, embeddings, XGBoost,
 every evaluation, the frontend bundle — and then put under the load the problem
 statement actually names: **8,000 complaints a day**, replayed through the real
-ingestion endpoint. Five defects surfaced. Four of them were invisible to 397
+ingestion endpoint. Five defects surfaced, and the last unbuilt clause (§4.6)
+was closed on the way through. Four of them were invisible to 397
 passing tests, and the reason is the same in every case: **the tests replay
 history, and these only appear against a live clock at real load.**
 
@@ -342,6 +343,102 @@ against a fully loaded backend. Fixed to `const toast = useToast()`.
 viewports — 0 uncaught page errors, 0 console errors, 0 failed requests, 0
 4xx/5xx responses.
 
+### 4.6 Evidence documentation — the last named clause, now built
+
+`COMPLIANCE_AUDIT.md` finding 4.5 recorded that the problem statement names
+*"evidence documentation"* in deliverable (c) and the repository had no upload
+path, no store, no accounting, and not even `python-multipart`. It was carried
+as the one named clause with nothing behind it.
+
+**A file uploader would have closed it on paper and been worthless in a
+courtroom.** Four properties are what separate an artefact that survives being
+produced from an attachment:
+
+| | What it does | Where |
+|---|---|---|
+| **Hash at collection** | SHA-256 taken from the bytes as they arrive and re-checked on every read. A file that no longer matches is served as a **409**, never as evidence | `evidence.stage`, `evidence.verify_item` |
+| **Chain across the case** | Each artefact carries the previous one's `entry_hash`, so the set cannot be added to, removed from or reordered without breaking every link after it | `db.chain_hash`, `evidence.verify_case` |
+| **No delete** | Withdrawal is a status with an actor and a stated reason. The artefact, its hash and its position stay on the record | `db.withdraw_evidence` |
+| **A certificate** | **BSA 2023 s.63** (which replaced IT Act s.65B in July 2024), generated from the store with a live re-verification, so it cannot describe artefacts the store does not hold | `evidence.certificate` |
+
+**Two decisions that look like paranoia and are not.** Downloads are always
+`application/octet-stream` with `nosniff` and an attachment disposition, never
+the content type the uploader declared — an uploaded `.html` or `.svg` served
+back under its own type, on the same origin as the console, is stored XSS
+against the next officer who opens the case. And the supplied filename is
+sanitised for display but never used as a path: the stored file is named by the
+artefact id.
+
+**The chain walk was wrong on the first attempt, and a test caught it.**
+`verify_case` originally carried the *stored* `entry_hash` forward from row to
+row. Rewriting one row in sqlite therefore flagged that row and then
+resynchronised, so every artefact after it verified clean — a per-row checksum
+with extra steps, which would have let somebody alter one artefact and hand over
+a report showing a single isolated problem. It now carries the **recomputed**
+hash forward, so one broken link invalidates everything downstream, which is the
+property the whole construction exists for. `test_a_rewritten_row_breaks_the_chain`
+asserts it.
+
+**47 tests**, and the ones that matter are adversarial: they edit the bytes on
+disk, delete them, rewrite a row in sqlite and remove a row, because a custody
+system that only holds when nobody touches it is not a custody system.
+
+**What it does not claim.** The chain establishes that a case's set of records is
+internally consistent. It is not anchored outside the operator's own store, so a
+party with write access to the whole table could recompute it end to end. That
+limit is written into `db.chain_hash`, printed on the certificate under *Stated
+limitations*, and carried in §7 — because a document that overclaims is worse
+than no document.
+
+### 4.7 Three defects an independent audit found that this one had missed
+
+`INDEPENDENT_AUDIT.md` re-derived the project's claims rather than reading them,
+and turned up three things neither self-audit had recorded. All three are fixed;
+they are recorded here because an audit that only lists what its own author found
+is an audit with a blind spot the size of its author.
+
+**The first `/hotspots/cells` call took 75 seconds.** `state.hotspot_surface`
+filtered complaints in the wrong order: it called `hotspot_entry()` — the feature
+builder, the GraphSAGE head and the conditional-logit ranker over 25 candidate
+ATMs — for **every complaint in the store**, and only then discarded the result
+for falling outside the 120-minute window. On a 2,500-complaint corpus with two
+complaints in the window, that is 2,498 full inferences thrown away. Measured
+**75.7 s cold against 7.9 ms warm**, and the live API served its first request in
+67 s.
+
+Nothing caught it because `bench_golden_hour.py` deliberately warms the path
+before timing it, so **every published latency was a warm-cache number**, and the
+60-second scheduler tick simply overran its own interval on the first pass. No
+measurement was wrong; what it cost was the demo — a judge opening the Risk
+Heatmap, the flagship screen, waited over a minute on a blank map.
+
+Fixed by hoisting the age test above the model call: the complaint's timestamp is
+already on its record, so the cheap filter runs first and the expensive one only
+against what survives. **Re-measured against a freshly booted server: 33 ms cold
+on an empty window, and 47 ms median while carrying 667 open complaints at the
+problem statement's national rate.** The first call is no longer distinguishable
+from the rest, which is the only version of this that a demo survives.
+
+**`python-multipart` was missing from `requirements.txt`.** It is installed in
+the local `venv`, so the evidence module and its 47 tests passed here — and a
+clean `pip install -r requirements.txt`, which is what the Dockerfile does and
+what the README tells a reader to do, would have produced an environment where
+the newest deliverable did not work at all. One line, and the highest
+severity-per-character finding in either audit.
+
+**`evaluate_hotspots.py` printed one number under another one's name.** It
+reported `false_cells_per_hit` — `(k·n − hits)/hits`, the cells visited that hold
+nothing — under the label *"cells searched per genuine interception"*, which is
+`k/hit_rate`. At k=5 those are **4.25 and 5.25**. §6 of this document quoted 5.25
+correctly, so the prose was right and the program was wrong, which is the more
+dangerous direction: the program is what someone re-runs. It now prints both,
+each under its own name.
+
+A fourth finding — `POST /complaint/{id}/note` singular against `GET .../notes`
+plural — is left as it is. The asymmetry is real and costs a 405 to anyone who
+guesses, but renaming a shipped route to fix a cosmetic inconsistency is a worse
+trade than documenting it.
+
 ---
 
 ## 5 · Open risks
@@ -435,10 +532,15 @@ console.
 
 Stated here so nobody has to discover it.
 
-1. **Case dossier export** — no printable/PDF report (finding 4.4).
-2. **Evidence attachments** — no file upload (finding 4.5).
-3. **Case audit persistence and tamper-evidence** — alerts are in SQLite; the
-   case trail is still in memory and not hash-chained (4.7–4.9).
+1. **Case dossier export** — the s.63 evidence certificate is generated and
+   printable, but there is no general case report covering the forecast, the
+   transaction trail and the graph (finding 4.4).
+2. **Case audit persistence** — alerts and evidence are in SQLite; the general
+   case trail is still in memory (4.7–4.8).
+3. **An external anchor for the evidence chain** — it proves the set is
+   internally consistent, and a party with write access to the whole table could
+   recompute it. Real tamper-evidence needs a signed daily digest, a notary, or
+   an append-only log the operator does not own (4.9).
 4. **Officer jurisdiction scoping** — recipients are scoped, officers are not (4.6).
 5. **Admin roster screen** — endpoints exist, nothing renders them (4.10).
 6. **Branch-counter and bulk-payout cash-out** — ATM-only (documented scope boundary).
@@ -511,8 +613,8 @@ scored from a reading of the code** — each row names what establishes it.
 | Interface for investigators | ✅ | ✅ | Seven screens, case workflow, notes, timeline, audit view |
 | **Secure** | 🔴 fails | ✅ | 13 endpoints on `Depends(current_user)`; anonymous `POST /bank/micro-freeze` returns 401 + `WWW-Authenticate: Bearer`; CORS allowlisted |
 | Access **alerts** | 🔴 | ✅ | `/alerts` inbox, severity ordering, delivery record, required disposition |
-| **Intelligence reports** | 🔴 | 🟡 | Alert detail carries headline, contributing cases, decomposition and delivery trail; CFCFRMS/Samanvaya payloads are emitted. **A printable case dossier is still not built** |
-| **Evidence documentation** | 🔴 | ❌ | **No attachment path.** `python-multipart` still absent. Deliberately deferred — §7 |
+| **Intelligence reports** | 🔴 | 🟡 | Alert detail carries headline, contributing cases, decomposition and delivery trail; CFCFRMS/Samanvaya payloads are emitted; the s.63 certificate is generated and printable. A general case dossier is still not built |
+| **Evidence documentation** | 🔴 | ✅ | `POST /api/v1/evidence/{case_id}` with SHA-256 taken at collection and re-checked on every read, a hash chain across the case, withdrawal-not-deletion, and a **BSA 2023 s.63 certificate**. 47 tests, including tampering with the bytes on disk and rewriting a row in sqlite |
 
 ### (d) Alert & Notification System
 
@@ -547,14 +649,16 @@ swapping in a gateway is one module.
 
 ### What is honestly still missing
 
-Four things, all deliberate, all in §7:
+Every clause the problem statement names now has an implementation behind it.
+Three things remain, all deliberate, all in §7:
 
-1. **Evidence attachments** — the one named clause with no implementation at all.
-2. **A printable intelligence report** — the data exists; the export does not.
-3. **Case-audit persistence and tamper-evidence** — alerts are in SQLite; the
-   case trail is still in memory and is not hash-chained.
-4. **Officer jurisdiction scoping** — alerts route by state and district, but the
+1. **A general case dossier** — the s.63 evidence certificate is generated and
+   printable; a report covering the forecast, the transaction trail and the
+   graph is not.
+2. **Case-audit persistence** — alerts and evidence are in SQLite; the general
+   case trail is still in memory.
+3. **Officer jurisdiction scoping** — alerts route by state and district, but the
    `users` table still knows only `is_admin`.
 
-None of these is a forecast capability. All four are interface and records
-plumbing, which is the right place for the remaining gap to be.
+None of these is a forecast capability, and none is a named clause. They are
+records plumbing, which is the right place for the remaining gap to be.

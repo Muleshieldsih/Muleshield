@@ -6,10 +6,11 @@ import { timeAgo, useNow } from '../hooks/useCountdown'
 import { useToast } from '../components/Toast'
 import CaseTimeline from '../components/CaseTimeline'
 import AuditList from '../components/AuditList'
+import DossierModal from '../components/DossierModal'
 import { Panel } from '../components/Shell'
 import {
   ShieldAlert, Plus, Search, MapPinned, GitBranch, Zap, ArrowUpRight,
-  CheckCircle2, AlertTriangle, Loader2, Radio, UserPlus, StickyNote,
+  CheckCircle2, AlertTriangle, Loader2, Radio, UserPlus, StickyNote, FileText,
 } from 'lucide-react'
 
 const GOLDEN_HOUR_MIN = 60
@@ -482,6 +483,7 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
   const [dismissed, setDismissed] = useState(() => new Set())
   const [officer, setOfficer] = useState('AS-1042')
   const [noteOpen, setNoteOpen] = useState(false)
+  const [dossierOpen, setDossierOpen] = useState(false)
   const [noteText, setNoteText] = useState('')
   const [notes, setNotes] = useState([])
   const [tab, setTab] = useState('Summary')
@@ -898,6 +900,19 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
                   <StickyNote size={12} /> Note{notes.length ? ` · ${notes.length}` : ''}
                 </button>
 
+                {/* The intelligence report of deliverable (c). Assembled server-side
+                    from the ledger, the shipped model and the custody chain, so what
+                    prints is what the system holds -- see backend/dossier.py. */}
+                <button
+                  onClick={() => setDossierOpen(true)}
+                  disabled={!!busyAction}
+                  className="px-2.5 py-1.5 rounded border border-ink-border text-[11.5px] text-zinc-300
+                             hover:border-zinc-600 hover:text-white transition-colors flex items-center gap-1.5"
+                  title="Produce a printable police intelligence dossier for this case"
+                >
+                  <FileText size={12} /> Dossier
+                </button>
+
                 {busyAction && <Loader2 size={13} className="animate-spin text-zinc-500" />}
               </div>
 
@@ -1075,6 +1090,9 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
       </div>
 
       <IngestModal isOpen={modalOpen} onClose={() => setModalOpen(false)} onSuccess={onIngested} />
+      {dossierOpen && active && (
+        <DossierModal caseId={active.ticket_id} onClose={() => setDossierOpen(false)} />
+      )}
     </div>
   )
 }

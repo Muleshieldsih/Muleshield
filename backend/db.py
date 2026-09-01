@@ -197,6 +197,49 @@ CREATE TABLE IF NOT EXISTS alert_recipients (
     active         INTEGER NOT NULL DEFAULT 1
 );
 CREATE INDEX IF NOT EXISTS idx_recipients_scope ON alert_recipients(scope_state, active);
+
+-- Evidence documentation. COMPLIANCE_AUDIT.md finding 4.5: the problem statement
+-- names "evidence documentation" as part of deliverable (c) and nothing in the
+-- repository could accept, hold or account for a file.
+--
+-- Three properties make this evidence rather than an attachment:
+--
+--   1. INTEGRITY. sha256 of the bytes is taken at the moment of collection and
+--      re-checked on every read. A file that no longer hashes to what was
+--      recorded is served as a failure, not as evidence.
+--   2. CHAIN. Each row carries the entry_hash of the previous item on the SAME
+--      case, so an artefact cannot be inserted into, removed from, or reordered
+--      within a case's history without breaking every link after it. This is
+--      what the audit called "tamper-evident" and did not have.
+--   3. NO DELETION. Withdrawal is a status with a reason and an actor. Evidence
+--      that can be deleted is evidence that can be made to disappear between
+--      collection and trial, which defeats the point of holding it.
+CREATE TABLE IF NOT EXISTS case_evidence (
+    id               TEXT    PRIMARY KEY,            -- EVD-000001
+    case_id          TEXT    NOT NULL,               -- the 1930 ticket id
+    seq              INTEGER NOT NULL,               -- position in this case's chain, from 1
+    filename         TEXT    NOT NULL,               -- as supplied by the officer
+    stored_name      TEXT    NOT NULL,               -- on disk; never the supplied name
+    content_type     TEXT    NOT NULL DEFAULT '',    -- declared, never trusted on the way out
+    size_bytes       INTEGER NOT NULL DEFAULT 0,
+    sha256           TEXT    NOT NULL,               -- of the bytes, at collection
+    kind             TEXT    NOT NULL DEFAULT 'other',
+    description      TEXT    NOT NULL DEFAULT '',
+    source           TEXT    NOT NULL DEFAULT '',    -- who it came from: bank, victim, device
+    collected_by     TEXT    NOT NULL,               -- from the bearer token, not the body
+    collected_at     TEXT    NOT NULL,
+    withdrawn_at     TEXT,
+    withdrawn_by     TEXT,
+    withdrawn_reason TEXT,
+    prev_hash        TEXT    NOT NULL DEFAULT '',
+    entry_hash       TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_evidence_case ON case_evidence(case_id, seq);
+-- One artefact per case per content hash. Re-uploading the same bytes to the
+-- same case returns the item already held rather than minting a second custody
+-- record for one object, which would make the chain describe a history that did
+-- not happen.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_evidence_dedupe ON case_evidence(case_id, sha256);
 """
 
 
@@ -898,3 +941,153 @@ def seed_recipients(rows: list[dict]) -> int:
         conn.commit()
     logger.info("[DB] seeded %d alert recipients", len(rows))
     return len(rows)
+
+
+# ---------------------------------------------------------------------------
+# evidence
+# ---------------------------------------------------------------------------
+
+_EVIDENCE_COLS = (
+    "id, case_id, seq, filename, stored_name, content_type, size_bytes, sha256, "
+    "kind, description, source, collected_by, collected_at, withdrawn_at, "
+    "withdrawn_by, withdrawn_reason, prev_hash, entry_hash"
+)
+
+
+def chain_hash(prev_hash: str, item_id: str, case_id: str, digest: str,
+               collected_by: str, collected_at: str) -> str:
+    """The link. Deliberately over the COLLECTION facts only.
+
+    What this proves: that the sequence of artefacts collected against a case,
+    each identified by the hash of its own bytes, has not been added to, removed
+    from or reordered since. Break any link and every hash after it stops
+    matching.
+
+    What it does not prove: that the store as a whole is authentic against an
+    outside reference. A party with write access to the whole table could
+    recompute the entire chain. Making that impossible needs an external anchor
+    -- a notary, a signed daily digest, an append-only log the operator does not
+    own -- and that is a deployment decision, not something this build can fake.
+    Stated plainly here rather than implied by the word "tamper-evident".
+
+    Withdrawal is deliberately outside the hash: an artefact's custody record is
+    fixed at collection, and the fact that somebody later withdrew it is a
+    separate event, recorded on the row and in the audit trail.
+    """
+    payload = "|".join((prev_hash, item_id, case_id, digest, collected_by, collected_at))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _as_evidence(row) -> dict:
+    d = dict(row)
+    d["withdrawn"] = bool(d.get("withdrawn_at"))
+    return d
+
+
+def get_evidence(evidence_id: str) -> Optional[dict]:
+    with _lock:
+        row = _require().execute(
+            f"SELECT {_EVIDENCE_COLS} FROM case_evidence WHERE id = ?",
+            (evidence_id,)).fetchone()
+    return _as_evidence(row) if row else None
+
+
+def list_evidence(case_id: str, *, include_withdrawn: bool = True) -> list[dict]:
+    sql = f"SELECT {_EVIDENCE_COLS} FROM case_evidence WHERE case_id = ?"
+    if not include_withdrawn:
+        sql += " AND withdrawn_at IS NULL"
+    sql += " ORDER BY seq"
+    with _lock:
+        rows = _require().execute(sql, (case_id,)).fetchall()
+    return [_as_evidence(r) for r in rows]
+
+
+def find_evidence_by_digest(case_id: str, digest: str) -> Optional[dict]:
+    with _lock:
+        row = _require().execute(
+            f"SELECT {_EVIDENCE_COLS} FROM case_evidence"
+            " WHERE case_id = ? AND sha256 = ?", (case_id, digest)).fetchone()
+    return _as_evidence(row) if row else None
+
+
+def insert_evidence(item: dict) -> dict:
+    """Append one artefact to a case's chain.
+
+    Sequence number, previous hash and entry hash are all derived HERE, under the
+    same lock as the INSERT. A caller that computed its own position would race
+    another upload on the same case and produce two items claiming the same link.
+    """
+    with _lock:
+        conn = _require()
+        row = conn.execute(
+            "SELECT seq, entry_hash FROM case_evidence WHERE case_id = ?"
+            " ORDER BY seq DESC LIMIT 1", (item["case_id"],)).fetchone()
+        seq = (int(row["seq"]) + 1) if row else 1
+        prev_hash = str(row["entry_hash"]) if row else ""
+
+        item_id = f"EVD-{_next_evidence_number(conn):06d}"
+        collected_at = _now()
+        # The stored name IS the artefact id. Never the supplied filename: a
+        # caller-controlled string must not become a path, and an id keeps the
+        # store readable in the same order the chain is.
+        stored_name = item_id
+        entry_hash = chain_hash(prev_hash, item_id, item["case_id"],
+                                item["sha256"], item["collected_by"], collected_at)
+
+        conn.execute(
+            f"INSERT INTO case_evidence ({_EVIDENCE_COLS}) VALUES "
+            "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (item_id, item["case_id"], seq, item["filename"], stored_name,
+             item.get("content_type", ""), int(item.get("size_bytes", 0)),
+             item["sha256"], item.get("kind", "other"), item.get("description", ""),
+             item.get("source", ""), item["collected_by"], collected_at,
+             None, None, None, prev_hash, entry_hash),
+        )
+        conn.commit()
+    return get_evidence(item_id)
+
+
+def _next_evidence_number(conn) -> int:
+    """MAX + 1 over the suffix, never COUNT + 1 -- see next_alert_id()."""
+    row = conn.execute(
+        "SELECT MAX(CAST(SUBSTR(id, 5) AS INTEGER)) AS n FROM case_evidence"
+        " WHERE id LIKE 'EVD-%'").fetchone()
+    return int(row["n"] or 0) + 1
+
+
+def drop_evidence_row(evidence_id: str) -> None:
+    """Remove a row whose bytes never made it into the store.
+
+    The ONLY deletion this module allows, and it is not a deletion of evidence:
+    it unwinds a collection that failed between the row landing and the file
+    landing, so the chain never claims to hold something that is not there.
+    Withdrawal of a real artefact is withdraw_evidence(), which deletes nothing.
+    """
+    with _lock:
+        conn = _require()
+        conn.execute("DELETE FROM case_evidence WHERE id = ?", (evidence_id,))
+        conn.commit()
+
+
+def withdraw_evidence(evidence_id: str, actor: str, reason: str) -> Optional[dict]:
+    """Mark an artefact withdrawn. There is no delete, by design."""
+    with _lock:
+        conn = _require()
+        cur = conn.execute(
+            "UPDATE case_evidence SET withdrawn_at = ?, withdrawn_by = ?,"
+            " withdrawn_reason = ? WHERE id = ? AND withdrawn_at IS NULL",
+            (_now(), actor, reason, evidence_id))
+        conn.commit()
+        if cur.rowcount == 0:
+            return None
+    return get_evidence(evidence_id)
+
+
+def evidence_counts() -> dict:
+    with _lock:
+        rows = _require().execute(
+            "SELECT COUNT(*) AS n, COUNT(withdrawn_at) AS w,"
+            " COALESCE(SUM(size_bytes), 0) AS b,"
+            " COUNT(DISTINCT case_id) AS c FROM case_evidence").fetchone()
+    return {"items": int(rows["n"]), "withdrawn": int(rows["w"]),
+            "bytes": int(rows["b"]), "cases": int(rows["c"])}

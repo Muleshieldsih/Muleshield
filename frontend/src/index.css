@@ -288,3 +288,33 @@ body { @apply bg-ink-bg text-zinc-200 font-sans antialiased; }
   .case-line { animation: none; }
   .case-caret { animation: none; opacity: 0; }
 }
+
+/* ── Printing the documents that leave the building ────────────────────────
+   Two of them now: the s.63 evidence certificate and the case dossier. Both
+   have to print as documents -- black on white, without the console chrome
+   around them. Everything except the document is hidden rather than the
+   document being reopened in a new window: a popup would be blocked half the
+   time, and building the page as an HTML string would mean hand-escaping
+   free-text descriptions and officer-entered notes.
+   The console is dark by design; forcing colour-adjust keeps the table rules
+   visible when a browser decides to drop backgrounds.
+   Only ONE of these is ever mounted at a time, so the shared rule cannot print
+   both onto the same sheet. */
+@media print {
+  body * { visibility: hidden; }
+  .evidence-certificate, .evidence-certificate *,
+  .case-dossier, .case-dossier * { visibility: visible; }
+  .evidence-certificate, .case-dossier {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    max-width: none;
+    box-shadow: none;
+    background: #fff !important;
+    color: #000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .no-print, .no-print * { display: none !important; }
+  .no-print-backdrop { background: #fff !important; padding: 0 !important; }
+}
