@@ -38,13 +38,25 @@ import argparse
 import os
 import re
 import socket
+import json
 import subprocess
+import tempfile
 import sys
 import time
 from contextlib import contextmanager
 from pathlib import Path
 
 import requests
+
+# The console renders en-dashes, rupee signs and a Unicode minus in its
+# control labels, and this script prints those labels back. On a cp1252
+# Windows console that raised UnicodeEncodeError and took down the whole
+# sweep -- while REPORTING, after every page had already passed.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding='utf-8', errors='replace')
+    except (AttributeError, ValueError):
+        pass
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -64,7 +76,17 @@ findings: list[str] = []
 IGNORE_CONSOLE = ("Download the React DevTools", "React Router Future Flag", "favicon")
 IGNORE_REQ = ("favicon.ico", "tile.openstreetmap", "basemaps", ".png", ".jpg", ".webp")
 
-NAV = ("TRIAGE QUEUE", "TACTICAL MAP", "MONEY FLOW", "INTERCEPTION")
+# Sidebar labels, skipped so the sweep does not navigate away mid-walk.
+# These drifted: the old tuple named "TRIAGE QUEUE" / "TACTICAL MAP" /
+# "MONEY FLOW", none of which are labels in Shell.jsx any more, so the
+# sweep was clicking its own nav on every page.
+NAV = ("CASES", "TRANSACTION TRAIL", "LOCATIONS", "INTERVENTION",
+       "MODEL PERFORMANCE", "RISK HEATMAP", "ALERTS",
+       # Sign out is a control like any other and the sweep clicked it -- which
+       # ended the session, so every route AFTER the first reported three
+       # controls and a clean bill of health for the login form. A sweep that
+       # logs itself out mid-run reports on a screen the operator never sees.
+       "SIGN OUT")
 NEWLINE = chr(10)
 
 
@@ -105,10 +127,24 @@ def isolated_stack():
 
     try:
         print(f"  starting isolated backend on :{api_port}")
+        # A throwaway credential store, admin pinned so sign_in() can predict it,
+        # the background rule pass off so a tick cannot mutate state mid-sweep,
+        # and the preview port allowlisted now that CORS is not "*".
+        # Before MULESHIELD_DB_PATH existed this "isolated" stack wrote officers
+        # into the real data/muleshield.db -- isolated in every respect except
+        # the one file holding password hashes.
+        api_env = {
+            **os.environ,
+            "MULESHIELD_DB_PATH": str(Path(tempfile.mkdtemp(prefix="smoke-db-")) / "smoke.db"),
+            "MULESHIELD_ADMIN_USER": SMOKE_USER,
+            "MULESHIELD_ADMIN_PASSWORD": SMOKE_PASSWORD,
+            "MULESHIELD_SCHEDULER": "off",
+            "MULESHIELD_CORS_ORIGINS": f"http://127.0.0.1:{app_port},http://localhost:{app_port}",
+        }
         procs.append(subprocess.Popen(
             [python, "-m", "uvicorn", "backend.main:app",
              "--host", "127.0.0.1", "--port", str(api_port)],
-            cwd=str(ROOT), **quiet,
+            cwd=str(ROOT), env=api_env, **quiet,
         ))
         wait_for(f"{api}/health", what="isolated backend")
 
@@ -177,10 +213,41 @@ def wire(page) -> None:
     page.on("requestfailed", on_requestfailed)
 
 
+# The console is behind a login (App.jsx Gate). Until this existed, every walk
+# below landed on the sign-in form and reported a clean sweep of a page that had
+# mounted nothing -- the script predated authentication by one day and nobody
+# noticed, which is exactly the class of failure it exists to catch.
+TOKEN = ""
+SMOKE_USER = "smokeofficer"
+SMOKE_PASSWORD = "smoke-password-not-a-secret"
+
+
+def auth_headers() -> dict:
+    return {"Authorization": f"Bearer {TOKEN}"} if TOKEN else {}
+
+
+def sign_in() -> str:
+    """Exchange the seeded credentials for a bearer token."""
+    global TOKEN
+    r = requests.post(f"{API}/api/v1/auth/login",
+                      json={"username": SMOKE_USER, "password": SMOKE_PASSWORD},
+                      timeout=30)
+    if r.status_code != 200:
+        raise SystemExit(
+            f"smoke sign-in failed ({r.status_code}). In --attach mode set "
+            f"MULESHIELD_ADMIN_USER/PASSWORD on the running backend to match, "
+            f"or run the isolated default."
+        )
+    TOKEN = r.json()["access_token"]
+    return TOKEN
+
+
 def pick_complaint() -> str:
-    rows = requests.get(f"{API}/api/v1/complaint/list", params={"limit": 20}, timeout=30).json()
+    rows = requests.get(f"{API}/api/v1/complaint/list", params={"limit": 20},
+                        headers=auth_headers(), timeout=30).json()
     for row in rows:
-        r = requests.get(f"{API}/api/v1/predict/cashout/{row['ticket_id']}", timeout=90)
+        r = requests.get(f"{API}/api/v1/predict/cashout/{row['ticket_id']}",
+                         headers=auth_headers(), timeout=90)
         if r.status_code == 200 and len(r.json().get("ranked_candidates", [])) == 5:
             return row["ticket_id"]
     raise SystemExit("no usable complaint")
@@ -212,10 +279,32 @@ def control_labels(page) -> list[str]:
     return out
 
 
+def reassert_session(page) -> None:
+    """Put the bearer token back before each route.
+
+    The sweep clicks every control on every screen, so it will eventually
+    provoke a 401 -- and services/api.js clears the token on any 401, which
+    cascades: one refusal signs the sweep out and every screen after it is the
+    login form wearing a clean bill of health.
+
+    Re-seeding per route keeps each screen's result independent. It is not
+    papering over the 401s -- they are still collected and reported below. It
+    stops ONE of them from masking every finding that would have come after.
+    Session lifetime has its own dedicated check in login_check().
+    """
+    try:
+        page.evaluate(
+            "t => window.localStorage.setItem('muleshield:token', t)", TOKEN)
+    except Exception:
+        pass
+
+
 def walk(page, name: str, path: str) -> None:
     print(f"{NEWLINE}-- {name} --")
     before_err = len(console_errors)
     page.goto(APP + path, wait_until="networkidle", timeout=90_000)
+    reassert_session(page)
+    page.reload(wait_until="networkidle", timeout=90_000)
     page.wait_for_timeout(4500 if name in ("map", "graph") else 2500)
 
     body = page.inner_text("body")
@@ -331,9 +420,21 @@ def selection_check(page, cid: str) -> None:
         note("selection", "too few queue rows to test selection")
         return
 
+    # Re-query before every click. React re-renders the queue when a row is
+    # selected, which detaches the handles captured a moment ago -- the same
+    # failure control_labels() documents for labels, and it crashed the whole
+    # sweep here rather than reporting a finding.
     seen, first = [], shown()
     for i in (1, 2, 3):
-        rows[i].click()
+        current = [r for r in page.query_selector_all("button")
+                   if re.search(r"1930-\d{6}", r.inner_text() or "")]
+        if i >= len(current):
+            break
+        try:
+            current[i].click()
+        except Exception as e:
+            note("selection", f"row {i} could not be clicked: {type(e).__name__}")
+            break
         page.wait_for_timeout(1600)
         seen.append(shown())
 
@@ -390,6 +491,85 @@ def intervention_check(page, cid: str) -> None:
         note("intervention", "the freeze did not move the case status")
 
 
+
+def login_check(browser) -> None:
+    """Sign in through the real form, in a context with no seeded token.
+
+    The rest of the sweep seeds localStorage because driving the form on every
+    page would be slow and would tell us nothing new. But the login screen is a
+    route, it has controls, and it is the one screen that gates every other --
+    so it gets exercised once, properly.
+    """
+    print(f"{NEWLINE}-- login (real form) --")
+    ctx = browser.new_context(viewport=VIEWPORT)
+    page = ctx.new_page()
+    try:
+        page.goto(APP, wait_until="networkidle", timeout=60_000)
+        page.fill("#username", SMOKE_USER)
+        page.fill("#password", SMOKE_PASSWORD)
+        page.click("button[type=submit]")
+        page.wait_for_timeout(2500)
+        body = page.inner_text("body")
+        if "Sign in" in body[:400]:
+            print("  FAIL the sign-in form did not admit the seeded officer")
+        else:
+            print("  OK   signed in through the form; console mounted")
+    except Exception as e:
+        print(f"  FAIL login screen: {type(e).__name__}: {e}")
+    finally:
+        ctx.close()
+
+
+def alert_check(page) -> None:
+    """Exercise the alert inbox end to end.
+
+    Its own check rather than relying on the generic sweep, for the same reason
+    intervention_check exists: acknowledging is a multi-step, state-changing
+    control, and the generic modal handling would dismiss it while reporting it
+    as exercised.
+    """
+    print(f"{NEWLINE}-- alerts --")
+    try:
+        # Evaluate AT THE CORPUS CLOCK, not at wall-clock time.
+        #
+        # The forward surface only sees complaints filed in the last two hours.
+        # The corpus is generated once and then ages, so by wall-clock "now" it
+        # has no open cases and the rule pass correctly raises nothing -- which
+        # would leave this check permanently skipping and the alerting
+        # deliverable permanently unexercised. Anchoring to the newest complaint
+        # tests the code rather than the calendar.
+        newest = requests.get(f"{API}/api/v1/complaint/list", params={"limit": 1},
+                              headers=auth_headers(), timeout=30).json()
+        as_of = (newest[0]["complaint_timestamp"][:19] if newest else "")
+        requests.post(f"{API}/api/v1/alerts/evaluate",
+                      params={"as_of": as_of} if as_of else {},
+                      headers=auth_headers(), timeout=180)
+        page.goto(f"{APP}/alerts", wait_until="networkidle", timeout=60_000)
+        page.wait_for_timeout(1200)
+
+        rows = page.query_selector_all(
+            "button:has-text('CRITICAL'), button:has-text('HIGH'), button:has-text('WATCH')")
+        if not rows:
+            print("  SKIP no alerts raised for the current window "
+                  "(regenerate the corpus, or check the as-of clock)")
+            return
+        rows[0].click()
+        page.wait_for_timeout(900)
+        if "Delivery attempts" not in page.inner_text("body"):
+            print("  FAIL detail pane did not open")
+            return
+
+        btn = page.get_by_text("Monitoring", exact=True).first
+        btn.click()
+        page.wait_for_timeout(1500)
+        body = page.inner_text("body")
+        if "closed by" in body or "Monitoring" in body:
+            print("  OK   raised, opened, acknowledged with a disposition")
+        else:
+            print("  FAIL acknowledgement did not take")
+    except Exception as e:
+        print(f"  FAIL alert inbox: {type(e).__name__}: {e}")
+
 def exercised_report() -> list[str]:
     """
     What the sweep actually did, read back from the audit trail.
@@ -400,7 +580,8 @@ def exercised_report() -> list[str]:
     failed to exercise, so a weakened test fails loudly.
     """
     try:
-        entries = requests.get(f"{API}/api/v1/audit", params={"limit": 500}, timeout=15).json()
+        entries = requests.get(f"{API}/api/v1/audit", params={"limit": 500},
+                               headers=auth_headers(), timeout=15).json()
     except requests.RequestException as e:
         return [f"could not read the audit trail: {e}"]
 
@@ -409,6 +590,9 @@ def exercised_report() -> list[str]:
         "status change": "changed status",
         "assignment": "assigned case",
         "account freeze": "froze account",
+        # Phase 4. Without these the sweep would go on reporting clean while the
+        # alerting deliverable silently stopped being exercised.
+        "alert acknowledgement": "acknowledged alert",
     }
     missing = [name for name, needle in expected.items() if needle not in actions]
 
@@ -425,24 +609,47 @@ def run_sweep() -> None:
 
     requests.get(f"{API}/health", timeout=10).raise_for_status()
     requests.get(APP, timeout=10).raise_for_status()
+
+    # Before anything else. Every API call this script makes, and every page it
+    # opens, is now behind a bearer token.
+    sign_in()
+    print(f"  signed in as {SMOKE_USER}")
+
     cid = pick_complaint()
     print(f"complaint: {cid}")
 
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        page = browser.new_page(viewport=VIEWPORT)
+        # Seed the bearer token BEFORE any page script runs, or Gate() renders the
+        # login form and every walk below sweeps a screen that mounted nothing.
+        # The storage key is services/auth.js TOKEN_KEY.
+        ctx = browser.new_context(viewport=VIEWPORT)
+        ctx.add_init_script(
+            "window.localStorage.setItem('muleshield:token', %s)" % json.dumps(TOKEN))
+        page = ctx.new_page()
         wire(page)
+
+        # Drive the real sign-in form once, so the login screen is COVERED rather
+        # than only bypassed -- it is a route like any other and it regressed
+        # once already.
+        login_check(browser)
 
         for name, path in (
             ("triage", f"/?c={cid}"),
             ("map", f"/map?c={cid}"),
             ("graph", f"/graph?c={cid}"),
             ("intercept", f"/intercept?c={cid}"),
+            # Previously uncovered. /model was never in this list; /risk and
+            # /alerts are the Phase 3 and Phase 4 deliverables.
+            ("model", "/model"),
+            ("risk", "/risk"),
+            ("alerts", "/alerts"),
         ):
             walk(page, name, path)
 
         selection_check(page, cid)
         intervention_check(page, cid)
+        alert_check(page)
 
         print(f"{NEWLINE}-- deep links / edge cases --")
         for name, path in (

@@ -85,35 +85,68 @@ overnight audit already listed opening hours as an unused signal.
 
 This is worth a slide. It shows the console catching something the model misses.
 
-### 2.3 The ranker does not beat distance-sorting at K=5
+### 2.3 We do not claim the ranker beats distance-sorting
 
-**0.7136 against 0.7217**, and the difference is not statistically significant at
-any K (paired McNemar over 618 held-out cash-outs). Top-1 sits exactly on the
-Bayes bound for this generator.
+On the corpus this decision was written against, Top-5 was **0.7136 against
+0.7217** — behind — and the difference was not statistically significant at any K
+(paired McNemar over 618 held-out cash-outs).
 
-The defensible claim is **the narrowing — 1,000 ATMs to 5** — not that the model
-outperforms a distance rule. The Model Performance screen states this unprompted.
-Better a judge reads it there than finds it themselves.
+**The regeneration flipped the sign and does not change the decision.** On the
+current corpus Top-5 is **0.7359 against 0.7150** — ahead by two points — while Top-1
+is still behind at **0.2641 against 0.2786**. The significance test has not been
+re-run on this corpus, so a two-point lead is not a result we are entitled to
+quote, and quoting it would be exactly the behaviour §2.4 exists to prevent:
+promoting a number because it started looking good.
+
+The defensible claim is unchanged and does not depend on the sign: **the
+narrowing — 1,000 ATMs to 5**. The Model Performance screen states this
+unprompted. Better a judge reads it there than finds it themselves.
 
 ### 2.4 Retracted metrics must stay retracted
 
 The figures below were invalidated by the leakage audit and must never reappear:
 
-| Retracted | Actual |
-|---|---|
-| 98.5% Top-3 | 0.5615 |
-| 0.9996 F1 | 0.8955 |
-| 1.2 s countdown MAE | 11.86 min |
+| Retracted | Actual when retracted | Current |
+|---|---|---|
+| 98.5% Top-3 | 0.5615 | 0.5781 |
+| 0.9996 F1 | 0.8955 | 0.9050 |
+| 1.2 s countdown MAE | 11.86 min | 11.66 min |
 
 They survived for weeks because they were hand-typed in the frontend. Every
 figure on screen is now generated from `data/metrics.json`, which only the
 training and evaluation scripts write. **Do not hand-edit that file.**
 
-### 2.5 87.4% is the search zone, not Top-5
+### 2.5 The search-zone number is not the Top-5 number
 
-Two different operating points. The zone contains 87.4% with a median of 8 ATMs;
-Top-5 containment is 0.7136. A test asserts Top-5 < 0.80 so the zone number
-cannot migrate into the Top-5 slot.
+Two different operating points. The zone contains **87.0%** with a median of 7
+ATMs; Top-5 containment is **0.7359**. A test asserts Top-5 < 0.80 so the zone
+number cannot migrate into the Top-5 slot.
+
+### 2.6 Alert thresholds are relative to the surface, not absolute
+
+`R-HIGH-CONVERGE` fires on a cell carrying `CONVERGE_EXCESS` (2.5) times the mean
+case count of the live cell-windows, not on a fixed count. It used to be a fixed
+three, which was right for a surface holding a dozen complaints and meaningless
+at the load the problem statement names: at 8,000 complaints/day, 664 of 666
+cell-windows cleared it and one pass raised 685 alerts.
+
+`R-CRIT-RUPEES` is deliberately **not** relative — "₹50 lakh is about to be
+withdrawn in the next hour" means the same thing whatever else is happening. But
+at national load many cells clear ₹50 lakh, so **a deployment has to set
+`MULESHIELD_CRIT_RUPEES` against its own capacity.** All four thresholds are
+environment variables because an alert budget belongs to the force running it,
+not to us.
+
+### 2.7 Every sqlite access takes the lock, reads included
+
+`backend/db.py` holds one connection and one `RLock`. Do not "optimise" a read by
+skipping the lock: only writes took it until the final build, and interleaving
+reads and writes on a shared connection made sqlite3 misreport its own exception
+classes — a UNIQUE violation that `insert_alert` catches by design arrived as a
+bare `DatabaseError` and escaped as a 500. Forty-three of them in one stress pass.
+
+If contention ever becomes real, the answer is a connection pool or thread-local
+connections, not a partially-held lock.
 
 ---
 

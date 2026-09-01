@@ -70,9 +70,18 @@ function bandFor(score, cuts) {
 }
 
 /** Area proportional to intensity, clamped so one huge cell cannot eat the map. */
-function radiusFor(score, maxScore) {
-  const scale = maxScore > 0 ? 28 / Math.sqrt(maxScore) : 1
-  return Math.max(4, Math.min(28, Math.sqrt(Math.max(0, score)) * scale))
+function radiusFor(score) {
+  // Area proportional to forecast rupees, on an ABSOLUTE scale rather than one
+  // normalised to whatever is currently on screen.
+  //
+  // The adaptive version looked better in isolation -- the biggest marker always
+  // filled the same space -- and that was the problem. Drilling from national
+  // into one state re-normalised every radius, so a cell that had just been a
+  // small dot became a large one without its forecast changing. An operator
+  // reading size as severity would have been misled by the act of zooming in.
+  // Absolute sizing spans 5-26 px across roughly Rs 4k to Rs 1M, so a marker
+  // means the same thing at every scope.
+  return Math.max(5, Math.min(26, Math.sqrt(Math.max(0, score)) * 0.08))
 }
 
 /** Roll cells up to one marker per group, at the score-weighted centroid. */
@@ -111,7 +120,7 @@ function rollUp(cells, key) {
 
 // ── Map ────────────────────────────────────────────────────────────────────
 
-function HotspotMap({ points, cuts, maxScore, onSelect, focusKey }) {
+function HotspotMap({ points, cuts, onSelect, focusKey }) {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
   const layerRef = useRef(null)
@@ -164,7 +173,7 @@ function HotspotMap({ points, cuts, maxScore, onSelect, focusKey }) {
       // index.css inverts the TILE pane only. A canvas heat layer would be
       // inverted along with the basemap and come out cyan.
       L.circleMarker([p.lat, p.lon], {
-        radius: radiusFor(p.score, maxScore),
+        radius: radiusFor(p.score),
         fillColor: band.fill,
         color: band.stroke,
         weight: band.key === 'critical' ? 2 : 1,
@@ -179,10 +188,23 @@ function HotspotMap({ points, cuts, maxScore, onSelect, focusKey }) {
               · ${100 - live}% historical prior</span>
           </div>`
         )
+        // Hover reads, click commits. Scanning a national surface by clicking
+        // every marker is not scanning -- the popup steals focus, recentres the
+        // map and has to be dismissed. A tooltip lets an officer sweep the map
+        // and read forecast, district and case count without changing anything.
+        .bindTooltip(
+          `<div style="font-family:Inter,system-ui,sans-serif;font-size:11.5px;line-height:1.5">
+             <b>${p.name || p.cell_id}</b><br/>
+             <span style="opacity:.75">${p.district || p.state || '—'}</span><br/>
+             <b>${amountShort(p.score)}</b> forecast · ${p.case_count} case(s)<br/>
+             <span style="opacity:.75">${live}% live · ${p.atm_count} ATM(s)</span>
+           </div>`,
+          { direction: 'top', offset: [0, -4], opacity: 1, className: 'hotspot-tip' }
+        )
         .on('click', () => selectRef.current?.(p))
         .addTo(layer)
     })
-  }, [points, cuts, maxScore])
+  }, [points, cuts])
 
   // ── Frame the current scope, without touching the instance ─────────────
   useEffect(() => {
@@ -286,8 +308,6 @@ export default function RiskHeatmap() {
 
   // Anchored to the national surface, before any scope filter. See nationalCuts.
   const cuts = useMemo(() => nationalCuts(allCells), [allCells])
-  const maxScore = useMemo(
-    () => allCells.reduce((m, c) => Math.max(m, c.score), 0), [allCells])
 
   const scoped = useMemo(() => allCells.filter(c =>
     (!scopeState || c.state === scopeState) &&
@@ -348,6 +368,22 @@ export default function RiskHeatmap() {
 
   return (
     <div className="p-3 space-y-3 bg-ink-bg">
+
+      {/* ── Page header ─────────────────────────────────────────────────
+          Names the thing precisely. "Forecast", not "heatmap": a heatmap is a
+          picture of what has already happened, and this screen exists because
+          that picture already exists elsewhere. The window is stated in the
+          subtitle because a forecast without a horizon is not actionable. */}
+      <div className="flex items-baseline justify-between flex-wrap gap-x-3 gap-y-1">
+        <h1 className="text-[15px] font-semibold text-zinc-100 flex items-center gap-2">
+          <Flame size={15} className="text-red-400" />
+          Tactical Risk Forecast
+        </h1>
+        <p className="text-[11.5px] text-zinc-500">
+          Forward cash-out intensity aggregated over open complaints in the
+          golden hour <span className="mono tnum text-zinc-400">(0–120 min)</span>
+        </p>
+      </div>
 
       {/* Governance. The screen forecasts; it does not act. */}
       <div className="rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2
@@ -440,16 +476,16 @@ export default function RiskHeatmap() {
         <div className="flex items-center gap-1.5 text-[12px] flex-wrap">
           <button onClick={() => { setScopeState(''); setScopeDistrict(''); setSelected(null) }}
                   className={`px-2 py-1 rounded border transition-colors ${
-                    scopeState ? 'border-ink-border text-zinc-400 hover:text-white'
-                               : 'border-aegis-accent/50 bg-ink-panel text-white'}`}>
+                    scopeState ? 'border-ink-border text-zinc-400 hover:text-zinc-100'
+                               : 'border-aegis-accent/50 bg-ink-panel text-zinc-100'}`}>
             National
           </button>
           {scopeState && <>
             <ChevronRight size={12} className="text-zinc-600" />
             <button onClick={() => { setScopeDistrict(''); setSelected(null) }}
                     className={`px-2 py-1 rounded border transition-colors ${
-                      scopeDistrict ? 'border-ink-border text-zinc-400 hover:text-white'
-                                    : 'border-aegis-accent/50 bg-ink-panel text-white'}`}>
+                      scopeDistrict ? 'border-ink-border text-zinc-400 hover:text-zinc-100'
+                                    : 'border-aegis-accent/50 bg-ink-panel text-zinc-100'}`}>
               {scopeState}
             </button>
           </>}
@@ -457,8 +493,8 @@ export default function RiskHeatmap() {
             <ChevronRight size={12} className="text-zinc-600" />
             <button onClick={() => setSelected(null)}
                     className={`px-2 py-1 rounded border transition-colors ${
-                      selected ? 'border-ink-border text-zinc-400 hover:text-white'
-                               : 'border-aegis-accent/50 bg-ink-panel text-white'}`}>
+                      selected ? 'border-ink-border text-zinc-400 hover:text-zinc-100'
+                               : 'border-aegis-accent/50 bg-ink-panel text-zinc-100'}`}>
               {scopeDistrict}
             </button>
           </>}
@@ -500,7 +536,7 @@ export default function RiskHeatmap() {
                             text-[11px] text-zinc-300 mono" />
           {asOf && (
             <button onClick={() => setAsOf('')}
-                    className="text-[11px] text-zinc-500 hover:text-white">clear</button>
+                    className="text-[11px] text-zinc-500 hover:text-zinc-100">clear</button>
           )}
         </div>
 
@@ -513,13 +549,13 @@ export default function RiskHeatmap() {
                       className={`px-2 py-0.5 rounded-full border text-[11px] transition-colors ${
                         categories.includes(t)
                           ? 'border-red-500/60 bg-red-500/15 text-red-200'
-                          : 'border-ink-border bg-ink-panel text-zinc-400 hover:text-white'}`}>
+                          : 'border-ink-border bg-ink-panel text-zinc-400 hover:text-zinc-100'}`}>
                 {t}
               </button>
             ))}
             {categories.length > 0 && (
               <button onClick={() => setCategories([])}
-                      className="px-2 py-0.5 text-[11px] text-zinc-500 hover:text-white">
+                      className="px-2 py-0.5 text-[11px] text-zinc-500 hover:text-zinc-100">
                 all categories
               </button>
             )}
@@ -551,7 +587,7 @@ export default function RiskHeatmap() {
                 </div>
               </div>
             ) : (
-              <HotspotMap points={points} cuts={cuts} maxScore={maxScore}
+              <HotspotMap points={points} cuts={cuts}
                           onSelect={handleSelect} focusKey={focusKey} />
             )}
           </div>
@@ -629,7 +665,7 @@ export default function RiskHeatmap() {
                     <Link key={id} to={`/?c=${encodeURIComponent(id)}`}
                           className="block px-2 py-1 rounded border border-ink-border
                                      bg-ink-panel mono text-[11px] text-zinc-300
-                                     hover:text-white hover:border-zinc-600 transition-colors">
+                                     hover:text-zinc-100 hover:border-zinc-600 transition-colors">
                       {formatTicket(id)}
                     </Link>
                   ))}

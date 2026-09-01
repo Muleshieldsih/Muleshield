@@ -123,12 +123,33 @@ EARTH_R_KM = 6371.0
 # ── Timestamps ───────────────────────────────────────────────────────────────
 
 def parse_ts(value: Any) -> Optional[datetime]:
-    """Tolerant ISO parse, returning naive local-comparable datetimes.
+    """Tolerant ISO parse, returning naive LOCAL datetimes.
 
     Two formats coexist in this system and always will: seed complaints carry
     naive local time ("2026-05-27T19:43:13"), while complaints ingested through
-    the console carry an explicit UTC offset. Comparing them requires stripping
-    the offset rather than rejecting either.
+    the console carry an explicit UTC offset -- backend/routers/complaint.py
+    stamps datetime.now(timezone.utc). Reconciling them means APPLYING the
+    offset, not discarding it.
+
+    RECORDED REVERSAL, and the most serious defect found in this build.
+    This function used to finish with .replace(tzinfo=None) applied straight to
+    the parsed value, which threw the offset away rather than converting it. On
+    an IST machine that read every freshly ingested complaint as 330 minutes
+    old. hotspot_surface opens a 120-minute window, so a complaint filed
+    through the production path was dropped from the forward surface at the
+    moment it arrived and could never raise an alert. The surface could only
+    ever be driven by the seeded corpus: the one input this system exists to
+    react to was the one input it ignored.
+
+    Nothing caught it because both the evaluation and the hotspot tests replay
+    historical epochs with an as_of drawn from the same naive-local corpus, so
+    the offset cancelled on both sides of every comparison. It is only visible
+    when a real UTC-stamped complaint meets a local wall clock, which is
+    exactly the demo path and nothing else. See TestIngestedComplaintIsLive in
+    backend/tests/test_hotspot.py, which now asserts it end to end.
+
+    An aware value is converted to local time and then made naive; a naive
+    value is assumed to be local already, which is what the corpus is.
 
     Lifted out of backend/routers/complaint.py, which now imports it from here,
     so there is exactly one tolerant parser instead of two that can drift.
@@ -136,11 +157,15 @@ def parse_ts(value: Any) -> Optional[datetime]:
     if value is None or isinstance(value, float):
         return None
     if isinstance(value, datetime):
-        return value.replace(tzinfo=None)
-    try:
-        return datetime.fromisoformat(str(value).replace("Z", "+00:00")).replace(tzinfo=None)
-    except (TypeError, ValueError):
-        return None
+        parsed = value
+    else:
+        try:
+            parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        except (TypeError, ValueError):
+            return None
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone()
+    return parsed.replace(tzinfo=None)
 
 
 # ── Geometry ─────────────────────────────────────────────────────────────────

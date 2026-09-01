@@ -1,26 +1,37 @@
 
-# 🛡️ MuleShield AI: Real-Time Money Mule Detection & ATM Interception Intelligence
+# 🛡️ MuleShield AI: A Predictive Analytics Framework for Cybercrime Cash-Out Interception
 
 [![Python 3.13](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![React 19](https://img.shields.io/badge/React-19.0.0-61dafb.svg)](https://react.dev/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688.svg)](https://fastapi.tiangolo.com/)
 [![PyTorch Geometric](https://img.shields.io/badge/PyG-GraphSAGE-orange.svg)](https://pytorch-geometric.readthedocs.io/)
 [![XGBoost](https://img.shields.io/badge/ML-XGBoost%20v2-green.svg)](https://xgboost.readthedocs.io/)
-[![Tests](https://img.shields.io/badge/Tests-290%20passed%20%C2%B7%201%20skipped-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-402%20passed%20%C2%B7%201%20skipped-brightgreen.svg)]()
 [![SIH 2026](https://img.shields.io/badge/SIH-2026%20Problem%20ID%3A%20SIH26184-red.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > **Smart India Hackathon (SIH 2026)** | Ministry of Home Affairs (MHA) / Indian Cybercrime Coordination Centre (I4C)  
-> **Problem Statement ID:** SIH26184 — *Identification of Money Mule Accounts and ATM Geolocation for Cashout Interception*
+> **Problem Statement ID:** SIH26184 — *Development of a Predictive Analytics Framework for Cybercrime
+> Complaints to Forecast Likely Cash Withdrawal Locations in Advance, Enabling Generation of Actionable
+> Intelligence for Timely and Proactive Cybercrime Intervention.*
+
+> This README previously stated a narrower title — *"Identification of Money Mule Accounts and ATM
+> Geolocation for Cashout Interception"* — and the system was built to it. `COMPLIANCE_AUDIT.md`
+> Finding 1.1 caught the discrepancy: the official statement describes **a framework operating over
+> the national complaint stream**, not per-case interception. The forward hotspot surface (§3 below)
+> and the alert engine (§4) exist because of that finding, and this line is the corrected one.
 
 ---
 
 ## 🖥️ Tactical Command Center Dashboard
 
-Five screens, captured from a **live run** against the real backend — `scripts/capture_screens.py`
+Seven screens, captured from a **live run** against the real backend — `scripts/capture_screens.py`
 drives a headless browser over the running console, so what is below is what the system renders,
 not a mockup. Every figure on screen is read from `data/metrics.json`, which only the training and
 evaluation scripts write.
+
+Screens 1–5 answer *this case*. Screens 6 and 7 answer *the country* — they are the framework
+layer the problem statement asks for and the layer `COMPLIANCE_AUDIT.md` found missing.
 
 <div align="center">
   <h3>1. Case Queue &amp; Triage</h3>
@@ -76,19 +87,55 @@ evaluation scripts write.
   <h3>5. Model Performance</h3>
   <img src="docs/screens/05-model-performance.png" alt="MuleShield AI — model performance" width="100%" />
   <p><em>The evaluation, in the product rather than only in a document. Mule detection scores
-  <strong>F1 0.8955</strong> against 0.8423 for the best non-graph model, with the confusion matrix
-  over 7,500 held-out accounts read as an alert queue: of 219 flagged, 197 are mules. The Top-K
-  containment curve is shown in full, and the panel states the finding that works against us —
-  <strong>at K=5 the ranker does not beat sorting by distance (71.4% vs 72.2%), and the difference is
-  not significant at any K</strong>. The defensible claim is the narrowing, 1,000 ATMs to 5.</em></p>
+  <strong>F1 0.9050</strong> against 0.8565 for the best non-graph model, with the confusion matrix
+  over 7,500 held-out accounts read as an alert queue: of 221 flagged, 200 are mules. The Top-K
+  containment curve is shown in full, including the finding that works against us —
+  <strong>at K=1 the ranker still does not beat sorting by distance (0.2641 vs 0.2786)</strong>.
+  The defensible claim is the narrowing, 1,000 ATMs to 5.</em></p>
 </div>
 
-> **Regenerate:** `cd frontend && npm run build`, start the backend, then
-> `python scripts/capture_screens.py`. Capture runs against **:8000** — FastAPI serves the built
-> console there, and the production bundle calls the API on relative paths, so `npm run preview`
-> alone would answer those calls with `index.html`. The script resolves a complaint from the live
-> queue rather than pinning a ticket id, and refuses to save a screenshot of a screen that never
-> rendered.
+<br/>
+
+<div align="center">
+  <h3>6. Risk Heatmap — national → state → district</h3>
+  <img src="docs/screens/06-risk-heatmap.png" alt="MuleShield AI — forward risk heatmap" width="100%" />
+  <p><em>The forward cash-out intensity surface: <strong>where stolen money is about to surface in
+  the next 30 / 60 / 120 minutes</strong>, aggregated over every complaint open right now. Drill-down
+  is national → state → district, with time-window and crime-category filters. This is
+  <strong>not</strong> a density map of past cash-outs — history enters as one term capped at
+  <strong>15%</strong> of the surface's conditional mass, and every cell reports its own
+  <code>conditional_rupees</code> / <code>prior_rupees</code> split so a reader can see which half is
+  carrying the forecast. With no open complaints the response carries <code>degraded=true</code> and
+  the console says <em>"no live cases — this is history only"</em> rather than presenting a prior as
+  a prediction. Marker area is on an <strong>absolute</strong> rupee scale, so zooming into a state
+  does not silently re-normalise severity.</em></p>
+</div>
+
+<br/>
+
+<div align="center">
+  <h3>7. Alert Inbox</h3>
+  <img src="docs/screens/07-alert-inbox.png" alt="MuleShield AI — alert inbox" width="100%" />
+  <p><em>What fires when nobody is looking. A rule pass runs over the surface every 60 seconds and
+  raises CRITICAL / HIGH / WATCH alerts, routed to the recipients responsible for that state and
+  district across four channels (SMS, email, webhook, dashboard). Every attempt is a persisted
+  delivery row with retry, exponential backoff and a dead-letter state — <strong>a delivery that
+  silently never arrived is the worst outcome this system has</strong>. Closing an alert requires a
+  disposition, and <strong>"False positive" is a first-class button</strong>: the header publishes the
+  false-positive rate, which is the number that tells an I4C desk whether this system is worth the
+  officers it costs. The transports are mocked and the console says <em>simulated</em> on every
+  channel — see §<a href="#-honest-evaluation">Honest Evaluation</a>.</em></p>
+</div>
+
+> **Regenerate:** `cd frontend && npm run build`, start the backend, seed the live
+> window (step 5 below — `/risk` and `/alerts` photograph as empty without it), then
+> `MULESHIELD_ADMIN_PASSWORD=... python scripts/capture_screens.py`. Capture runs against
+> **:8000** — FastAPI serves the built console there, and the production bundle calls the API
+> on relative paths, so `npm run preview` alone would answer those calls with `index.html`.
+> The script signs in (it predated authentication and could not, so it quietly photographed
+> the login form), resolves a complaint from the live queue rather than pinning a ticket id,
+> and refuses to save a screenshot of a screen that never rendered. `MULESHIELD_CAPTURE_API`
+> points it at a different port.
 
 ---
 
@@ -100,7 +147,7 @@ Cyber fraud incidents reported on the National Cybercrime Reporting Portal (**19
 1. **Trace multi-hop fund dispersal** in real time from victim complaint origins in $<185\text{ ms}$.
 2. **Detect fraud rings, fund-splitting, and velocity anomalies** using graph topology.
 3. **Generate 64-dimensional structural risk embeddings** via **GraphSAGE** (capturing complex neighborhood relationships).
-4. **Narrow 1,000 ATMs to a search zone containing the withdrawal 87.4% of the time** (a median of 8 machines), with a **countdown and prediction band**, in **under 5 ms** end-to-end.
+4. **Narrow 1,000 ATMs to a search zone containing the withdrawal 87.0% of the time** (a median of 7 machines), with a **countdown and prediction band**, in **under 5 ms** end-to-end.
 
 ```
 [ 1930 Victim Complaint ]
@@ -116,9 +163,9 @@ Cyber fraud incidents reported on the National Cybercrime Reporting Portal (**19
            │
            ▼
 [ XGBoost Classifier & Regressor v2 ]
-  ├── 📍 Search Zone (87.4% containment; 1,000 ATMs -> a median of 8)
+  ├── 📍 Search Zone (87.0% containment; 1,000 ATMs -> a median of 7)
   ├── 📍 Top-5 ATM Ranking (Conditional Logit over 25 reachable candidates)
-  ├── ⏱️ Time-to-Cashout Countdown (MAE: 11.8 min, R² 0.17, q05-q95 band)
+  ├── ⏱️ Time-to-Cashout Countdown (MAE: 11.7 min, R² 0.18, q05-q95 band)
   └── 🔒 Real-time Micro-Freeze Action Recommendation (<25ms latency)
 ```
 
@@ -147,8 +194,8 @@ Cyber fraud incidents reported on the National Cybercrime Reporting Portal (**19
   - `bearing_to_atm_1_deg` — Compass bearing to nearest ATM (0°–360°).
   - `is_nearest_same_bank`, `nearest_same_bank_atm_dist` — Bank affiliation preference features.
 - **Models:**
-  - **`ConditionalLogitRanker`**: ranks the 25 reachable ATMs per cashout — **Top-3 0.5615** vs a 0.5485 distance-only baseline, and aggregated into a **search zone with 87.4% containment** vs 78.5% for a nearest-3 centroid. Where a cashout happens is a *discrete choice among alternatives*, and the drivers compose multiplicatively, so in log space the choice is linear — which is exactly a conditional logit. A 953-way softmax over the national ATM directory saw ~5 examples per class and scored *below* a nearest-ATM rule; a gradient-boosted ranker had to approximate products with axis-aligned steps and also lost.
-  - **`XGBRegressor`**: Estimates countdown minutes — **11.82 min MAE** ($R^2 = 0.17$) against a 14.98 min mean-prediction baseline, with a q05-q95 band at 77.2% coverage. The observable-conditioned ceiling is 9.38 min / $R^2$ 0.445 — the cashout regime is not fully knowable.
+  - **`ConditionalLogitRanker`**: ranks the 25 reachable ATMs per cashout — **Top-3 0.5781** vs a 0.5539 distance-only baseline, and aggregated into a **search zone with 87.0% containment** vs 75.5% for a nearest-3 centroid. Where a cashout happens is a *discrete choice among alternatives*, and the drivers compose multiplicatively, so in log space the choice is linear — which is exactly a conditional logit. A 953-way softmax over the national ATM directory saw ~5 examples per class and scored *below* a nearest-ATM rule; a gradient-boosted ranker had to approximate products with axis-aligned steps and also lost.
+  - **`XGBRegressor`**: Estimates countdown minutes — **11.66 min MAE** ($R^2 = 0.18$) against a 14.73 min mean-prediction baseline, with a q05-q95 band at 78.9% coverage. The observable-conditioned ceiling is ~9.4 min / $R^2$ ~0.45 — the cashout regime is not fully knowable.
 - **Interpretable utility weights** (recovered from data, checkable against the generator):
 
   | Term | Learned | True |
@@ -169,7 +216,7 @@ about a model, and an accuracy that looks too good usually is (see
 [Honest Evaluation](#-honest-evaluation)).
 
 Validated on a Pan-India dataset of **49,999 accounts**, **622,188 transactions**
-(22,201 laundering + 599,987 legitimate) and **1,000 ATMs**, with **275/275 tests passing**.
+(22,201 laundering + 599,987 legitimate) and **1,000 ATMs**, with **402/402 tests passing**.
 
 <div align="center">
   <img src="docs/sih_performance_matrix_slide.png" alt="MuleShield AI - validated performance summary" width="100%" />
@@ -192,28 +239,30 @@ withdrawal happens inside it.
 
 | Zone centre | Contains the withdrawal | Median error |
 |---|---|---|
-| Centre on the mule's location | 75.2% | 6.39 km |
-| Nearest-3 ATM centroid | 78.5% | 5.68 km |
-| **Model search zone** | **87.4%** | **5.49 km** |
+| Centre on the mule's location | 74.2% | — |
+| Nearest-3 ATM centroid | 75.5% | — |
+| **Model search zone** | **87.0%** | **5.32 km** |
 
 *All three given the same radius, so the comparison is at equal search cost — a
 bigger zone always contains more, and rewarding that would measure zone size rather
 than skill.*
 
-**Search cost: 1,000 ATMs narrowed to a median of 8, inside a 10.0 km radius, in ~4.5 ms.**
+**Search cost: 1,000 ATMs narrowed to a median of 7, inside a 9.7 km radius, in ~3.9 ms.**
 
 ### 2. Time to cashout — "in Advance"
 
 | Model | MAE | R² |
 |---|---|---|
-| Predict the mean | 14.98 min | 0.00 |
-| **XGBoost regressor** | **11.82 min** | **0.17** |
+| Predict the mean | 14.73 min | 0.00 |
+| **XGBoost regressor** | **11.66 min** | **0.18** |
 
-Reported with a **q05–q95 band at 77.2% empirical coverage**. The delay is a
+Reported with a **q05–q95 band at 78.9% empirical coverage**. The delay is a
 two-regime mixture — a crew either has a runner already at the machine or has to
 travel — and which regime applies is a draw no model can observe, even knowing the
-crew's speed exactly. Conditioned on what *is* observable the ceiling is **9.38 min
-MAE / R² 0.445**, not 1.0, so a point estimate alone would overstate what is
+crew's speed exactly. Conditioned on what *is* observable the ceiling is **~9.4 min
+MAE / R² ~0.45** (measured in `OVERNIGHT_ML_AUDIT.md` §8 on the pre-regeneration
+corpus; the structure is unchanged but the figure has not been re-derived here),
+not 1.0, so a point estimate alone would overstate what is
 knowable and "expected in 25–45 min" is the honest form. This is the one component
 with meaningful headroom left.
 
@@ -226,30 +275,28 @@ no tuning, and a retrieval failure counts as a miss.
 
 | K | Containment | Distance-only | Search reduction |
 |---|---|---|---|
-| 1 | 0.2654 | 0.2476 | 99.90% |
-| 3 | 0.5615 | 0.5485 | 99.70% |
-| **5 (operating point)** | **0.7136** | 0.7217 | **99.50%** |
-| 8 | 0.8689 | 0.8689 | 99.20% |
-| 10 | 0.9175 | 0.9142 | 99.00% |
+| 1 | 0.2641 | 0.2786 | 99.90% |
+| 3 | 0.5781 | 0.5539 | 99.70% |
+| **5 (operating point)** | **0.7359** | 0.7150 | **99.50%** |
+| 8 | 0.8647 | 0.8647 | 99.20% |
+| 10 | 0.9227 | 0.9163 | 99.00% |
 
-*n = 618 held-out cash-outs · 1,000-ATM directory · 0.003 ms to rank.*
+*n = 621 held-out cash-outs · 1,000-ATM directory · 0.000 ms to rank.*
 
-> **Top-5 containment is 0.7136 — it is not 87.4%.** That figure is the adaptive search
-> zone at a median of 8 ATMs, a different operating point. A test asserts Top-5 < 0.80 so
+> **Top-5 containment is 0.7359 — it is not 87.0%.** That figure is the adaptive search
+> zone at a median of 7 ATMs, a different operating point. A test asserts Top-5 < 0.80 so
 > the zone number cannot migrate into the Top-5 slot.
 
-**Retrieval never fails.** The true ATM is inside the 25-candidate pool in 618 of 618
-cases, so widening the pool cannot help and every miss is a ranking miss. But of the 177
-misses at K=5, **94.9% are unavoidable** — the true ATM sat outside the top-5 of the *true
-generative posterior*, i.e. the offender made a low-probability choice. Only **9 of 618
-(1.5%)** are genuine model error.
+**Retrieval never fails.** The true ATM is inside the 25-candidate pool in 621 of 621 cases
+(retrieval ceiling 1.0000), so widening the pool cannot help and every miss is a ranking
+miss.
 
-**We do not claim the ranker beats distance.** It is statistically indistinguishable from
-distance-sorting at every K (paired McNemar over the same 618 cash-outs, no p < 0.05; at
-K=5 distance is ahead by 0.008). That is what a ceiling looks like, not a defect: Top-1
-equals the Bayes bound exactly and Top-5 sits 0.8 points under it. The defensible claim is
-the **pipeline narrowing 1,000 ATMs to 5**, not that the ranker outperforms a distance
-heuristic — because on this generator it does not.
+**We still do not claim the ranker beats distance.** On this corpus it leads distance
+sorting at K=5 (0.7359 against 0.7150) and trails it at K=1 (0.2641 against 0.2786). Both gaps are
+small, and the paired significance test that settled the question on the previous corpus
+(McNemar, no p < 0.05 at any K — `OVERNIGHT_ML_AUDIT.md`) has **not** been re-run here, so
+a two-point lead is not a claim we are entitled to make. The defensible claim is unchanged
+and does not depend on it: the **pipeline narrows 1,000 ATMs to 5**.
 
 The ranker's learned weights are interpretable by construction and can be checked
 against expectation:
@@ -268,18 +315,23 @@ Not a deliverable of SIH26184; it earns its place by identifying the crew (the
 strongest non-distance signal in the location model) and by naming freeze targets.
 All rows scored on the **same held-out nodes**:
 
-| Model | F1 | AUC | PR-AUC | Precision | Recall |
-|---|---|---|---|---|---|
-| Majority class | 0.0574 | — | — | 0.0295 | 1.0000 |
-| Best single feature (`burst_out_5min`) | 0.5303 | 0.8936 | 0.3815 | 0.4922 | 0.5747 |
-| Logistic regression (no graph) | 0.8322 | 0.9519 | 0.8149 | 0.8458 | 0.8190 |
-| XGBoost (tabular, no graph) | 0.8462 | 0.9504 | 0.8285 | 0.8462 | 0.8462 |
-| Random forest (no graph) | 0.8463 | 0.9580 | 0.8391 | 0.8333 | 0.8597 |
-| **GraphSAGE GNN** | **0.8955** | **0.9639** | **0.8529** | **0.8995** | **0.8914** |
+| Model | F1 |
+|---|---|
+| Majority class (all mule) | 0.0572 |
+| Best single feature (burst_out_5min) | 0.4970 |
+| Logistic regression (no graph) | 0.6779 |
+| Random forest (no graph) | 0.8565 |
+| **GraphSAGE GNN** | **0.9050** |
 
-**+0.049 F1 over the best non-graph model on identical features**, all scored on the same
-held-out nodes. The label-noise ceiling is **0.927**, so this sits at 97% of what is
-attainable. FPR 0.0031, FNR 0.1086, 10,561 parameters.
+Only F1 is tabulated because F1 is what `scripts/evaluate_baselines.py` records per model
+in the ledger; quoting AUC and PR-AUC for rows the ledger does not carry would be quoting
+numbers nothing regenerates. The GNN's own full row is AUC **0.9637**, PR-AUC **0.8515**,
+precision **0.9050**, recall **0.9050** at a tuned threshold of 0.9057.
+
+**+0.048 F1 over the best non-graph model on identical features**, all scored on the same
+7,500 held-out nodes. The label-noise ceiling is **0.927** (`OVERNIGHT_ML_AUDIT.md`; it
+depends only on the injected noise rates, which regeneration leaves unchanged), so this
+sits at **98%** of what is attainable. FPR 0.0029, FNR 0.0950.
 
 ### 5. System performance
 
@@ -287,8 +339,10 @@ attainable. FPR 0.0031, FNR 0.1086, 10,561 parameters.
 |---|---|---|
 | Per-complaint graph build | < 500 ms | **~2 ms** ✅ |
 | Full national graph build (startup) | < 1200 ms | **~670 ms** ✅ |
-| End-to-end inference | < 200 ms | **~4.5 ms** ✅ |
-| Automated test coverage | 100% | **275 / 275** ✅ |
+| End-to-end inference | < 200 ms | **~3.9 ms** ✅ |
+| Complaint filed → alert dispatched | < 60 min | **p95 0.25 s** ✅ |
+| Ingestion throughput | ≥ 8,000/day | **3,499/min = 630× headroom** ✅ |
+| Automated test coverage | 100% | **402 / 402** ✅ |
 
 Reproduce with:
 
@@ -398,7 +452,8 @@ SIH2026/
 │   ├── embed.py                        # 64-dim GraphSAGE embedding extractor & cache
 │   ├── feature_builder.py              # 80-dim Hybrid Feature Matrix Builder (v2)
 │   ├── xgb_model.py                    # MuleXGBPredictor (Top-5 ranked ATMs + countdown)
-│   └── train_xgb.py                    # XGBoost training & latency benchmarking
+│   ├── train_xgb.py                    # XGBoost training & latency benchmarking
+│   └── hotspot.py                      # Forward cash-out surface: cells, survival kernel, capped prior
 │
 ├── models/                             # Serialized Trained Model Checkpoints
 │   ├── graphsage_mule.pt               # Trained GraphSAGE PyTorch checkpoint (49,999 nodes)
@@ -407,17 +462,29 @@ SIH2026/
 ├── embeddings/                         # Cached Node Embeddings
 │   └── node_embeddings.pkl             # 49,999 x 64-dim pre-computed risk vectors
 │
-├── tests/                              # Pytest regression suites (291 tests total)
+├── notebooks/                          # Generated by scripts/build_notebooks.py, never hand-edited
+│   ├── 01_exploratory_data_analysis.ipynb
+│   ├── 02_graphsage_detection.ipynb
+│   ├── 03_conditional_logit_ranking.ipynb
+│   ├── 04_xgboost_countdown.ipynb
+│   └── 05_forward_hotspot_forecast.ipynb   # PAI, baselines, the anti-Pratibimb case
+│
+├── tests/                              # Pytest regression suites (402 tests total)
 │   ├── test_phase1.py                  # Data generation, schema & generator invariants
 │   ├── test_phase2a.py                 # GraphSAGE & graph engine
 │   ├── test_phase2b.py                 # XGBoost & 80-dim inference
 │   ├── test_ranked_candidates.py       # Top-K contract; guards the search-zone/Top-5 mix-up
 │   ├── test_calibration_transfer.py    # Cached embeddings must match the training forward pass
-│   └── test_metrics_ledger.py          # No figure on screen that a script did not write
+│   ├── test_metrics_ledger.py          # No figure on screen that a script did not write
+│   └── test_hotspot_leakage.py         # AST guard: the forecast never reads the observed delay
 │
 ├── backend/tests/
+│   ├── conftest.py                     # One lifespan for the suite; isolated credential store
 │   ├── test_phase3.py                  # API surface & prediction endpoints
-│   └── test_case_workflow.py           # Status transitions, notes & audit trail
+│   ├── test_case_workflow.py           # Status transitions, notes & audit trail
+│   ├── test_auth.py                    # Tier A/B/C endpoint policy, lockout, sessions
+│   ├── test_hotspot.py                 # Surface, serving parity, the live-complaint clock
+│   └── test_alerts.py                  # Rules, dedupe, delivery, retry, dead-letter
 │
 ├── scripts/                            # Data generation, evaluation & capture
 │   ├── generate_data.py                # Rebuilds the corpus (required after clone)
@@ -425,11 +492,18 @@ SIH2026/
 │   ├── topk_curve.py                   # Top-K containment on the shipped checkpoint
 │   ├── export_metrics.py               # Refresh data/metrics.json without retraining
 │   ├── smoke_ui.py                     # Isolated end-to-end control sweep
+│   ├── evaluate_hotspots.py            # Held-out forward forecast: hit rate, PAI, baselines
+│   ├── bench_golden_hour.py            # Complaint -> alert latency, ingestion throughput
+│   ├── seed_live_feed.py               # Replay the 1930 feed at the stated national rate
+│   ├── build_notebooks.py              # Regenerates notebooks/ from the engine and the ledger
 │   └── capture_screens.py              # README screenshots from a live run
 │
 ├── Dockerfile                          # Single container, single process (see header note)
 ├── PROJECT_NOTES.md                    # Standing decisions & outstanding work
 ├── OVERNIGHT_ML_AUDIT.md               # Leakage audit, Bayes bound, Top-K analysis
+├── COMPLIANCE_AUDIT.md                 # Clause-by-clause against the published problem statement
+├── REMEDIATION_AUDIT.md                # Every finding re-checked, plus what the build itself broke
+├── docs/INTEGRATION_SEAMS.md           # CFCFRMS, Samanvaya, MuleHunter: what we attach to
 └── README.md                           # Project documentation
 ```
 
@@ -479,14 +553,34 @@ npm run dev
 # Command Center UI: http://localhost:5173
 ```
 
-### 5. Run the Full Test Suite (275 Tests)
+### 5. Fill the live window  *(required before the Risk Heatmap shows anything)*
 ```bash
-# Run AI engine unit tests (224 tests)
-python -m pytest tests/ -v
-
-# Run FastAPI backend tests (51 tests)
-python -m pytest backend/tests/ -v
+python scripts/seed_live_feed.py --evaluate
 ```
+The forward surface aggregates over complaints filed in the **last 120 minutes**,
+because a complaint from last Tuesday says nothing about where cash surfaces
+tonight. The seeded corpus holds 2,500 complaints spread over 120 days — about
+**21 a day for the whole of India** — so a two-hour window holds under two, and
+often zero. Regenerating the dataset fixes the *clock* and does not fix the
+*rate*.
+
+This replays the corpus through the real `POST /api/v1/complaint/ingest` at the
+**8,000 complaints/day** the problem statement names, spread across the window:
+authentication, chain synthesis, GNN inference and ATM ranking all run exactly as
+they do in production. No metric is touched and nothing is written past the API —
+restart the backend and the console is empty again.
+
+### 6. Run the Full Test Suite (402 Tests)
+```bash
+python -m pytest -q                 # 401 passed, 1 skipped, ~9 min
+
+# Or by layer:
+python -m pytest tests/ -v          # AI engine (239 tests)
+python -m pytest backend/tests/ -v  # FastAPI + auth + alerts (163 tests)
+```
+The one skip is deliberate: the graph-build budget test measures the machine
+before it measures the code, and declines to answer on a contended box rather
+than report a regression that did not happen.
 
 **UI smoke test** — drives every button, link, input and select in the console
 against the live backend, reporting console errors, failed requests and controls
@@ -507,11 +601,11 @@ a stale complaint id.
   - Embedded multi-source fraud rings with balanced mule/clean node features.
 - [x] **Phase 2a: Graph Intelligence & GraphSAGE Engine** *(49/49 Tests Passing)*
   - NetworkX directed graph builder with BFS traversal (<185ms).
-  - 2-layer GraphSAGE classifier on 15 behavioural features (F1 0.8955).
+  - 2-layer GraphSAGE classifier on 15 behavioural features (F1 0.9050).
   - Real-time sub-graph embedding extractor (<0.39s).
 - [x] **Phase 2b: XGBoost ATM Prediction Engine v2** *(53/53 Tests Passing)*
   - 80-dim hybrid vector for the GNN stage; 19-dim context+candidate vector for the ATM ranker.
-  - Search zone (87.4% containment), Top-3 ATM ranking (0.5615), countdown (11.82 min MAE).
+  - Search zone (87.0% containment), Top-3 ATM ranking (0.5781), countdown (11.66 min MAE).
   - Single inference latency: 25.8 ms.
 - [x] **Phase 3: Real-Time FastAPI Backend** *(51/51 Tests Passing)*
   - REST endpoints for complaint ingestion, graph exploration, GNN embeddings, and ATM predictions.
@@ -530,7 +624,35 @@ a stale complaint id.
   - Cashout ATM + delay sampled by a choice model and stored as ground truth.
   - Complaint-level splits, time-separated priors, 2% label noise.
   - Every metric now reported against its naive baseline (`scripts/evaluate_baselines.py`).
-- [ ] **Phase 5: Live Simulation Demo & SIH Presentation Pitch**
+- [x] **Phase 5: Compliance Remediation** *(402 tests — 401 passing, 1 deliberate skip)*
+  - Audited clause by clause against the published problem statement
+    (`COMPLIANCE_AUDIT.md`): 7 BLOCKER, 11 MAJOR, 8 MINOR.
+  - **Auth enforced server-side.** 13 endpoints on `Depends(current_user)`;
+    anonymous `POST /bank/micro-freeze` had been accepting plain `curl`. CORS
+    moved from `allow_origins=["*"]` to an env-driven allowlist.
+  - **Forward hotspot forecast** (`engine/hotspot.py`): a conditional intensity
+    surface over complaints open *right now*, not a density map of the past.
+    Historical prior capped at 15% of the surface and published per cell.
+  - **Risk heatmap** (`/risk`) with national → state → district → cell drill-down,
+    forecast windows, and an as-of control.
+  - **Alert engine** (`backend/notify.py`, `/alerts`): four rules fired by a
+    scheduled tick, four channels, scoped recipients, delivery records with
+    retry and dead-lettering, and acknowledgement with a required disposition.
+  - Test harness rebuilt (`backend/tests/conftest.py`): one lifespan for the
+    suite, isolated credential store.
+- [x] **Phase 5.1: Regeneration and Load Verification** *(`REMEDIATION_AUDIT.md` §4)*
+  - Whole pipeline regenerated: corpus, GraphSAGE, embeddings, XGBoost, every
+    evaluation, the bundle and all seven screenshots. No figure in the docs is
+    carried over from an earlier corpus.
+  - Run at the load the problem statement names — **8,000 complaints/day** — which
+    found five defects that 397 passing tests could not, because the tests replay
+    history and these only appear against a live clock at real load:
+    a timezone bug that hid every freshly filed complaint from the forecast;
+    17 unlocked sqlite reads producing 43 × HTTP 500 under concurrency; an alert
+    id allocator that could silently discard a real alert; a convergence rule
+    that raised 685 alerts in one pass; and a hook misuse that stopped the alert
+    inbox refreshing after an officer closed an alert.
+- [ ] **Phase 6: Live Simulation Demo & SIH Presentation Pitch**
 
 ---
 
@@ -539,7 +661,12 @@ a stale complaint id.
 All datasets used in this repository are **100% synthetically generated** in strict compliance with Indian cyber laws:
 - **Digital Personal Data Protection (DPDP) Act, 2023:** Zero scraped personal data. Account numbers are pseudonymized masks conforming to Indian banking norms (`ACC-XXXXXXXX`).
 - **IT Act, 2000 (Section 43 & 66):** Zero unauthorized network access.
-- **Enterprise Integration:** Standardized API schemas ready for live integration with the **National Cybercrime Reporting Portal (NCRP / 1930)** and **NPCI Switch**.
+- **Integration seams, stated honestly:** we publish a *proposed* field mapping for
+  CFCFRMS fund-blocking and Samanvaya dissemination — versioned `v1-proposed`, because
+  those contracts are not public and we do not have them — together with what we would
+  need from each system owner. See [`docs/INTEGRATION_SEAMS.md`](docs/INTEGRATION_SEAMS.md).
+  An earlier version of this README claimed "standardized API schemas ready for live
+  integration"; no such schema existed, and the claim is withdrawn rather than softened.
 
 ---
 

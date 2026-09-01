@@ -1,0 +1,13 @@
+name,role,channel,address,scope_state,scope_district
+I4C National Operations Desk,I4C,email,ops-desk@i4c.example.gov.in,,
+I4C Duty Officer,I4C,sms,+919000000001,,
+CFCFRMS Fund Block Gateway,BANK,webhook,cfcfrms,,
+Samanvaya Dissemination Bus,I4C,webhook,samanvaya,,
+Telangana State Cyber Cell,LEA,email,cybercell@ts.example.gov.in,Telangana,
+Telangana Field Unit,LEA,sms,+919000000002,Telangana,
+Maharashtra State Cyber Cell,LEA,email,cybercell@mh.example.gov.in,Maharashtra,
+Uttar Pradesh State Cyber Cell,LEA,email,cybercell@up.example.gov.in,Uttar Pradesh,
+Rajasthan State Cyber Cell,LEA,email,cybercell@rj.example.gov.in,Rajasthan,
+Jharkhand State Cyber Cell,LEA,email,cybercell@jh.example.gov.in,Jharkhand,
+Haryana State Cyber Cell,LEA,email,cybercell@hr.example.gov.in,Haryana,
+Nuh District Unit,LEA,sms,+919000000003,Haryana,Nuh

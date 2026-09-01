@@ -314,3 +314,73 @@ class TestServingParity:
         assert total == pytest.approx(1.0, abs=1e-6), (
             f"cell probabilities sum to {total}, not 1 -- projection lost mass"
         )
+
+
+class TestIngestedComplaintIsLive:
+    """A complaint filed through the production path must reach the surface.
+
+    This is the regression test for the defect recorded in hotspot.parse_ts.
+    The server stamps an ingested complaint with datetime.now(timezone.utc)
+    while the seeded corpus carries naive local time. parse_ts used to strip
+    that offset instead of applying it, so on an IST machine a complaint that
+    had just arrived measured as 330 minutes old -- outside hotspot_surface's
+    120-minute open window, and therefore invisible to the forward forecast and
+    to every alert rule that reads it.
+
+    Every other test in this file replays a historical epoch with an as_of
+    drawn from the same naive-local corpus, so the offset cancelled on both
+    sides and the bug hid. Only a real ingestion measured against a real wall
+    clock exposes it, which is why this class ingests rather than replays.
+    """
+
+    PAYLOAD = {
+        "victim_name": "Live Feed Subject",
+        "victim_bank": "SBI",
+        "victim_account": "ACC-LIVE-TZ-CHECK",
+        "fraud_type": "UPI Fraud",
+        "stolen_amount": 412000.0,
+        "city": "Pune",
+        "state": "Maharashtra",
+    }
+
+    def test_a_freshly_filed_complaint_reads_as_zero_minutes_old(self, auth_client):
+        r = auth_client.post("/api/v1/complaint/ingest", json=self.PAYLOAD)
+        assert r.status_code == 200, r.text
+        ts = H.parse_ts(r.json()["complaint_timestamp"])
+        assert ts is not None, "the server stamped a timestamp we cannot parse"
+        age = (datetime.now() - ts).total_seconds() / 60.0
+        assert -1.0 <= age <= 5.0, (
+            f"a complaint filed seconds ago measures {age:.0f} minutes old. The "
+            f"open window is 120 minutes, so it would be discarded from the "
+            f"forward surface at the moment it arrived."
+        )
+
+    def test_it_reaches_the_forward_surface_at_wall_clock(self, auth_client):
+        """No as_of. The demo path, and the production path, are this one."""
+        r = auth_client.post("/api/v1/complaint/ingest", json=self.PAYLOAD)
+        assert r.status_code == 200, r.text
+        ticket = r.json()["ticket_id"]
+
+        body = auth_client.get("/api/v1/hotspots/cells").json()
+        assert body["n_open_complaints"] >= 1, (
+            "a complaint was filed and the surface still reports nothing open"
+        )
+        assert body["degraded"] is False, (
+            "the surface is serving pure history despite a live complaint"
+        )
+        seen = {cid for c in body["cells"] for cid in c.get("complaint_ids", ())}
+        assert ticket in seen, (
+            "the complaint is inside the open window but carries no mass on any "
+            "cell -- the posterior projection dropped it"
+        )
+
+    def test_the_alert_pass_can_see_it(self, auth_client):
+        """The rules read the same surface. If the surface cannot see a live
+        complaint, nothing can ever fire, which is deliverable (d) failing
+        silently rather than loudly."""
+        auth_client.post("/api/v1/complaint/ingest", json=self.PAYLOAD)
+        r = auth_client.post("/api/v1/alerts/evaluate")
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["degraded"] is False
+        assert body["open_complaints"] >= 1

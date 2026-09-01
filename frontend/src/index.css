@@ -76,6 +76,23 @@ body { @apply bg-ink-bg text-zinc-200 font-sans antialiased; }
   color: #0f1111;
   border-radius: 6px;
 }
+/* Hover tooltips on the risk surface.
+
+   Dark, unlike the popups above. The popup is a committed read -- it holds
+   position and can be selected -- so it earns a light card. A tooltip trails the
+   cursor while an officer sweeps the map, and a white card doing that over a
+   dark basemap strobes. */
+.leaflet-tooltip.hotspot-tip {
+  background: #141717;
+  color: #e4e4e7;
+  border: 1px solid #252a2a;
+  border-radius: 5px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+  padding: 6px 9px;
+  white-space: nowrap;
+}
+.leaflet-tooltip.hotspot-tip::before { border-top-color: #252a2a; }
+
 .leaflet-control-zoom a {
   background: #141717 !important;
   color: #e4e4e7 !important;

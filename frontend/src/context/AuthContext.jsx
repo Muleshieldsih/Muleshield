@@ -34,7 +34,27 @@ export function AuthProvider({ children }) {
     }
     endpoints.me()
       .then(me => { if (!cancelled) setUser(me) })
-      .catch(() => { if (!cancelled) { clearToken(); setUser(null) } })
+      .catch(err => {
+        if (cancelled) return
+        // Only a REFUSAL ends the session. This used to discard the token on any
+        // failure at all, which meant a request aborted by navigating during
+        // boot -- or one transient network blip -- signed the officer out and
+        // dropped them on the login form mid-shift.
+        //
+        // scripts/smoke_ui.py found it: every route after the first reported
+        // three controls and a clean sweep of a login screen, because /auth/me
+        // had been aborted by the sweep navigating away.
+        //
+        // A 401/403 is the server saying the token is no good, and that is worth
+        // clearing for. Everything else -- no response, an abort, a 5xx -- means
+        // we do not know, and destroying a valid session on "we do not know" is
+        // the wrong default.
+        const status = err?.response?.status
+        if (status === 401 || status === 403) {
+          clearToken()
+          setUser(null)
+        }
+      })
       .finally(() => { if (!cancelled) setReady(true) })
     return () => { cancelled = true }
   }, [])

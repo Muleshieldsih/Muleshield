@@ -93,6 +93,18 @@ export const endpoints = {
   listAtmIntel: (limit = 25) =>
     api.get('/api/v1/intel/atms', { params: { limit } }).then(r => r.data),
 
+  // alerting
+  listAlerts: (params = {}) =>
+    api.get('/api/v1/alerts', { params }).then(r => r.data),
+  getAlert: (id) => api.get(`/api/v1/alerts/${id}`).then(r => r.data),
+  alertSummary: () => api.get('/api/v1/alerts/summary').then(r => r.data),
+  listRecipients: (params = {}) =>
+    api.get('/api/v1/alerts/recipients', { params }).then(r => r.data),
+  ackAlert: (id, disposition) =>
+    api.post(`/api/v1/alerts/${id}/ack`, { disposition }).then(r => r.data),
+  evaluateAlerts: (params = {}) =>
+    api.post('/api/v1/alerts/evaluate', null, { params }).then(r => r.data),
+
   // forward hotspot surface
   //
   // Params are passed through axios rather than hand-built with URLSearchParams

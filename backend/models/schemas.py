@@ -487,3 +487,108 @@ class HotspotSurfaceResponse(BaseModel):
     prior_share_national: float = 0.0
     filters: dict = {}
     cells: list[HotspotCell] = []
+
+
+# ---------------------------------------------------------------------------
+# Alerting
+# ---------------------------------------------------------------------------
+
+class AlertOut(BaseModel):
+    """One raised alert.
+
+    prior_share travels with the alert rather than being recomputed later. An
+    officer reading this tomorrow has to be able to see how much of it was live
+    forecast and how much was historical pattern -- otherwise a density map and
+    a forecast look identical once they are both just rows in an inbox.
+    """
+    id: str
+    created_at: str = ""
+    rule_id: str = ""
+    severity: str = ""                 # "CRITICAL" | "HIGH" | "WATCH"
+    cell_id: str = ""
+    district: str = ""
+    state: str = ""
+    window_start_min: int = 0
+    window_end_min: int = 0
+    score: float = 0.0
+    rupees_at_risk: float = 0.0
+    case_count: int = 0
+    complaint_ids: list[str] = []
+    prior_share: float = 0.0
+    headline: str = ""
+    status: str = "open"               # "open" | "acknowledged" | "dismissed"
+    acknowledged_by: Optional[str] = None
+    acknowledged_at: Optional[str] = None
+    disposition: Optional[str] = None
+    dedupe_bucket: str = ""
+
+
+class DeliveryOut(BaseModel):
+    """One attempt to reach one recipient.
+
+    This is the evidence that a force WAS warned, which is a fact an inquiry
+    would want established. attempts and last_error are exposed rather than
+    hidden: a delivery that silently never arrived is the worst outcome this
+    system can produce, and it should be visible on the screen.
+    """
+    id: int
+    alert_id: str
+    channel: str = ""
+    recipient: str = ""
+    state: str = ""                    # "queued" | "sent" | "failed" | "dead"
+    attempts: int = 0
+    last_error: Optional[str] = None
+    queued_at: str = ""
+    sent_at: Optional[str] = None
+    next_retry_at: Optional[str] = None
+    provider_ref: Optional[str] = None
+
+
+class AlertDetail(AlertOut):
+    deliveries: list[DeliveryOut] = []
+
+
+class AlertAckRequest(BaseModel):
+    """Acknowledgement payload.
+
+    disposition is required, with no default. Making it optional would let the
+    common path skip it, and the whole reason it exists is to capture the
+    outcome -- including "False positive", which is the one an operator is least
+    motivated to record and the one this system most needs.
+    """
+    disposition: str = Field(..., min_length=1, max_length=40,
+                             description="Dispatched | Monitoring | False positive | Duplicate")
+
+
+class RecipientOut(BaseModel):
+    id: int
+    name: str = ""
+    role: str = ""                     # "LEA" | "I4C" | "BANK"
+    channel: str = ""
+    address: str = ""
+    scope_state: str = ""
+    scope_district: str = ""
+    active: int = 1
+
+
+class AlertSummary(BaseModel):
+    deliveries: dict = {}
+    dispositions: dict = {}
+    actioned: int = 0
+    false_positive_rate: float = 0.0
+
+
+class RuleRunSummary(BaseModel):
+    """The result of one rule pass, including when nothing fired.
+
+    degraded is carried out so a caller can distinguish "the rules ran and
+    nothing qualified" from "there were no live cases to run against". Those
+    look the same in a raised-count of zero and mean completely different things.
+    """
+    as_of: str = ""
+    degraded: bool = False
+    cells_considered: int = 0
+    open_complaints: int = 0
+    raised: int = 0
+    dry_run: bool = False
+    alerts: list[AlertOut] = []

@@ -50,6 +50,12 @@ data/graph_edges.csv
 *.mov
 data/_*.csv
 data/_*.npy
+# Scratch credential/alert stores written by the test harness, the smoke sweep
+# and the stress pass. MULESHIELD_DB_PATH points them here so none of them can
+# write an officer into the real store; none of them belongs in the repository.
+data/_*.db
+data/_*.db-wal
+data/_*.db-shm
 
 # Isolated build used by scripts/smoke_ui.py. It points at a throwaway backend
 # port, so it must never be served to anyone.

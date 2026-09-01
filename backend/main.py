@@ -21,9 +21,11 @@ Endpoints:
     GET    /health
 """
 
+import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -33,7 +35,7 @@ from pathlib import Path
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from backend.routers import (auth, complaint, graph, embeddings, predict,
-                             freeze, audit, intel, hotspot)
+                             freeze, audit, intel, hotspot, alerts)
 from backend import db
 from backend.websocket import manager
 
@@ -52,6 +54,63 @@ logger = logging.getLogger("muleshield.main")
 # LIFESPAN — Startup / Shutdown
 # ─────────────────────────────────────────────────────────────────────────────
 
+TICK_SECONDS = int(os.environ.get("MULESHIELD_TICK_SECONDS", "60"))
+
+
+def _seed_alert_recipients() -> None:
+    """Populate the alert roster from CSV, on an empty table only."""
+    import csv
+    path = Path(__file__).resolve().parent.parent / "data" / "alert_recipients.csv"
+    if not path.exists():
+        logger.warning("[STARTUP] no data/alert_recipients.csv; alerts would have "
+                       "nowhere to go.")
+        return
+    try:
+        with open(path, newline="", encoding="utf-8") as fh:
+            rows = [r for r in csv.DictReader(fh) if r.get("name")]
+        n = db.seed_recipients(rows)
+        if n:
+            logger.info("[STARTUP] Seeded %d alert recipients.", n)
+    except Exception as e:
+        logger.warning("[STARTUP] recipient seed failed: %s", e)
+
+
+async def _tick() -> None:
+    """The scheduled rule pass -- the thing that makes this proactive.
+
+    COMPLIANCE_AUDIT.md finding 2.1 was that no scheduled or batch analytical job
+    existed anywhere in the system: every computation was triggered synchronously
+    by a human opening a case. A framework that only computes when somebody is
+    already looking is a lookup service. This loop is what fires when nobody is.
+
+    Deliberately an asyncio task rather than APScheduler or Celery: adding either
+    means editing the Dockerfile pip layer, which has never been built or tested,
+    for a job that runs once a minute in a single process.
+
+    SYNC ACROSS A SEAM: the surface build and the rule pass both touch sqlite and
+    the model, so both cross via run_in_threadpool; the broadcast then happens
+    back on the loop. See backend/auth.py:46-59.
+    """
+    from starlette.concurrency import run_in_threadpool
+    from backend import notify
+
+    while True:
+        try:
+            surface = await run_in_threadpool(state.hotspot_surface)
+            raised = await run_in_threadpool(notify.evaluate, surface)
+            await run_in_threadpool(notify.retry_due, datetime.now(timezone.utc))
+            for a in raised:
+                await manager.broadcast({"event_type": "ALERT_RAISED",
+                                         "complaint_id": "", "payload": a})
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            # A throwing rule pass must never kill the loop: a scheduler that
+            # died quietly is the failure an operator cannot see.
+            logger.exception("[TICK] rule pass failed; continuing")
+        await asyncio.sleep(TICK_SECONDS)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Load all data and ML models on startup."""
@@ -62,8 +121,25 @@ async def lifespan(app: FastAPI):
     # Credentials are the one thing in this system that cannot live in memory:
     # an account that vanishes on restart is not an account.
     db.init()
+    _seed_alert_recipients()
+
+    task = None
+    if os.environ.get("MULESHIELD_SCHEDULER", "on").lower() != "off":
+        task = asyncio.create_task(_tick())
+        logger.info("[STARTUP] Alert rule pass every %ds.", TICK_SECONDS)
+    else:
+        logger.info("[STARTUP] Scheduler disabled (MULESHIELD_SCHEDULER=off).")
     logger.info("[STARTUP] Server ready. Swagger UI → http://localhost:8000/docs")
     yield
+
+    # Cancel AND await. Without the await, TestClient teardown hangs on a task
+    # that has been asked to stop but never observed stopping.
+    if task is not None:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
     logger.info("[SHUTDOWN] MuleShield AI shutting down.")
 
 
@@ -128,6 +204,7 @@ app.include_router(freeze.router)
 app.include_router(audit.router)
 app.include_router(intel.router)
 app.include_router(hotspot.router)
+app.include_router(alerts.router)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
