@@ -203,5 +203,81 @@
   ],
   "hotspotNTestCashouts": 660,
   "inferenceMeanMs": 5.220170021057129,
-  "measuredUtc": "2026-09-01T18:19:15Z"
+  "prevalenceScenarios": [
+    {
+      "scenario": "Evaluated corpus",
+      "prevalence": 0.0296,
+      "is_measured": true,
+      "precision": 0.8874,
+      "flagged_per_100k": 3080.0,
+      "true_mules_per_100k": 2733.3,
+      "innocent_per_100k": 346.7,
+      "recommended_action": "Automated micro-hold",
+      "automation_safe": true
+    },
+    {
+      "scenario": "High-risk district",
+      "prevalence": 0.005,
+      "is_measured": false,
+      "precision": 0.565,
+      "flagged_per_100k": 817.2,
+      "true_mules_per_100k": 461.7,
+      "innocent_per_100k": 355.5,
+      "recommended_action": "Dual-officer review",
+      "automation_safe": true
+    },
+    {
+      "scenario": "National average",
+      "prevalence": 0.001,
+      "is_measured": false,
+      "precision": 0.2056,
+      "flagged_per_100k": 449.2,
+      "true_mules_per_100k": 92.3,
+      "innocent_per_100k": 356.9,
+      "recommended_action": "Watchlist alert only",
+      "automation_safe": false
+    },
+    {
+      "scenario": "Low-risk district",
+      "prevalence": 0.0001,
+      "is_measured": false,
+      "precision": 0.0252,
+      "flagged_per_100k": 366.4,
+      "true_mules_per_100k": 9.2,
+      "innocent_per_100k": 357.2,
+      "recommended_action": "Passive audit log",
+      "automation_safe": false
+    }
+  ],
+  "prevalenceTpr": 0.923423,
+  "prevalenceFpr": 0.003572,
+  "automationFloor": 0.005,
+  "actionsAreEnforced": false,
+  "zoneBaselineMule": 0.7333333333333333,
+  "zoneSignificance": [
+    {
+      "baseline": "nearest-3 ATM centroid",
+      "baseline_key": "nearest3",
+      "baseline_containment": 0.777273,
+      "model_only": 70,
+      "baseline_only": 7,
+      "discordant": 77,
+      "p_value": 3.5245694262351566e-14,
+      "significant_at_05": true,
+      "model_better": true
+    },
+    {
+      "baseline": "mule location",
+      "baseline_key": "mule",
+      "baseline_containment": 0.733333,
+      "model_only": 93,
+      "baseline_only": 1,
+      "discordant": 94,
+      "p_value": 9.592548607487504e-27,
+      "significant_at_05": true,
+      "model_better": true
+    }
+  ],
+  "zoneSignificanceN": 660,
+  "measuredUtc": "2026-09-01T19:28:28Z"
 }

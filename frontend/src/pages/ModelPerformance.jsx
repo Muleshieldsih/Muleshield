@@ -14,6 +14,16 @@ import stats from '../data/model_stats.json'
  */
 
 const pct = (v, dp = 1) => `${(v * 100).toFixed(dp)}%`
+const num = (v) => Number(v).toLocaleString('en-IN', { maximumFractionDigits: 0 })
+
+/** p-values here run to 1e-27, which no fixed-decimal format survives. */
+function fmtP(p) {
+  if (p == null) return '—'
+  if (p >= 0.001) return `p = ${p.toFixed(3)}`
+  const exp = Math.floor(Math.log10(p))
+  const mant = (p / Math.pow(10, exp)).toFixed(1)
+  return `p = ${mant} × 10^${exp}`
+}
 
 function Figure({ label, value, sub, tone = 'default' }) {
   const tones = { default: 'text-zinc-100', good: 'text-aegis-accent', warn: 'text-amber-400' }
@@ -136,14 +146,179 @@ export default function ModelPerformance() {
         </div>
       </Panel>
 
+      {/* ── Base-rate sensitivity ──────────────────────────────────────── */}
+      <Panel title="Operational deployment policy & base-rate sensitivity"
+             right="Precision is not a property of a model">
+        <div className="p-3 space-y-3">
+          <p className="text-[12.5px] text-zinc-400 leading-relaxed max-w-3xl">
+            Every figure above is measured at this corpus's mule rate of{' '}
+            <span className="mono tnum text-zinc-200">{pct(stats.prevalenceScenarios[0].prevalence, 2)}</span>.
+            A real bank book is nowhere near that. Sensitivity and specificity
+            transfer across populations; precision does not — it collapses as the
+            base rate falls even though the model has not changed at all. Below is
+            the <em>same</em> detector, at the same threshold, meeting the
+            prevalences a deployment would actually see.
+          </p>
+
+          <div className="overflow-x-auto">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Scenario</th>
+                  <th className="text-right">Mule rate</th>
+                  <th className="text-right">Precision</th>
+                  <th className="text-right">Flagged / 100k</th>
+                  <th className="text-right">Innocent / 100k</th>
+                  <th>Recommended posture</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.prevalenceScenarios.map(r => (
+                  <tr key={r.scenario} aria-selected={r.is_measured}>
+                    <td className={r.is_measured ? 'text-white font-medium' : ''}>
+                      {r.scenario}{r.is_measured && ' · measured'}
+                    </td>
+                    <td className="text-right mono tnum">{pct(r.prevalence, 2)}</td>
+                    <td className={`text-right mono tnum ${
+                      r.precision >= 0.8 ? 'text-aegis-accent'
+                        : r.precision >= 0.5 ? 'text-amber-400' : 'text-red-400'}`}>
+                      {pct(r.precision)}
+                    </td>
+                    <td className="text-right mono tnum text-zinc-400">{num(r.flagged_per_100k)}</td>
+                    {/* The column that decides whether this is deployable. */}
+                    <td className={`text-right mono tnum ${
+                      r.automation_safe ? 'text-zinc-400' : 'text-red-400'}`}>
+                      {num(r.innocent_per_100k)}
+                    </td>
+                    <td className="text-zinc-400">{r.recommended_action}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p className="text-[12px] text-zinc-400 leading-relaxed max-w-3xl">
+            Read the last column, not the third. At a national average mule rate
+            this detector raises{' '}
+            <span className="mono tnum text-zinc-200">
+              {num(stats.prevalenceScenarios[2].flagged_per_100k)}
+            </span>{' '}
+            alerts per 100,000 accounts screened and{' '}
+            <span className="mono tnum text-red-400">
+              {num(stats.prevalenceScenarios[2].innocent_per_100k)}
+            </span>{' '}
+            of them are people who have done nothing wrong. No threshold tuning
+            fixes that — it is arithmetic on the base rate, not a weakness of this
+            model in particular. It is the reason an alert queue is triage for an
+            investigator and not an instruction to a bank.
+          </p>
+
+          {/* A policy the code does not enforce must not be printed as though it
+              did. backend/routers/freeze.py has no prevalence gate. */}
+          <div className="text-[12px] text-amber-400/90 leading-relaxed max-w-3xl
+                          border-l-2 border-amber-500/40 pl-3">
+            <strong className="font-semibold">Recommended governance policy:</strong> no
+            automated irreversible action below{' '}
+            <span className="mono tnum">{pct(stats.automationFloor, 1)}</span>{' '}
+            prevalence — alerts route to an investigator instead.
+            {!stats.actionsAreEnforced && (
+              <> This is a <strong className="font-semibold">recommendation, not a
+              behaviour of this build</strong>: the micro-freeze endpoint carries no
+              prevalence gate, and saying otherwise on this page would be a claim
+              the code does not honour. Enforcing it needs a real per-bank
+              prevalence estimate to gate on, which is a deployment input.</>
+            )}
+          </div>
+
+          <p className="text-[11px] text-zinc-500">
+            Projected from the measured operating point — TPR{' '}
+            <span className="mono tnum">{stats.prevalenceTpr.toFixed(4)}</span>, FPR{' '}
+            <span className="mono tnum">{stats.prevalenceFpr.toFixed(6)}</span> — held
+            fixed across all four rows. Written by{' '}
+            <span className="mono">scripts/export_confusion.py</span>.
+          </p>
+        </div>
+      </Panel>
+
       {/* ── Cash-out location ──────────────────────────────────────────── */}
       <Panel title="Cash-out location" right="Ranked retrieval">
         <div className="p-3 space-y-3">
+          {/* THE HEADLINE, and the reason it is the headline.
+              A patrol is dispatched to an area, not to one machine, so the zone
+              is the deliverable and the ranked five are the tactical drill-down
+              inside it (see SearchZone's docstring in schemas.py).
+              The operating point is printed INSIDE the card on purpose: the zone
+              figure and the Top-5 figure were conflated once and had to be
+              retracted, and a bare "87.3%" is how that happens again. */}
+          <div className="rounded border border-aegis-accent/40 bg-aegis-accent/[0.04] p-3.5">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <span className="text-[11px] uppercase tracking-wide text-zinc-400">
+                Search zone containment
+              </span>
+              <span className="mono tnum text-[30px] leading-none font-semibold text-aegis-accent">
+                {pct(stats.zoneContainment)}
+              </span>
+              <span className="text-[12px] text-zinc-400">
+                of withdrawals fall inside the predicted patrol zone
+              </span>
+            </div>
+            <div className="mt-2 grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-1 text-[11.5px]">
+              <div>
+                <span className="text-zinc-500">Search cost </span>
+                <span className="text-zinc-200 mono tnum">
+                  {stats.zoneMedianAtms} of {num(stats.atmTotal)} ATMs
+                </span>
+              </div>
+              <div>
+                <span className="text-zinc-500">Zone radius </span>
+                <span className="text-zinc-200 mono tnum">
+                  {stats.zoneMedianRadiusKm.toFixed(1)} km
+                </span>
+              </div>
+              <div>
+                <span className="text-zinc-500">Median error </span>
+                <span className="text-zinc-200 mono tnum">
+                  {stats.zoneMedianErrorKm.toFixed(2)} km
+                </span>
+              </div>
+              <div>
+                <span className="text-zinc-500">Evaluated on </span>
+                <span className="text-zinc-200 mono tnum">
+                  {stats.zoneSignificanceN} cash-outs
+                </span>
+              </div>
+            </div>
+
+            {/* Measured, not asserted. scripts/zone_significance.py runs an exact
+                paired McNemar and refuses to publish unless its own recomputed
+                containment matches the ledger. */}
+            <div className="mt-2.5 pt-2.5 border-t border-aegis-accent/20 space-y-1">
+              {stats.zoneSignificance.map(c => (
+                <div key={c.baseline_key} className="text-[11.5px] flex flex-wrap gap-x-2">
+                  <span className="text-zinc-500">vs {c.baseline}</span>
+                  <span className="mono tnum text-zinc-300">
+                    {pct(c.baseline_containment)}
+                  </span>
+                  <span className="text-zinc-600">·</span>
+                  <span className={c.significant_at_05 && c.model_better
+                    ? 'text-aegis-accent' : 'text-zinc-400'}>
+                    {c.model_only}/{c.baseline_only} discordant · exact McNemar {fmtP(c.p_value)}
+                    {c.significant_at_05 && c.model_better ? ' · significant' : ' · not significant'}
+                  </span>
+                </div>
+              ))}
+              <div className="text-[10.5px] text-zinc-500 pt-0.5">
+                All three zones are given the same radius, so the comparison is at
+                equal search cost — a larger zone always contains more.
+              </div>
+            </div>
+          </div>
+
           <p className="text-[12.5px] text-zinc-400 leading-relaxed max-w-3xl">
-            The system does not name the ATM a suspect will use. It returns the{' '}
-            {stats.operatingK} locations worth searching first, ordered. Containment
-            is how often the actual cash-out was among them, over{' '}
-            {stats.nTestCashouts} held-out cases.
+            Inside that zone, the system does not name the ATM a suspect will use.
+            It returns the {stats.operatingK} locations worth searching first,
+            ordered. Containment below is how often the actual cash-out was among
+            them, over {stats.nTestCashouts} held-out cases.
           </p>
 
           <div className="overflow-x-auto">
@@ -174,16 +349,22 @@ export default function ModelPerformance() {
           {/* Stated here because it is the first thing a reviewer checks, and
               burying it would be the kind of omission that discredits the rest. */}
           <p className="text-[12px] text-amber-400/90 leading-relaxed max-w-3xl border-l-2 border-amber-500/40 pl-3">
-            At the operating point the ranker does not beat sorting by distance
+            <strong className="font-semibold">Two different comparisons, and only one
+            of them goes our way.</strong> Ranking individual ATMs, the model does
+            not beat sorting by distance at the operating point
             ({pct(stats.top5Containment)} against {pct(stats.top5BaselineDistance)}),
-            and the difference is not statistically significant at any K. The
-            defensible claim is the narrowing — {stats.atmTotal.toLocaleString("en-IN")} ATMs to{" "}
-            {stats.operatingK} — not that the model outperforms a distance rule.
+            and that difference is not statistically significant at any K — the
+            defensible claim there is the narrowing, {num(stats.atmTotal)} ATMs to{' '}
+            {stats.operatingK}. Aggregating those same scores into a search{' '}
+            <em>zone</em> is a different question, and there the advantage over both
+            naive zones is significant (above). A patrol is dispatched to an area,
+            which is why the zone is the headline and the ranked five are the
+            drill-down.
           </p>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-            <Figure label="Search zone containment" value={pct(stats.zoneContainment)}
-                    sub={`vs ${pct(stats.zoneBaselineNearest3)} nearest-3`} tone="good" />
+            <Figure label="Top-5 containment" value={pct(stats.top5Containment)}
+                    sub={`vs ${pct(stats.top5BaselineDistance)} distance-only`} />
             <Figure label="Median location error" value={`${stats.zoneMedianErrorKm.toFixed(2)} km`} />
             <Figure label="Time-to-cash-out error" value={`${stats.countdownMae.toFixed(1)} min`}
                     sub={`vs ${stats.countdownBaseline.toFixed(1)} min baseline · R² ${stats.countdownR2.toFixed(2)}`} />
@@ -192,6 +373,75 @@ export default function ModelPerformance() {
           </div>
         </div>
       </Panel>
+
+      {/* ── Grounding ──────────────────────────────────────────────────────
+          Every line here is checkable against the repository in under a minute,
+          which is the only reason to print it. Three claims were considered and
+          cut because they are not true of this build:
+
+            "DPDP Act 2023 compliant"   -- vacuous. No real personal data is
+                                           processed, so there is nothing to be
+                                           compliant about. The true statement is
+                                           stronger and is the one below.
+            "AMLSim 8-pattern standard" -- docs/DATA_PROVENANCE.md Sec 3.1 says the
+                                           generator produces THREE of the eight.
+            "Calibrated to RBI / OSM
+             ATM distribution"          -- false. generate_atm_directory places
+                                           machines with random.choice over the
+                                           city list plus 12 km jitter. RBI's ATM
+                                           master is listed in DATA_PROVENANCE
+                                           Sec 5 as a DROP-IN REPLACEMENT for a
+                                           real deployment, not as an input here.
+
+          A badge that dies to one grep costs more than it earns. */}
+      <Panel title="Empirical grounding" right="Checkable in under a minute">
+        <div className="p-3 space-y-2.5">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
+            <Ground
+              icon="⚖️"
+              title="No real personal data"
+              body="The corpus is fully synthetic. Real NCRP / CFCFRMS transaction
+                    records cannot be released — they are account-level financial
+                    records of fraud victims — so no team has them. Synthesis is the
+                    field's standard answer, not a shortcut: PaySim exists for the
+                    same reason."
+            />
+            <Ground
+              icon="🔬"
+              title="Topology: 3 of AMLSim's 8 patterns"
+              body="IBM's AMLSim enumerates eight canonical laundering patterns. This
+                    generator produces three of them by construction — fan-out /
+                    scatter, gather / gather-scatter, and stack. Three, not eight;
+                    the other five are not modelled."
+            />
+            <Ground
+              icon="📍"
+              title="Distance decay λ = 5.0 km"
+              body="The ranker's proximity term sits on the journey-to-crime
+                    literature's ~4.8 km average travel distance. The constant was
+                    set first and the corpus median measured after, so it is a check
+                    rather than a fit. ATM placement itself is synthetic and
+                    uniform — not calibrated to any real directory."
+            />
+          </div>
+          <p className="text-[11px] text-zinc-500 leading-relaxed max-w-3xl">
+            Full sourcing, including the counter-evidence on journey-to-crime
+            validity and what a real deployment would swap in, is in{' '}
+            <span className="mono">docs/DATA_PROVENANCE.md</span>.
+          </p>
+        </div>
+      </Panel>
+    </div>
+  )
+}
+
+function Ground({ icon, title, body }) {
+  return (
+    <div className="rounded border border-ink-border bg-ink-bg px-3 py-2.5">
+      <div className="text-[12px] text-zinc-200 font-medium flex items-center gap-1.5">
+        <span aria-hidden="true">{icon}</span>{title}
+      </div>
+      <p className="text-[11px] text-zinc-500 mt-1 leading-relaxed">{body}</p>
     </div>
   )
 }

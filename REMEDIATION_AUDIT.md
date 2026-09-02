@@ -554,6 +554,8 @@ Stated here so nobody has to discover it.
 ```bash
 python -m pytest -q                        # whole suite, both roots
 python scripts/evaluate_hotspots.py        # forecast vs three baselines
+python scripts/export_confusion.py         # confusion matrix + base-rate sensitivity
+python scripts/zone_significance.py        # paired McNemar on the search zone
 python -m pytest tests/test_hotspot_leakage.py -v   # the leak guards
 python scripts/export_metrics.py
 python scripts/bench_golden_hour.py --api http://127.0.0.1:8000 -n 30

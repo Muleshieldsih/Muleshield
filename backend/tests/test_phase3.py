@@ -25,6 +25,7 @@ ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "engine"))
 
+from backend import state
 from backend.main import app
 
 # ─────────────────────────────────────────────
@@ -511,3 +512,14 @@ class TestWebSocket:
             event = ws.receive_json()
             assert event["event_type"] == "NEW_COMPLAINT"
             assert event["payload"]["stolen_amount"] == 50000.0
+
+            # The console inserts this payload straight into its queue and then
+            # filters that queue by the six workflow statuses. The broadcast used
+            # to carry the raw record, whose stored status is the legacy
+            # "ACTIVE", so a case vanished from the queue at the moment it was
+            # created -- while GET /complaint/list, which decorates, showed it.
+            # One shape from both paths, or the bug comes back.
+            assert event["payload"]["status"] in state.CASE_STATUSES, (
+                "broadcast status %r is not a workflow state"
+                % event["payload"]["status"])
+            assert event["payload"]["status"] == "New"

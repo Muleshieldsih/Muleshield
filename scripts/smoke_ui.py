@@ -299,6 +299,15 @@ def reassert_session(page) -> None:
         pass
 
 
+OVERLAY_STILL_OPEN = """() => [...document.querySelectorAll('*')].some(e => {
+  const cs = getComputedStyle(e);
+  const r = e.getBoundingClientRect();
+  return cs.position === 'fixed' && parseInt(cs.zIndex || 0) >= 1000
+         && r.width >= innerWidth * 0.9 && r.height >= innerHeight * 0.9
+         && cs.visibility !== 'hidden' && cs.display !== 'none';
+})"""
+
+
 def walk(page, name: str, path: str) -> None:
     print(f"{NEWLINE}-- {name} --")
     before_err = len(console_errors)
@@ -317,6 +326,7 @@ def walk(page, name: str, path: str) -> None:
     print(f"  {len(labels)} interactive controls")
 
     inert = []
+    stuck_overlay = [False]          # latched so one stuck modal reports once
     for label in labels:
         if label.upper().startswith(NAV):
             continue
@@ -347,11 +357,28 @@ def walk(page, name: str, path: str) -> None:
                 page.goto(APP + path, wait_until="networkidle", timeout=60_000)
                 page.wait_for_timeout(2500)
 
-            for close in page.query_selector_all("[aria-label='Close'], button:has-text('Cancel')"):
+            # Match a prefix, not the exact string. The certificate and dossier
+            # modals label their close button "Close certificate" / "Close dossier"
+            # for screen readers, so an exact [aria-label='Close'] never matched
+            # them: one click opened a z-[3000] backdrop that then swallowed every
+            # remaining click on that route, and the sweep reported the controls
+            # behind it as "never became actionable" rather than saying it had
+            # stopped being able to click anything.
+            for close in page.query_selector_all(
+                    "[aria-label='Close'], [aria-label^='Close '], "
+                    "button:has-text('Cancel')"):
                 if close.is_visible():
                     close.click(timeout=2000)
                     page.wait_for_timeout(300)
                     break
+
+            # If a full-screen backdrop is still up, every later click on this
+            # route is dead and the sweep is no longer testing anything. Say so
+            # once, loudly, instead of emitting a run of misleading timeouts.
+            if not stuck_overlay[0] and page.evaluate(OVERLAY_STILL_OPEN):
+                stuck_overlay[0] = True
+                note(name, f"a modal opened by '{label[:34]}' could not be closed "
+                           f"-- every control after it on this route is blocked")
         except Exception as e:
             msg = str(e).split(NEWLINE)[0][:110]
             if "intercepts pointer events" in msg:

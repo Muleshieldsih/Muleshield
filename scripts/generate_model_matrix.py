@@ -267,12 +267,24 @@ def render(g: dict, loc: dict) -> None:
     cols = [BASE] * (len(vals) - 1) + [ACCENT]
     ax.bar(names, vals, color=cols, width=.62)
     ax.axhline(g["ceiling"], color=CEIL, lw=1.4, ls="--")
-    ax.text(len(vals) - .45, g["ceiling"] + .012,
+    # The ceiling caption used to sit on the right, above the line. That was safe
+    # while the model was 0.03 below the ceiling; the concentrated corpus lifted F1
+    # to within 0.022 of it and the caption landed on top of the bar's own label.
+    # It goes on the left instead -- the leftmost bar is the weakest by
+    # construction, so the top-left of this panel is always empty.
+    ax.text(-.45, g["ceiling"] + .012,
             f"label-noise ceiling {g['ceiling']:.3f}", fontsize=7.6,
-            color=CEIL, ha="right")
+            color=CEIL, ha="left")
     for i, v in enumerate(vals):
-        ax.text(i, v + .012, f"{v:.4f}", ha="center", fontsize=8.4,
-                fontweight="bold" if i == len(vals) - 1 else "normal")
+        last = i == len(vals) - 1
+        # A bar that gets close to the ceiling has nowhere above it to put a
+        # label, so the label goes inside the bar rather than through the line.
+        if g["ceiling"] - v < .035:
+            ax.text(i, v - .018, f"{v:.4f}", ha="center", va="top",
+                    fontsize=8.4, fontweight="bold", color="#ffffff")
+        else:
+            ax.text(i, v + .012, f"{v:.4f}", ha="center", fontsize=8.4,
+                    fontweight="bold" if last else "normal")
     ax.set_ylim(0, 1.02); ax.set_ylabel("F1")
     ax.tick_params(axis="x", labelsize=8)
 
@@ -326,7 +338,7 @@ def render(g: dict, loc: dict) -> None:
     print(f"  [OK] {out}")
 
     # ── Headline card ───────────────────────────────────────────────────────
-    fig, ax = plt.subplots(figsize=(16, 4.6), facecolor=PAPER)
+    fig, ax = plt.subplots(figsize=(19, 4.6), facecolor=PAPER)
     ax.axis("off")
     ax.text(.012, .88, "MuleShield AI — Validated Performance", fontsize=21,
             fontweight="bold", color=INK, transform=ax.transAxes)
@@ -341,25 +353,44 @@ def render(g: dict, loc: dict) -> None:
     bayes_note = ("= the Bayes bound" if abs(top1 - bayes1) < 0.005
                   else f"vs {bayes1:.4f} Bayes bound")
 
+    # The card leads with the DELIVERABLE, not with the supporting machinery.
+    #
+    # An earlier revision opened on search-zone containment and mule-detection
+    # F1 and never mentioned the forward surface at all -- it was drawn before
+    # that engine existed and nobody moved it. A headline card for SIH26184 that
+    # omits "forecast likely cash withdrawal locations in advance" is a card
+    # about the wrong problem.
+    #
+    # It also ends on the number that works against us. Top-1 ATM does not beat
+    # sorting by distance, and a card that only carries wins is a card a judge is
+    # right to distrust.
+    hs = LEDGER["hotspot"]
+    dens = hs["baseline_historical_density"]
+
     cards = [
+        (f"{hs['pai_at_k']['5']:.1f}×", "forecast vs chance",
+         f"PAI@5 · {hs['pai_at_k']['5'] / dens['pai_at_5']:.1f}× a density map", ACCENT),
+        (f"{hs['hit_rate_at_k']['5']:.1%}", "cash-outs in 5 cells",
+         f"of {hs['n_cells']} · {hs['flagged_atm_share_at_k']['5']:.1%} of the ATM estate", ACCENT),
+        (f"{hs['lead_time_median_min']:.0f} min", "median lead time",
+         f"{hs['lead_actionable_rate']:.0%} with ≥15 min to act", ACCENT),
         (f"{z['model']:.1%}", "search-zone containment",
-         f"vs {z['near3']:.1%} best naive zone", ACCENT),
-        (f"{z['atms']:.0f} of {z['n_atms']:,}", "ATMs to cover",
-         f"{z['radius']:.1f} km radius · {z['ms']:.1f} ms", ACCENT),
+         f"vs {z['near3']:.1%} best naive zone", INK),
         (f"{g['bars'][-1][1]:.4f}", "mule-detection F1",
          f"vs {g['best_non_graph']:.4f} best non-graph", INK),
-        (f"{loc['mae']:.1f} min", "countdown MAE",
-         f"vs {loc['base_mae']:.1f} min baseline", INK),
         (f"{top1:.4f}", "exact-ATM Top-1", bayes_note, MUTED),
     ]
+    n_cards = len(cards)
+    gap, left = .010, .012
+    width = (1.0 - 2 * left - (n_cards - 1) * gap) / n_cards
     for i, (big, label, sub, col) in enumerate(cards):
-        x = .012 + i * .197
-        ax.add_patch(plt.Rectangle((x, .10), .182, .50, transform=ax.transAxes,
+        x = left + i * (width + gap)
+        ax.add_patch(plt.Rectangle((x, .10), width, .50, transform=ax.transAxes,
                                    facecolor=PANEL, edgecolor=RULE, lw=1))
-        ax.text(x + .014, .43, big, fontsize=25, fontweight="bold", color=col,
+        ax.text(x + .012, .43, big, fontsize=22, fontweight="bold", color=col,
                 transform=ax.transAxes)
-        ax.text(x + .014, .32, label, fontsize=10.5, color=INK, transform=ax.transAxes)
-        ax.text(x + .014, .19, sub, fontsize=8.6, color=MUTED, transform=ax.transAxes)
+        ax.text(x + .012, .32, label, fontsize=9.8, color=INK, transform=ax.transAxes)
+        ax.text(x + .012, .19, sub, fontsize=7.9, color=MUTED, transform=ax.transAxes)
 
     out2 = DOCS / "sih_performance_matrix_slide.png"
     plt.savefig(out2, dpi=200, bbox_inches="tight", facecolor=PAPER)
