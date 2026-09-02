@@ -1,0 +1,19 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html",         "x": 0,    "y": 0,    "w": 900,  "h": 520, "title": "Solution flow (slide 2)" },
+    { "file": "Architecture.dc.html", "x": 1000, "y": 0,    "w": 640,  "h": 556, "title": "System flow (slide 3)" },
+    { "file": "ModelMatrix.dc.html",  "x": 0,    "y": 660,  "w": 880,  "h": 662, "title": "Model performance matrix (slide 4)" },
+    { "file": "Impact.dc.html",       "x": 1000, "y": 700,  "w": 880,  "h": 538, "title": "Impact (slide 5)" },
+    { "file": "Formulas.dc.html",     "x": 0,    "y": 1462, "w": 1240, "h": 208, "title": "Training objectives (slide 6)" }
+  ],
+  "annotations": [
+    {
+      "id": "how-this-feeds-the-deck",
+      "x": 0,
+      "y": -150,
+      "w": 620,
+      "text": "These five diagrams are the artwork in the SIH deck (slides 2-6).\nEdit here, then re-render to PNG and rebuild the .pptx so the deck picks up the change.\n\nEvery figure shown comes from data/metrics.json - held-out measurements, not estimates."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

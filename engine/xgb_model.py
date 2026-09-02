@@ -51,8 +51,8 @@ CREW_HOPS = 3
 # How many ranked candidate locations the system returns.
 #
 # SIH26184 asks for withdrawal *locations* to search, not one machine. The
-# operating point is 5: measured containment at K=5 is 0.7136 on the held-out
-# split (scripts/topk_curve.py), against 0.5615 at K=3, while still cutting the
+# operating point is 5: measured containment at K=5 is 0.7258 on the held-out
+# split (scripts/topk_curve.py), against 0.5621 at K=3, while still cutting the
 # search from 1,000 ATMs to 5 -- a 99.5% reduction. K is exposed here rather
 # than defaulted at each call site, because the interface contract ("Top 5
 # Priority Search Locations") and the number the evaluation reports must not be

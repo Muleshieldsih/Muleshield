@@ -6,7 +6,8 @@ Two kinds of thing live here. **Section 1** is work still to do. **Sections 2–
 are decisions already made deliberately — if someone reports one of them as a
 bug, the answer is in here, not in the code.
 
-Last reviewed: 30 Aug 2026.
+Last reviewed: 2 Sep 2026. Section 1's security items are closed; see
+`INDEPENDENT_AUDIT.md` for what was verified and how.
 
 ---
 
@@ -29,15 +30,24 @@ Last reviewed: 30 Aug 2026.
       console would have asked the *viewer's own machine* for the API. `.env` is
       deleted; the bundle now uses relative URLs. `wsUrl()` had the same defect
       and would have opened an insecure `ws://` socket on an https deployment.
-- [ ] **No authentication on any endpoint, including freeze.** Acceptable for a
-      judged demo; make it a conscious decision before anything is public.
-- [ ] CORS is `allow_origins=["*"]` (`backend/main.py`).
+- [x] ~~**No authentication on any endpoint, including freeze.**~~ — **closed.**
+      13+ endpoints now sit behind `Depends(current_user)`; anonymous
+      `POST /bank/micro-freeze` returns 401 with `WWW-Authenticate: Bearer`.
+      Verified live in `INDEPENDENT_AUDIT.md` §3.1, including token revocation
+      on logout.
+- [x] ~~CORS is `allow_origins=["*"]`~~ — **closed.** Env-driven allowlist in
+      `backend/main.py`; a foreign `Origin` receives no
+      `Access-Control-Allow-Origin`.
 
 ### For the SIH submission
 
 - [ ] **7-slide deck and 3-minute video.** Entirely untouched. Largest remaining
       gap for the submission itself.
-- [ ] **Regenerate the dataset shortly before demoing.** Complaint timestamps are
+- [ ] **Regenerate the dataset shortly before demoing.** Use
+      `--mule-concentration 0.8` — the default is 0.0, which reproduces the old
+      flat corpus. Copy `data/transactions.csv` and `data/graph_edges.csv` aside
+      first: they are gitignored AND not byte-reproducible, because complaint
+      timestamps come from an unseeded `datetime.now()`. Complaint timestamps are
       relative to generation time — the queue currently reads "3d ago" and drifts
       further every day.
 
@@ -85,35 +95,86 @@ overnight audit already listed opening hours as an unused signal.
 
 This is worth a slide. It shows the console catching something the model misses.
 
-### 2.3 The ranker does not beat distance-sorting at K=5
+### 2.3 We do not claim the ranker beats distance-sorting
 
-**0.7136 against 0.7217**, and the difference is not statistically significant at
-any K (paired McNemar over 618 held-out cash-outs). Top-1 sits exactly on the
-Bayes bound for this generator.
+On the corpus this decision was written against, Top-5 was **0.7136 against
+0.7217** — behind — and the difference was not statistically significant at any K
+(paired McNemar over 618 held-out cash-outs).
 
-The defensible claim is **the narrowing — 1,000 ATMs to 5** — not that the model
-outperforms a distance rule. The Model Performance screen states this unprompted.
-Better a judge reads it there than finds it themselves.
+**The regeneration flipped the sign and does not change the decision.** On the
+current corpus Top-5 is **0.7359 against 0.7150** — ahead by two points — while Top-1
+is still behind at **0.2641 against 0.2786**. The significance test has not been
+re-run on this corpus, so a two-point lead is not a result we are entitled to
+quote, and quoting it would be exactly the behaviour §2.4 exists to prevent:
+promoting a number because it started looking good.
+
+The defensible claim is unchanged and does not depend on the sign: **the
+narrowing — 1,000 ATMs to 5**. The Model Performance screen states this
+unprompted. Better a judge reads it there than finds it themselves.
 
 ### 2.4 Retracted metrics must stay retracted
 
 The figures below were invalidated by the leakage audit and must never reappear:
 
-| Retracted | Actual |
-|---|---|
-| 98.5% Top-3 | 0.5615 |
-| 0.9996 F1 | 0.8955 |
-| 1.2 s countdown MAE | 11.86 min |
+| Retracted | Actual when retracted | Current |
+|---|---|---|
+| 98.5% Top-3 | 0.5615 | 0.5781 |
+| 0.9996 F1 | 0.8955 | 0.9050 |
+| 1.2 s countdown MAE | 11.86 min | 11.66 min |
 
 They survived for weeks because they were hand-typed in the frontend. Every
 figure on screen is now generated from `data/metrics.json`, which only the
 training and evaluation scripts write. **Do not hand-edit that file.**
 
-### 2.5 87.4% is the search zone, not Top-5
+### 2.5 The search-zone number is not the Top-5 number
 
-Two different operating points. The zone contains 87.4% with a median of 8 ATMs;
-Top-5 containment is 0.7136. A test asserts Top-5 < 0.80 so the zone number
-cannot migrate into the Top-5 slot.
+Two different operating points. The zone contains **87.0%** with a median of 7
+ATMs; Top-5 containment is **0.7359**. A test asserts Top-5 < 0.80 so the zone
+number cannot migrate into the Top-5 slot.
+
+### 2.6 Alert thresholds are relative to the surface, not absolute
+
+`R-HIGH-CONVERGE` fires on a cell carrying `CONVERGE_EXCESS` (2.5) times the mean
+case count of the live cell-windows, not on a fixed count. It used to be a fixed
+three, which was right for a surface holding a dozen complaints and meaningless
+at the load the problem statement names: at 8,000 complaints/day, 664 of 666
+cell-windows cleared it and one pass raised 685 alerts.
+
+`R-CRIT-RUPEES` is deliberately **not** relative — "₹50 lakh is about to be
+withdrawn in the next hour" means the same thing whatever else is happening. But
+at national load many cells clear ₹50 lakh, so **a deployment has to set
+`MULESHIELD_CRIT_RUPEES` against its own capacity.** All four thresholds are
+environment variables because an alert budget belongs to the force running it,
+not to us.
+
+### 2.7 Evidence is append-only, and the chain says what it proves
+
+There is no delete endpoint on `case_evidence` and there must not be one.
+Withdrawal sets a status with an actor and a reason; the artefact, its hash and
+its position in the chain stay. Evidence that can be deleted is evidence that can
+be made to disappear between collection and trial.
+
+Two things about the chain that must not drift in the telling:
+
+* `verify_case` carries the **recomputed** hash forward, never the stored one.
+  The first version carried the stored hash, which made one rewritten row flag
+  itself and then resynchronise — every artefact after it verified clean. That is
+  a per-row checksum with extra steps, not a chain.
+* It proves the set is **internally consistent**. It is not anchored outside our
+  own store, so somebody with write access to the whole table could recompute it
+  end to end. That limit is in `db.chain_hash`, on the certificate under *Stated
+  limitations*, and in the audit. Do not describe it as tamper-proof.
+
+### 2.8 Every sqlite access takes the lock, reads included
+
+`backend/db.py` holds one connection and one `RLock`. Do not "optimise" a read by
+skipping the lock: only writes took it until the final build, and interleaving
+reads and writes on a shared connection made sqlite3 misreport its own exception
+classes — a UNIQUE violation that `insert_alert` catches by design arrived as a
+bare `DatabaseError` and escaped as a 500. Forty-three of them in one stress pass.
+
+If contention ever becomes real, the answer is a connection pool or thread-local
+connections, not a partially-held lock.
 
 ---
 

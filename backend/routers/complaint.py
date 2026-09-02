@@ -15,7 +15,9 @@ GET  /api/v1/complaint/{id}/transactions  — The money trail, every row
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import Depends, APIRouter, HTTPException, Query
+
+from backend.auth import actor_for, current_user
 
 from backend.models.schemas import (
     ComplaintIngestRequest, ComplaintResponse, CaseUpdateRequest,
@@ -23,6 +25,12 @@ from backend.models.schemas import (
 )
 from backend.websocket import manager
 import backend.state as state
+
+import sys as _sys
+from pathlib import Path as _Path
+_ENGINE = str(_Path(__file__).resolve().parents[2] / 'engine')
+if _ENGINE not in _sys.path:
+    _sys.path.insert(0, _ENGINE)
 
 logger = logging.getLogger("muleshield.complaint")
 
@@ -34,7 +42,10 @@ router = APIRouter(prefix="/api/v1/complaint", tags=["Complaints"])
     response_model=ComplaintResponse,
     summary="Ingest a new 1930 cybercrime complaint",
 )
-async def ingest_complaint(request: ComplaintIngestRequest) -> ComplaintResponse:
+async def ingest_complaint(
+    request: ComplaintIngestRequest,
+    user: dict = Depends(current_user),
+) -> ComplaintResponse:
     """
     Accepts a new 1930 complaint, stores it in the in-memory state,
     and immediately broadcasts a `NEW_COMPLAINT` event to all
@@ -67,6 +78,7 @@ async def ingest_complaint(request: ComplaintIngestRequest) -> ComplaintResponse
 async def list_complaints(
     limit: int = Query(default=50, ge=1, le=2500, description="Max complaints to return"),
     offset: int = Query(default=0, ge=0, description="Number of complaints to skip"),
+    user: dict = Depends(current_user),
 ) -> list[ComplaintResponse]:
     """
     Returns complaints sorted by timestamp descending.
@@ -84,7 +96,10 @@ async def list_complaints(
     response_model=ComplaintResponse,
     summary="Get a specific complaint by ticket ID",
 )
-async def get_complaint(complaint_id: str) -> ComplaintResponse:
+async def get_complaint(
+    complaint_id: str,
+    user: dict = Depends(current_user),
+) -> ComplaintResponse:
     """Returns a single complaint record."""
     record = state.get_complaint(complaint_id)
     if not record:
@@ -112,7 +127,11 @@ def _decorate(record: dict) -> dict:
     response_model=ComplaintResponse,
     summary="Update a case's status or assignment",
 )
-async def update_case(complaint_id: str, payload: CaseUpdateRequest) -> ComplaintResponse:
+async def update_case(
+    complaint_id: str,
+    payload: CaseUpdateRequest,
+    user: dict = Depends(current_user),
+) -> ComplaintResponse:
     """
     Move a case through the workflow. Every change is written to the audit trail
     with the actor who made it.
@@ -124,7 +143,7 @@ async def update_case(complaint_id: str, payload: CaseUpdateRequest) -> Complain
             complaint_id,
             status=payload.status,
             assignee=payload.assignee,
-            actor=payload.actor,
+            actor=actor_for(user, payload.actor),
         )
     except ValueError as e:
         # A bad status is the caller's mistake, and naming the valid set is more
@@ -147,8 +166,13 @@ async def update_case(complaint_id: str, payload: CaseUpdateRequest) -> Complain
     response_model=NoteResponse,
     summary="Attach an investigation note to a case",
 )
-async def create_note(complaint_id: str, payload: NoteRequest) -> NoteResponse:
-    note = state.add_note(complaint_id, payload.text.strip(), payload.author)
+async def create_note(
+    complaint_id: str,
+    payload: NoteRequest,
+    user: dict = Depends(current_user),
+) -> NoteResponse:
+    note = state.add_note(complaint_id, payload.text.strip(),
+                          actor_for(user, payload.author))
     if note is None:
         raise HTTPException(status_code=404, detail=f"Complaint '{complaint_id}' not found.")
     return NoteResponse(**note)
@@ -159,7 +183,10 @@ async def create_note(complaint_id: str, payload: NoteRequest) -> NoteResponse:
     response_model=list[NoteResponse],
     summary="Notes on a case, newest first",
 )
-async def list_notes(complaint_id: str) -> list[NoteResponse]:
+async def list_notes(
+    complaint_id: str,
+    user: dict = Depends(current_user),
+) -> list[NoteResponse]:
     if not state.get_complaint(complaint_id):
         raise HTTPException(status_code=404, detail=f"Complaint '{complaint_id}' not found.")
     return [NoteResponse(**n) for n in state.get_notes(complaint_id)]
@@ -170,7 +197,10 @@ async def list_notes(complaint_id: str) -> list[NoteResponse]:
     response_model=list[TransactionRow],
     summary="The money trail for a case, in order",
 )
-async def list_transactions(complaint_id: str) -> list[TransactionRow]:
+async def list_transactions(
+    complaint_id: str,
+    user: dict = Depends(current_user),
+) -> list[TransactionRow]:
     """
     Every transfer on the case, oldest first.
 
@@ -224,9 +254,7 @@ async def list_transactions(complaint_id: str) -> list[TransactionRow]:
     return out
 
 
-def _parse(value: str):
-    """Tolerant ISO parse — seed timestamps are naive, live ones carry an offset."""
-    try:
-        return datetime.fromisoformat(str(value).replace("Z", "+00:00")).replace(tzinfo=None)
-    except (TypeError, ValueError):
-        return None
+# The tolerant parser lives in engine/hotspot.py, which is the other place that
+# has to reconcile the two timestamp formats in this corpus. One implementation,
+# so a fix to one cannot leave the other behind.
+from hotspot import parse_ts as _parse  # noqa: E402

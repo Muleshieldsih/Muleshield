@@ -1,11 +1,26 @@
+/**
+ * The nine categories the corpus actually carries.
+ *
+ * This list had drifted from the data: it offered 'KYC Fraud', which matches no
+ * complaint, and omitted 'SIM Swap / KYC', 'Bank Impersonation' and
+ * 'APK Loan Scam', which together account for roughly a third of the corpus.
+ * Both filters in the triage queue were therefore showing one dead option and
+ * hiding three live ones, silently. Regenerate with:
+ *
+ *   python -c "import csv,collections;
+ *              print(sorted({r['fraud_type'] for r in
+ *              csv.DictReader(open('data/victim_complaints.csv',encoding='utf-8'))}))"
+ */
 export const FRAUD_TYPES = [
-  'UPI Fraud',
+  'APK Loan Scam',
+  'Bank Impersonation',
   'Digital Arrest',
-  'Job Scam',
-  'Investment Scam',
-  'KYC Fraud',
-  'Romance Scam',
   'Electricity Bill Scam',
+  'Investment Scam',
+  'Job Scam',
+  'Romance Scam',
+  'SIM Swap / KYC',
+  'UPI Fraud',
 ]
 
 export const BANKS = [
@@ -72,7 +87,54 @@ export const MODEL_STATS = {
   top5Containment: pctFmt(stats.top5Containment),
   top5Reduction: pctFmt(stats.top5SearchReduction),
   atmTotal: stats.atmTotal.toLocaleString('en-IN'),
+
+  // Forward hotspot forecast. The baseline is carried right next to the
+  // headline on purpose: ranking cells by historical cash-out density is,
+  // functionally, what I4C's Pratibimb already does, so the number that means
+  // something is the ratio between the two rather than our PAI on its own.
+  hotspotCells: stats.hotspotCells.toLocaleString('en-IN'),
+  hotspotOperatingK: stats.hotspotOperatingK,
+  hotspotHitRate: pctFmt(stats.hotspotHitRateAt5),
+  hotspotPai: stats.hotspotPaiAt5.toFixed(1),
+  hotspotBaselinePai: stats.hotspotBaselinePai.toFixed(2),
+  hotspotBaselineHitRate: pctFmt(stats.hotspotBaselineHitRate),
+  hotspotAdvantage: `${(stats.hotspotPaiAt5 / stats.hotspotBaselinePai).toFixed(1)}x`,
+  hotspotRupeesCovered: pctFmt(stats.hotspotRupeesCoveredAt5),
+  hotspotAtmShare: pctFmt(stats.hotspotFlaggedAtmShareAt5),
+  hotspotLeadTime: `${Math.round(stats.hotspotLeadTimeMedianMin)} min`,
+  hotspotActionable: pctFmt(stats.hotspotLeadActionableRate),
+  hotspotPriorWeight: pctFmt(stats.hotspotPriorWeight),
+  hotspotPriorShare: pctFmt(stats.hotspotPriorShare),
+  hotspotNTestCashouts: stats.hotspotNTestCashouts.toLocaleString('en-IN'),
+  // The comparison we LOSE, kept on screen for the same reason top5 carries no
+  // false "vs": distance from the traced terminal account beats the forecast on
+  // per-complaint hit rate, and a reader finds that here rather than in a
+  // footnote. What the forecast adds is the time dimension and the ability to
+  // aggregate many complaints into one surface, neither of which distance can do.
+  hotspotNearestCellHitRate: pctFmt(stats.hotspotNearestCellHitRate),
 }
+
+/**
+ * Precision against coverage as the console flags more cells.
+ *
+ * Kept OUT of MODEL_STATS deliberately. That object is scalar display strings,
+ * and test_console_constants_carry_no_literal_figures scans it by slicing to the
+ * first closing brace -- an array of objects there would be both a type the
+ * object does not otherwise hold and a brace in the scanner's path.
+ *
+ * false_cells_per_hit is the one an officer asks about first: how many cells a
+ * team is sent to per genuine interception. It is on screen rather than in a
+ * footnote for the same reason the nearest-cell loss is.
+ */
+export const HOTSPOT_CURVE = (stats.hotspotPrecisionCurve || []).map(row => ({
+  k: row.k,
+  coverage: pctFmt(row.coverage),
+  precision: pctFmt(row.precision),
+  falseCellsPerHit: Number(row.false_cells_per_hit).toFixed(2),
+  pai: Number(row.pai).toFixed(1),
+  rupeesCovered: pctFmt(row.rupees_covered),
+  atmShare: pctFmt(row.flagged_atm_share),
+}))
 
 export function amountFmt(n) {
   const v = Number(n)

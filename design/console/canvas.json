@@ -1,0 +1,17 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html",      "x": 0,    "y": 0,    "w": 1600, "h": 900, "title": "Sign in" },
+    { "file": "CaseQueue.dc.html", "x": 0,    "y": 1060, "w": 1600, "h": 900, "title": "Cases" },
+    { "file": "Locations.dc.html", "x": 1720, "y": 1060, "w": 1600, "h": 900, "title": "Locations" }
+  ],
+  "annotations": [
+    {
+      "id": "two-registers",
+      "x": 0,
+      "y": -250,
+      "w": 760,
+      "text": "TWO REGISTERS, ON PURPOSE\n\nThe gate is calm and the console behind it is dense. That reads as a\ncontradiction until you notice nobody is working on the login screen -- it\nholds one decision, so restraint is affordable there and density is not.\n\nThe gate is glass and monochrome: a lit pane over the construction lines,\nhairline fields, one white key. Green is spent entirely on the console\nscreens below, where it means something -- a score, a freeze, a hit. Spending\nit on a sign-in button was spending the product's one colour on nothing."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

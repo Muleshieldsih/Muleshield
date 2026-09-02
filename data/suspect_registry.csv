@@ -1,0 +1,2 @@
+account_id,source,flagged_on,note
+ACC-PLACEHOLDER-0001,MuleHunter.AI,2026-08-01,"Stub row. This file is the SEAM where RBI Innovation Hub's MuleHunter.AI output and I4C's Samanvaya suspect registry would land. It is EMPTY of real identifiers by design -- we consume those systems as a routing signal, we do not reproduce them."

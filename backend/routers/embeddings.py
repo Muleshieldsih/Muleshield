@@ -11,8 +11,9 @@ GET /api/v1/embeddings/{complaint_id}
 import logging
 
 import numpy as np
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from backend.auth import current_user
 from backend.models.schemas import EmbeddingResponse, MuleNodeRisk
 import backend.state as state
 
@@ -29,6 +30,7 @@ router = APIRouter(prefix="/api/v1/embeddings", tags=["Embeddings"])
 async def get_embeddings(
     complaint_id: str,
     top_n: int = Query(default=5, ge=1, le=20, description="Number of top mule nodes to return"),
+    user: dict = Depends(current_user),
 ) -> EmbeddingResponse:
     """
     Returns the top-N mule accounts with the highest GNN risk scores

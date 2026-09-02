@@ -5,6 +5,8 @@ import { Topbar, Sidebar, MobileNav } from './components/Shell'
 import TriageFeed from './pages/TriageFeed'
 import useWebSocket from './hooks/useWebSocket'
 import { ToastProvider } from './components/Toast'
+import { AuthProvider, useAuth } from './context/AuthContext'
+import Login from './pages/Login'
 
 // Leaflet and React Flow are the two heaviest dependencies in the bundle and
 // neither is needed for the landing screen. Splitting them keeps the triage
@@ -13,6 +15,8 @@ const TacticalMap = lazy(() => import('./pages/TacticalMap'))
 const ForensicGraph = lazy(() => import('./pages/ForensicGraph'))
 const Interception = lazy(() => import('./pages/Interception'))
 const ModelPerformance = lazy(() => import('./pages/ModelPerformance'))
+const RiskHeatmap = lazy(() => import('./pages/RiskHeatmap'))
+const AlertInbox = lazy(() => import('./pages/AlertInbox'))
 
 function NotFound({ onHome }) {
   return (
@@ -220,6 +224,8 @@ function Layout() {
               <Route path="/graph" element={<ForensicGraph />} />
               <Route path="/intercept" element={<Interception />} />
               <Route path="/model" element={<ModelPerformance />} />
+              <Route path="/risk" element={<RiskHeatmap />} />
+              <Route path="/alerts" element={<AlertInbox />} />
               {/* Without a catch-all, an unknown URL rendered the shell around an
                   empty <main> -- a blank console with no indication anything was
                   wrong. A mistyped link should say so and offer the way back. */}
@@ -237,11 +243,42 @@ function Layout() {
   )
 }
 
+/**
+ * Signed out, Layout never mounts.
+ *
+ * That is the whole reason this sits above <Layout /> rather than being a guard
+ * inside it: Layout fetches the case queue and opens a WebSocket the moment it
+ * mounts, and an unauthenticated console would sit behind the login form
+ * retrying a socket it can never open and toasting errors nobody can act on.
+ * Not mounting it at all is simpler than gating every effect inside it.
+ */
+function Gate() {
+  const { user, ready } = useAuth()
+
+  // A stored token has not been checked yet. Rendering the login form here would
+  // flash it in front of an officer who is perfectly signed in.
+  if (!ready) {
+    return (
+      <div className="h-screen bg-ink-bg grid place-items-center">
+        <Loader2 size={18} className="animate-spin text-zinc-600" />
+      </div>
+    )
+  }
+
+  if (!user) return <Login />
+
+  // Keyed on the officer, so signing in as somebody else rebuilds the console
+  // rather than leaving the previous session's selected case in place.
+  return <Layout key={user.username} />
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <ToastProvider>
-        <Layout />
+        <AuthProvider>
+          <Gate />
+        </AuthProvider>
       </ToastProvider>
     </BrowserRouter>
   )

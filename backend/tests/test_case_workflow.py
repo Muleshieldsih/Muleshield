@@ -21,9 +21,14 @@ import backend.state as state
 
 
 @pytest.fixture(scope="module")
-def client():
-    with TestClient(app) as c:
-        yield c
+def client(auth_client):
+    """Every test in this module acts as a signed-in officer.
+
+    Not a convenience: every endpoint exercised here now requires a token. The
+    anonymous client is still available under the name `anon` (see
+    backend/tests/conftest.py) for tests that assert what a stranger gets.
+    """
+    return auth_client
 
 
 @pytest.fixture
@@ -71,11 +76,18 @@ class TestAssignmentAndNotes:
         assert client.get(f"/api/v1/complaint/{case_id}").json()["assignee"] == "AS-2001"
 
     def test_note_is_stored_and_counted(self, client, case_id):
+        """The author is the signed-in officer, NOT the name in the body.
+
+        This assertion was `== "AS-2001"` while these endpoints accepted
+        anonymous callers and the body was the only identity available. It is
+        now the verified one, which is the whole point of actor_for(): a note
+        cannot be filed under somebody else's name.
+        """
         before = client.get(f"/api/v1/complaint/{case_id}").json()["note_count"]
         r = client.post(f"/api/v1/complaint/{case_id}/note",
                         json={"text": "Beneficiary bank contacted.", "author": "AS-2001"})
         assert r.status_code == 200
-        assert r.json()["author"] == "AS-2001"
+        assert r.json()["author"] == "Duty Officer"   # the seeded officer this module signs in as
 
         notes = client.get(f"/api/v1/complaint/{case_id}/notes").json()
         assert notes[0]["text"] == "Beneficiary bank contacted."
@@ -127,7 +139,8 @@ class TestAuditTrail:
         entries = client.get("/api/v1/audit", params={"case_id": case_id}).json()
         assert entries, "a status change must leave a record"
         top = entries[0]
-        assert top["actor"] == "AS-9099"
+        # The verified identity, not the "AS-9099" the body claimed.
+        assert top["actor"] == "Duty Officer"   # the seeded officer this module signs in as
         assert "status" in top["action"].lower()
         assert "Intervention Required" in top["object"]
 
@@ -135,7 +148,10 @@ class TestAuditTrail:
         client.patch(f"/api/v1/complaint/{case_id}", json={"status": "Resolved", "actor": "AS-1"})
         client.patch(f"/api/v1/complaint/{case_id}", json={"status": "Closed", "actor": "AS-2"})
         entries = client.get("/api/v1/audit", params={"case_id": case_id}).json()
-        assert entries[0]["actor"] == "AS-2"
+        # Ordering is what this test is about; both entries now carry the same
+        # verified actor, so assert on the object that distinguishes them.
+        assert "Closed" in entries[0]["object"]
+        assert entries[0]["actor"] == "Duty Officer"   # the seeded officer this module signs in as
 
     def test_freeze_leaves_a_readable_record(self, client, case_id):
         """
@@ -150,7 +166,7 @@ class TestAuditTrail:
         entries = client.get("/api/v1/audit", params={"case_id": case_id}).json()
         froze = [e for e in entries if "Froze" in e["action"]]
         assert froze, "a freeze must appear in the audit trail"
-        assert froze[0]["actor"] == "IO-777"
+        assert froze[0]["actor"] == "Duty Officer"   # the seeded officer this module signs in as
         assert "ACC-TEST-0001" in froze[0]["object"]
 
     def test_audit_scopes_to_the_case(self, client, case_id):

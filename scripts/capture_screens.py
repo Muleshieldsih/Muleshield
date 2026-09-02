@@ -23,18 +23,26 @@ fields, and the case queue renders blank. :8000 is FastAPI serving frontend/dist
 
 import sys
 import time
+import json
+import os
 from pathlib import Path
 
 import requests
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs" / "screens"
-API = "http://127.0.0.1:8000"
-APP = "http://127.0.0.1:8000"
+
+# Overridable so the sweep can point at an isolated stack rather than whatever
+# happens to be on :8000 with the real credential store behind it.
+API = APP = os.environ.get("MULESHIELD_CAPTURE_API", "http://127.0.0.1:8000")
+USER = os.environ.get("MULESHIELD_ADMIN_USER", "officer")
+PASSWORD = os.environ.get("MULESHIELD_ADMIN_PASSWORD", "")
 
 VIEWPORT = {"width": 1600, "height": 1000}
+TOKEN_KEY = "muleshield:token"        # services/auth.js
 # Leaflet tiles and React Flow layout settle well after networkidle.
-SETTLE_MS = {"triage": 5000, "map": 7000, "graph": 6000, "intercept": 4000, "model": 3000}
+SETTLE_MS = {"triage": 5000, "map": 7000, "graph": 6000, "intercept": 4000,
+             "model": 3000, "risk": 7000, "alerts": 4000}
 
 # Text that must appear before a screenshot is worth keeping. Without this the
 # script happily saved a 22 KB all-black PNG of the case queue -- the first
@@ -47,16 +55,38 @@ MUST_CONTAIN = {
     "map": "Ranked locations",
     "intercept": "Intervention",
     "model": "Model performance",
+    "risk": "Tactical Risk Forecast",
+    "alerts": "Alert Inbox",
 }
 
 
-def pick_complaint() -> str:
+def sign_in() -> dict:
+    """Authenticate, the way every caller of this API now has to.
+
+    This script predated authentication by a day and never had a token. After
+    Phase 1 locked the routers, pick_complaint() below would 401 and the browser
+    would photograph the sign-in form -- and MUST_CONTAIN would have caught the
+    photograph but not explained why. Failing here, with the reason, is better.
+    """
+    if not PASSWORD:
+        raise SystemExit(
+            "set MULESHIELD_ADMIN_PASSWORD (the account the backend booted with)")
+    r = requests.post(f"{API}/api/v1/auth/login",
+                      json={"username": USER, "password": PASSWORD}, timeout=30)
+    if r.status_code != 200:
+        raise SystemExit(f"login failed ({r.status_code}) as {USER!r}: {r.text[:200]}")
+    return {"Authorization": f"Bearer {r.json()['access_token']}"}
+
+
+def pick_complaint(headers: dict) -> str:
     """Newest complaint that actually returns a prediction."""
-    rows = requests.get(f"{API}/api/v1/complaint/list", params={"limit": 25}, timeout=30).json()
+    rows = requests.get(f"{API}/api/v1/complaint/list", params={"limit": 25},
+                        headers=headers, timeout=30).json()
     for row in rows:
         cid = row["ticket_id"]
         try:
-            r = requests.get(f"{API}/api/v1/predict/cashout/{cid}", timeout=90)
+            r = requests.get(f"{API}/api/v1/predict/cashout/{cid}",
+                             headers=headers, timeout=90)
             if r.status_code == 200 and len(r.json().get("ranked_candidates", [])) == 5:
                 print(f"  using {cid}  ({row['victim_bank']}, {row['city']})")
                 return cid
@@ -74,7 +104,8 @@ def main() -> None:
         except Exception as e:
             raise SystemExit(f"{name} not reachable at {url}: {e}")
 
-    cid = pick_complaint()
+    headers = sign_in()
+    cid = pick_complaint(headers)
     OUT.mkdir(parents=True, exist_ok=True)
 
     shots = [
@@ -83,11 +114,21 @@ def main() -> None:
         ("map", f"/map?c={cid}", "03-cash-out-locations"),
         ("intercept", f"/intercept?c={cid}", "04-intervention"),
         ("model", "/model", "05-model-performance"),
+        ("risk", "/risk", "06-risk-heatmap"),
+        ("alerts", "/alerts", "07-alert-inbox"),
     ]
+
+    token = headers["Authorization"].split(" ", 1)[1]
 
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        page = browser.new_page(viewport=VIEWPORT, device_scale_factor=2)
+        ctx = browser.new_context(viewport=VIEWPORT, device_scale_factor=2)
+        # Seed the session the console reads on boot, so the capture opens on the
+        # console rather than on the sign-in screen.
+        ctx.add_init_script(
+            "window.localStorage.setItem(%s, %s)"
+            % (json.dumps(TOKEN_KEY), json.dumps(token)))
+        page = ctx.new_page()
         for key, path, fname in shots:
             page.goto(APP + path, wait_until="networkidle", timeout=90_000)
             page.wait_for_timeout(SETTLE_MS[key])

@@ -3,10 +3,12 @@ import { endpoints, describeError } from '../services/api'
 import useActiveComplaint from '../hooks/useActiveComplaint'
 import { useCountdown } from '../hooks/useCountdown'
 import { Panel, Stat } from '../components/Shell'
+import EvidencePanel from '../components/EvidencePanel'
+import DossierModal from '../components/DossierModal'
 import { amountFmt, formatTicket, shortAccount } from '../utils/constants'
 import {
   ShieldCheck, Radio, MessageCircle, Send, CheckCircle2, Phone,
-  Loader2, ServerCrash, AlertTriangle,
+  Loader2, ServerCrash, AlertTriangle, FileText,
 } from 'lucide-react'
 
 export default function Interception() {
@@ -17,13 +19,14 @@ export default function Interception() {
   const [error, setError] = useState('')
 
   const [selectedAtmId, setSelectedAtmId] = useState('')
+  const [dossierOpen, setDossierOpen] = useState(false)
   const [freeze, setFreeze] = useState(null)
   const [freezing, setFreezing] = useState(false)
   const [freezeError, setFreezeError] = useState('')
   const [officer, setOfficer] = useState('IO-042')
   const [dispatchStatus, setDispatchStatus] = useState('')
   // Whether the message above is good news. It was previously always drawn
-  // in the emerald success banner with a tick -- including the validation
+  // in the light success banner with a tick -- including the validation
   // failure for a short phone number, which told the operator the dispatch
   // had succeeded at the exact moment it had not.
   const [dispatchOk, setDispatchOk] = useState(false)
@@ -81,7 +84,7 @@ export default function Interception() {
     ? 'text-red-500'
     : remaining < 300 ? 'text-red-400'
     : remaining < 900 ? 'text-amber-400'
-    : 'text-aegis-green'
+    : 'text-aegis-accent'
 
   const stolen = complaint?.stolen_amount ?? prediction?.stolen_amount ?? 0
 
@@ -184,12 +187,12 @@ export default function Interception() {
         <div className="aegis-panel p-4">
           <div className="flex items-center justify-between text-[12px] text-zinc-400 gap-2">
             <span className="truncate">Intervention · {formatTicket(complaintId)}</span>
-            {/* Reflects the actual inference state. This was previously a green
+            {/* Reflects the actual inference state. This was previously a lit
                 "LIVE" badge rendered unconditionally — it stayed lit while the
                 panel below was loading, empty, or showing an error. */}
             <span
               className={`flex items-center gap-1.5 font-bold shrink-0 ${
-                prediction ? 'text-aegis-green' : 'text-zinc-500'
+                prediction ? 'text-aegis-accent' : 'text-zinc-500'
               }`}
             >
               <Radio size={13} />
@@ -234,7 +237,7 @@ export default function Interception() {
                     >
                       <div className="flex items-center justify-between text-[10px] text-zinc-400">
                         <span className="font-bold">RANK {a.rank}</span>
-                        <span className="text-aegis-green font-bold">{(a.confidence * 100).toFixed(1)}%</span>
+                        <span className="text-aegis-accent font-bold">{(a.confidence * 100).toFixed(1)}%</span>
                       </div>
                       <div className="text-white font-bold text-[12px] mt-1 truncate">{a.atm_id}</div>
                       <div className="text-zinc-500 text-[10px] truncate">{a.bank}</div>
@@ -263,7 +266,7 @@ export default function Interception() {
               disabled={!!freeze || freezing || !prediction}
               className={`py-3.5 px-3 rounded border text-[12.5px] flex flex-col items-center justify-center gap-1 font-medium transition-colors ${
                 freeze
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                  ? 'bg-white/10 border-white/25 text-white'
                   : 'bg-red-500 text-white border-red-600 hover:bg-red-600 disabled:opacity-50 '
               }`}
             >
@@ -288,8 +291,8 @@ export default function Interception() {
           </div>
 
           {freeze && (
-            <div className="mx-3 mb-3 bg-emerald-500/10 border border-emerald-500/30 rounded px-3 py-2 text-[11.5px] text-emerald-300 flex items-start gap-2">
-              <CheckCircle2 size={15} className="text-emerald-400 shrink-0 mt-0.5" />
+            <div className="mx-3 mb-3 bg-white/10 border border-white/25 rounded px-3 py-2 text-[11.5px] text-zinc-100 flex items-start gap-2">
+              <CheckCircle2 size={15} className="text-white shrink-0 mt-0.5" />
               <span>
                 <strong>Debit hold confirmed</strong> at{' '}
                 {new Date(freeze.timestamp).toLocaleTimeString()} — {freeze.account} ({freeze.bank})
@@ -324,7 +327,7 @@ export default function Interception() {
               <input
                 value={officer}
                 onChange={e => setOfficer(e.target.value)}
-                className="bg-ink-panel border border-ink-border rounded px-2 py-1 w-24 outline-none text-zinc-200 focus:border-aegis-green font-bold"
+                className="bg-ink-panel border border-ink-border rounded px-2 py-1 w-24 outline-none text-zinc-200 focus:border-aegis-accent font-bold"
               />
             </div>
             <span className="ml-auto text-zinc-500">Simulated bank hold — no live NPCI or core-banking call is made</span>
@@ -334,6 +337,36 @@ export default function Interception() {
 
       {/* ── Dispatch preview ─────────────────────────────────────────────── */}
       <div className="col-span-12 lg:col-span-5 space-y-3">
+        {/* Evidence sits on the case screen because that is where an officer
+            works the case, and above the dispatch preview because what is held
+            against a case -- and whether its chain is intact -- is a fact about
+            the case rather than an attachment drawer. */}
+        {complaintId && (
+          <Panel
+            title="Intelligence dossier"
+            right={
+              <button
+                onClick={() => setDossierOpen(true)}
+                className="px-2.5 py-1 rounded border border-ink-border text-[11px] text-zinc-300
+                           hover:border-zinc-600 hover:text-white transition-colors
+                           flex items-center gap-1.5"
+              >
+                <FileText size={12} /> Produce
+              </button>
+            }
+          >
+            <div className="p-3 text-[11.5px] text-zinc-400 leading-relaxed">
+              A printable case report — the complaint as filed, every hop of the money
+              trail with its IFSC, what the graph engine flagged, the forecast search
+              zone and its ranked candidates, the actions taken, and the evidence held.
+              Assembled from the store and the shipped model at the moment it is asked
+              for, so it cannot describe a state the system is not in.
+            </div>
+          </Panel>
+        )}
+
+        {complaintId && <EvidencePanel caseId={complaintId} />}
+
         <Panel title="Field notification" right="Nearest unit">
           <div className="p-3 space-y-3">
             <div className="bg-ink-panel border border-ink-border rounded p-3.5 mono text-[11px] leading-relaxed">
@@ -346,14 +379,14 @@ export default function Interception() {
                 <div className="truncate">Priority location: <span className="text-white font-bold">{activeAtm?.atm_id || '—'}</span></div>
                 <div className="text-zinc-400 line-clamp-2">{activeAtm?.address || '—'}</div>
                 <div>
-                  GPS: <span className="text-aegis-green font-semibold">
+                  GPS: <span className="text-aegis-accent font-semibold">
                     {activeAtm ? `${activeAtm.lat.toFixed(4)}°, ${activeAtm.lon.toFixed(4)}°` : '—'}
                   </span>
                 </div>
                 <div>
                   Confidence: <span className="text-white font-bold">
                     {activeAtm ? `${(activeAtm.confidence * 100).toFixed(1)}%` : '—'}
-                  </span> · Countdown: <span className="text-aegis-green font-bold">{label}</span>
+                  </span> · Countdown: <span className="text-aegis-accent font-bold">{label}</span>
                 </div>
                 <div className="truncate">Mule account: <span className="text-zinc-200 font-semibold">{prediction?.terminal_account || '—'}</span></div>
                 <div>Case: <span className="text-zinc-400">{formatTicket(complaintId)}</span></div>
@@ -380,13 +413,13 @@ export default function Interception() {
               <div
                 className={`text-[11px] px-3 py-2 rounded flex items-start gap-2 border ${
                   dispatchOk
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                    ? 'bg-white/10 border-white/25 text-zinc-100'
                     : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
                 }`}
                 role="status"
               >
                 {dispatchOk
-                  ? <CheckCircle2 size={14} className="text-emerald-400 shrink-0 mt-0.5" />
+                  ? <CheckCircle2 size={14} className="text-white shrink-0 mt-0.5" />
                   : <AlertTriangle size={14} className="text-amber-400 shrink-0 mt-0.5" />}
                 <span>{dispatchStatus}</span>
               </div>
@@ -470,7 +503,7 @@ export default function Interception() {
           <div className="aegis-panel w-full max-w-md p-5 bg-ink-surface border-ink-border" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between pb-3 border-b border-ink-border">
               <div className="mono text-[13px] font-bold text-white flex items-center gap-2">
-                <Radio size={16} className="text-aegis-green" /> Notify field unit
+                <Radio size={16} className="text-aegis-accent" /> Notify field unit
               </div>
               <button onClick={() => setPhoneModal(false)} className="text-zinc-400 hover:text-white mono text-[12px] px-1">✕</button>
             </div>
@@ -510,6 +543,9 @@ export default function Interception() {
             </div>
           </div>
         </div>
+      )}
+    {dossierOpen && complaintId && (
+        <DossierModal caseId={complaintId} onClose={() => setDossierOpen(false)} />
       )}
     </div>
   )

@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; }
+    a { color: #3d8b00; } a:hover { color: #2f6b00; }
+
+    /* Formulae are set in the mono face and rendered as plain Unicode rather
+       than through a maths library: the artboard has no network egress it can
+       rely on at print time, and these three fit on one line each. */
+    .card { border: 1.5px solid #d8dedc; border-radius: 7px; padding: 10px 13px;
+            display: flex; flex-direction: column; gap: 6px; background: #ffffff; }
+    .hd   { font-size: 13px; font-weight: 700; color: #0f1111; line-height: 1.2; }
+    .tag  { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 700;
+            letter-spacing: 0.06em; color: #3d8b00; }
+    .fx   { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #0f1111;
+            background: #f4f7f3; border: 1px solid #e2e8e2; border-radius: 4px;
+            padding: 6px 9px; line-height: 1.5; white-space: nowrap; overflow: hidden; }
+    .nt   { font-size: 10.5px; color: #6b7474; line-height: 1.35; }
+    sub, sup { font-size: 0.72em; }
+  </style>
+</helmet>
+
+<div style="width: 1240px; height: 208px; box-sizing: border-box; padding: 12px 14px; background: #ffffff; color: #0f1111; display: flex; flex-direction: column; gap: 8px">
+
+  <div style="font-size: 14px; font-weight: 700; letter-spacing: -0.01em">What the three models optimise</div>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; flex-grow: 1">
+
+    <div class="card">
+      <div>
+        <div class="hd">1 &nbsp;Mule detection</div>
+        <div class="tag">GRAPHSAGE &middot; 2 LAYERS &middot; 64-DIM</div>
+      </div>
+      <div class="fx">h<sub>v</sub><sup>(k)</sup> = ReLU( W<sup>(k)</sup> &middot; [ h<sub>v</sub><sup>(k&minus;1)</sup> &#8214; mean<sub>u&isin;N(v)</sub> h<sub>u</sub><sup>(k&minus;1)</sup> ] )</div>
+      <div class="fx">p(mule) = &sigma;( w &middot; h<sub>v</sub><sup>(2)</sup> + b )</div>
+      <div class="nt">Class-weighted cross-entropy, then isotonic calibration so the probability means what it says.</div>
+    </div>
+
+    <div class="card">
+      <div>
+        <div class="hd">2 &nbsp;Cash-out location</div>
+        <div class="tag">CONDITIONAL LOGIT &middot; 25 CANDIDATES</div>
+      </div>
+      <div class="fx">P(atm<sub>i</sub> | C) = e<sup>&thinsp;w&middot;log x<sub>i</sub></sup> &frasl; &Sigma;<sub>j&isin;C</sub> e<sup>&thinsp;w&middot;log x<sub>j</sub></sup></div>
+      <div class="fx">max<sub>w</sub> &nbsp;&Sigma;<sub>groups</sub> log P( chosen | C )</div>
+      <div class="nt">Choice is multiplicative (proximity &times; risk &times; affinity &times; habit), so logs make it linear.</div>
+    </div>
+
+    <div class="card">
+      <div>
+        <div class="hd">3 &nbsp;Time to cash-out</div>
+        <div class="tag">GRADIENT BOOSTING &middot; XGBOOST</div>
+      </div>
+      <div class="fx">y&#770; = &Sigma;<sub>m=1</sub><sup>M</sup> f<sub>m</sub>(x),&nbsp; f<sub>m</sub> &isin; F</div>
+      <div class="fx">min &nbsp;&Sigma; ( y &minus; y&#770; )<sup>2</sup> + &Sigma;<sub>m</sub> &Omega;( f<sub>m</sub> )</div>
+      <div class="nt">Predicts minutes to withdrawal; q05 / q95 models add a band, not a false point estimate.</div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

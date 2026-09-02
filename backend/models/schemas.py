@@ -299,3 +299,411 @@ class TransactionRow(BaseModel):
     is_terminal: bool = False
     cashout_atm_id: Optional[str] = None
     minutes_from_first: float = 0.0
+
+
+# ---------------------------------------------------------------------------
+# Authentication
+# ---------------------------------------------------------------------------
+
+class LoginRequest(BaseModel):
+    """Credentials posted as JSON.
+
+    JSON rather than an OAuth2 form because the form flow needs python-multipart,
+    which is not among this project's dependencies. Adding it would mean touching
+    the Dockerfile's pip layer for no functional gain.
+    """
+    username: str = Field(..., min_length=1, max_length=64)
+    password: str = Field(..., min_length=1, max_length=256)
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {"username": "officer", "password": "your-password"}
+        }
+    }
+
+
+class UserOut(BaseModel):
+    """An officer, as shown to the client. Carries no hash and no session."""
+    id: int
+    username: str
+    display_name: str
+    is_admin: bool = False
+    locked: bool = False
+    created_at: str = ""
+    last_login: Optional[str] = None
+
+
+class LoginResponse(BaseModel):
+    """Bearer token plus the officer it belongs to.
+
+    The field names mirror the OAuth2 response shape so the payload reads as
+    conventional, even though the request was JSON. `expires_at` lets the console
+    pre-empt an expiry instead of discovering it through a failed request.
+    """
+    access_token: str
+    token_type: str = "bearer"
+    expires_at: str
+    user: UserOut
+
+
+class ForgotPasswordRequest(BaseModel):
+    username: str = Field(..., min_length=1, max_length=64)
+
+
+class CreateUserRequest(BaseModel):
+    """Credentials an administrator issues to a new officer.
+
+    There is no self-registration. An officer has an account because somebody
+    with authority created one.
+    """
+    username: str = Field(..., min_length=1, max_length=64)
+    display_name: str = Field(..., min_length=1, max_length=120)
+    password: str = Field(..., min_length=8, max_length=256)
+    is_admin: bool = False
+
+
+class ResetRequestOut(BaseModel):
+    """One queued reset, as an administrator sees it."""
+    id: int
+    username: str
+    display_name: str
+    status: str
+    requested_at: str
+    decided_by: Optional[str] = None
+    decided_at: Optional[str] = None
+    expires_at: Optional[str] = None
+
+
+class ResetApprovalResponse(BaseModel):
+    """Returned ONCE, to the approving administrator.
+
+    The token is not stored in the clear and cannot be retrieved again. It is
+    handed to the officer by whatever channel the administrator already trusts.
+    """
+    detail: str
+    reset_token: str
+    expires_in_minutes: int
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=8, max_length=256,
+                              description="Minimum eight characters.")
+
+
+# ---------------------------------------------------------------------------
+# Cross-case intelligence
+# ---------------------------------------------------------------------------
+
+class ATMIntelRow(BaseModel):
+    """One ATM, summarised across every case in the corpus.
+
+    The per-case screens answer "where will this withdrawal happen". This answers
+    the question I4C actually cares about across a district: which machines keep
+    coming back. The model already consumes that history as a feature
+    (`atm_prior_count`); until now nothing surfaced it to a person.
+    """
+    atm_id: str
+    cashouts: int
+    distinct_complaints: int
+    total_amount: float
+    bank_name: str = ""
+    city: str = ""
+    district: str = ""
+    state: str = ""
+    lat: float = 0.0
+    lon: float = 0.0
+    cashout_risk_score: float = 0.0
+    last_seen: str = ""
+
+
+# ---------------------------------------------------------------------------
+# Forward hotspot surface
+# ---------------------------------------------------------------------------
+
+class HotspotWindow(BaseModel):
+    """One forecast window for one cell.
+
+    The three money fields are the point of this model and are kept apart
+    deliberately. conditional_rupees is forecast mass contributed by complaints
+    open right now; prior_rupees is the capped historical term. A reader -- an
+    officer, or a judge -- can see at a glance which one is carrying the cell,
+    and that is the difference between a forecast and a density map.
+    """
+    window_start_min: int
+    window_end_min: int
+    score: float = 0.0
+    conditional_rupees: float = 0.0
+    prior_rupees: float = 0.0
+    prior_share: float = 0.0
+    case_count: int = 0
+
+
+class HotspotCell(BaseModel):
+    """One cash-out cell: a cluster of machines a single team could cover.
+
+    Not a district. 1,000 ATMs across 78 districts averages 12.8 machines per
+    district, and a district is an administrative boundary rather than a
+    deployable one. district and state ride along as roll-up keys so the
+    dashboard drill-down is a group-by rather than a second model.
+    """
+    cell_id: str
+    lat: float = 0.0
+    lon: float = 0.0
+    district: str = ""
+    state: str = ""
+    city: str = ""
+    atm_count: int = 0
+    score: float = 0.0
+    conditional_rupees: float = 0.0
+    prior_rupees: float = 0.0
+    prior_share: float = 0.0
+    case_count: int = 0
+    # Which complaints, not just how many. The console lists them with links back
+    # into triage, so an officer reading a hot cell can open the cases driving it
+    # rather than taking the number on trust.
+    complaint_ids: list[str] = []
+    windows: list[HotspotWindow] = []
+
+
+class HotspotSurfaceResponse(BaseModel):
+    """The national forward surface.
+
+    degraded is load-bearing rather than cosmetic. With no complaints open the
+    surface is entirely historical -- and a historical density map presented as
+    a forecast is precisely what this component exists not to be. When it is
+    true the console says "no live cases; this is history only" instead of
+    drawing circles that imply prediction.
+    """
+    as_of: str
+    degraded: bool = False
+    prior_weight: float = 0.15
+    cell_radius_km: float = 12.0
+    n_cells: int = 0
+    n_open_complaints: int = 0
+    windows_min: list[list[int]] = []
+    total_conditional_rupees: float = 0.0
+    total_prior_rupees: float = 0.0
+    prior_share_national: float = 0.0
+    filters: dict = {}
+    cells: list[HotspotCell] = []
+
+
+# ---------------------------------------------------------------------------
+# Alerting
+# ---------------------------------------------------------------------------
+
+class AlertOut(BaseModel):
+    """One raised alert.
+
+    prior_share travels with the alert rather than being recomputed later. An
+    officer reading this tomorrow has to be able to see how much of it was live
+    forecast and how much was historical pattern -- otherwise a density map and
+    a forecast look identical once they are both just rows in an inbox.
+    """
+    id: str
+    created_at: str = ""
+    rule_id: str = ""
+    severity: str = ""                 # "CRITICAL" | "HIGH" | "WATCH"
+    cell_id: str = ""
+    district: str = ""
+    state: str = ""
+    window_start_min: int = 0
+    window_end_min: int = 0
+    score: float = 0.0
+    rupees_at_risk: float = 0.0
+    case_count: int = 0
+    complaint_ids: list[str] = []
+    prior_share: float = 0.0
+    headline: str = ""
+    status: str = "open"               # "open" | "acknowledged" | "dismissed"
+    acknowledged_by: Optional[str] = None
+    acknowledged_at: Optional[str] = None
+    disposition: Optional[str] = None
+    dedupe_bucket: str = ""
+
+
+class DeliveryOut(BaseModel):
+    """One attempt to reach one recipient.
+
+    This is the evidence that a force WAS warned, which is a fact an inquiry
+    would want established. attempts and last_error are exposed rather than
+    hidden: a delivery that silently never arrived is the worst outcome this
+    system can produce, and it should be visible on the screen.
+    """
+    id: int
+    alert_id: str
+    channel: str = ""
+    recipient: str = ""
+    state: str = ""                    # "queued" | "sent" | "failed" | "dead"
+    attempts: int = 0
+    last_error: Optional[str] = None
+    queued_at: str = ""
+    sent_at: Optional[str] = None
+    next_retry_at: Optional[str] = None
+    provider_ref: Optional[str] = None
+
+
+class AlertDetail(AlertOut):
+    deliveries: list[DeliveryOut] = []
+
+
+class AlertAckRequest(BaseModel):
+    """Acknowledgement payload.
+
+    disposition is required, with no default. Making it optional would let the
+    common path skip it, and the whole reason it exists is to capture the
+    outcome -- including "False positive", which is the one an operator is least
+    motivated to record and the one this system most needs.
+    """
+    disposition: str = Field(..., min_length=1, max_length=40,
+                             description="Dispatched | Monitoring | False positive | Duplicate")
+
+
+class RecipientOut(BaseModel):
+    id: int
+    name: str = ""
+    role: str = ""                     # "LEA" | "I4C" | "BANK"
+    channel: str = ""
+    address: str = ""
+    scope_state: str = ""
+    scope_district: str = ""
+    active: int = 1
+
+
+class AlertSummary(BaseModel):
+    deliveries: dict = {}
+    dispositions: dict = {}
+    actioned: int = 0
+    false_positive_rate: float = 0.0
+
+
+class RuleRunSummary(BaseModel):
+    """The result of one rule pass, including when nothing fired.
+
+    degraded is carried out so a caller can distinguish "the rules ran and
+    nothing qualified" from "there were no live cases to run against". Those
+    look the same in a raised-count of zero and mean completely different things.
+    """
+    as_of: str = ""
+    degraded: bool = False
+    cells_considered: int = 0
+    open_complaints: int = 0
+    raised: int = 0
+    dry_run: bool = False
+    alerts: list[AlertOut] = []
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# EVIDENCE SCHEMAS
+# ─────────────────────────────────────────────────────────────────────────────
+
+class EvidenceItem(BaseModel):
+    """One artefact held against a case.
+
+    `sha256`, `prev_hash` and `entry_hash` are returned rather than kept
+    internal on purpose: an officer producing this in court has to be able to
+    read the hash off the screen and check it against the file they were given.
+    A chain nobody outside the system can inspect is a chain nobody has to trust.
+    """
+    id: str
+    case_id: str
+    seq: int = 0
+    filename: str = ""
+    content_type: str = ""
+    size_bytes: int = 0
+    sha256: str = ""
+    kind: str = "other"
+    description: str = ""
+    source: str = ""
+    collected_by: str = ""
+    collected_at: str = ""
+    withdrawn: bool = False
+    withdrawn_at: Optional[str] = None
+    withdrawn_by: Optional[str] = None
+    withdrawn_reason: Optional[str] = None
+    prev_hash: str = ""
+    entry_hash: str = ""
+
+
+class EvidenceWithdrawRequest(BaseModel):
+    """Withdrawal needs a reason. There is no delete.
+
+    An artefact removed without a stated reason is indistinguishable from one
+    that was made to disappear, which is precisely the doubt a custody record
+    exists to remove.
+    """
+    reason: str = Field(..., min_length=4, max_length=500)
+
+
+class EvidenceCheck(BaseModel):
+    id: str = ""
+    seq: int = 0
+    ok: bool = True
+    reason: str = ""
+    recorded: str = ""
+    actual: str = ""
+
+
+class EvidenceVerification(BaseModel):
+    case_id: str = ""
+    items: int = 0
+    content_ok: bool = True
+    chain_ok: bool = True
+    intact: bool = True
+    verified_at: str = ""
+    content: list[EvidenceCheck] = []
+    chain: list[EvidenceCheck] = []
+
+
+class EvidenceCertificate(BaseModel):
+    """BSA 2023 s.63 certificate, generated from the store.
+
+    Loosely typed on purpose: this is a document, and pinning every nested field
+    would mean editing two files every time a statement is reworded. What must
+    not drift -- the artefact hashes and the verification result -- comes
+    straight from `backend/evidence.py`, which reads the store.
+    """
+    statute: str = ""
+    statute_note: str = ""
+    case_id: str = ""
+    complaint: Optional[dict] = None
+    system: dict = {}
+    custodian: str = ""
+    produced_at: str = ""
+    artefact_count: int = 0
+    withdrawn_count: int = 0
+    total_bytes: int = 0
+    statements: list[str] = []
+    limitations: list[str] = []
+    verification: dict = {}
+    artefacts: list[dict] = []
+
+
+class CaseDossier(BaseModel):
+    """The police intelligence dossier for one case.
+
+    Loosely typed for the same reason `EvidenceCertificate` is, and the reason is
+    worth repeating rather than cross-referencing: this is a document. Pinning
+    every nested field would mean editing two files every time a caveat is
+    reworded, and the fields that must not drift -- the money trail, the forecast
+    and the custody chain -- come from `backend/dossier.py`, which reads the store
+    and calls the shipped model rather than accepting anything from a caller.
+
+    `forecast` is Optional and means it: a case whose bank feed has not landed
+    has no chain and therefore no terminal account, and the dossier prints the
+    rest of the case rather than refusing to render.
+    """
+    case_id: str = ""
+    produced_at: str = ""
+    produced_by: str = ""
+    system: dict = {}
+    complaint: dict = {}
+    money_trail: list[dict] = []
+    money_trail_count: int = 0
+    banks_involved: list[str] = []
+    detections: dict = {}
+    forecast: Optional[dict] = None
+    actions: list[dict] = []
+    evidence: dict = {}
+    caveats: list[str] = []

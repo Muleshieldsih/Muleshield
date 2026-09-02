@@ -6,10 +6,11 @@ import { timeAgo, useNow } from '../hooks/useCountdown'
 import { useToast } from '../components/Toast'
 import CaseTimeline from '../components/CaseTimeline'
 import AuditList from '../components/AuditList'
+import DossierModal from '../components/DossierModal'
 import { Panel } from '../components/Shell'
 import {
   ShieldAlert, Plus, Search, MapPinned, GitBranch, Zap, ArrowUpRight,
-  CheckCircle2, AlertTriangle, Loader2, Radio, UserPlus, StickyNote,
+  CheckCircle2, AlertTriangle, Loader2, Radio, UserPlus, StickyNote, FileText,
 } from 'lucide-react'
 
 const GOLDEN_HOUR_MIN = 60
@@ -25,10 +26,10 @@ const STATUSES = [
 // in one row means neither is read.
 const STATUS_STYLE = {
   'New': 'text-zinc-300 border-zinc-600/50 bg-zinc-500/10',
-  'Under Review': 'text-blue-300 border-blue-500/40 bg-blue-500/10',
-  'Investigating': 'text-blue-300 border-blue-500/40 bg-blue-500/10',
+  'Under Review': 'text-blue-400 border-blue-500/40 bg-blue-500/10',
+  'Investigating': 'text-blue-400 border-blue-500/40 bg-blue-500/10',
   'Intervention Required': 'text-amber-300 border-amber-500/40 bg-amber-500/10',
-  'Resolved': 'text-emerald-300 border-emerald-500/40 bg-emerald-500/10',
+  'Resolved': 'text-zinc-100 border-white/30 bg-white/10',
   'Closed': 'text-zinc-500 border-zinc-700 bg-zinc-500/5',
 }
 
@@ -131,8 +132,8 @@ function severityOf(complaint, now, bands) {
   if (amount >= bands.mid) {
     return { ...cold, weight: 1, label: 'Elevated', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/30', dot: 'bg-amber-500' }
   }
-  // Zinc rather than emerald: emerald is this console's "good / live" accent and
-  // the majority of rows wearing it competed with the aegis-green LIVE chip.
+  // Dimmed zinc rather than the accent: the accent is this console's "good /
+  // live" tone, and the majority of rows wearing it competed with the LIVE chip.
   return { ...cold, weight: 0, label: 'Routine', color: 'text-zinc-400', bg: 'bg-zinc-500/10 border-zinc-600/30', dot: 'bg-zinc-600' }
 }
 
@@ -191,7 +192,7 @@ const TriageRow = memo(function TriageRow({ c, isSelected, onSelect, now, bands 
       onClick={() => onSelect(c.ticket_id)}
       className={`w-full text-left p-3 rounded border transition-colors duration-150 relative overflow-hidden ${
         isSelected
-          ? 'bg-ink-panel border-aegis-green/70'
+          ? 'bg-ink-panel border-aegis-accent/70'
           : sev.urgent
           ? 'bg-ink-surface/80 border-ink-border hover:bg-ink-panel hover:border-red-500/40'
           : 'bg-ink-surface/60 border-ink-border hover:bg-ink-panel hover:border-zinc-700'
@@ -202,7 +203,7 @@ const TriageRow = memo(function TriageRow({ c, isSelected, onSelect, now, bands 
           <span className={`w-2 h-2 rounded-full shrink-0 ${sev.dot}`} />
           <span className="mono tnum text-[12px] font-semibold text-zinc-100 truncate">{formatTicket(c.ticket_id)}</span>
           {c.is_live && (
-            <span className="px-1.5 py-0.5 rounded text-[10px] border border-aegis-green/40 bg-aegis-green/10 text-aegis-green shrink-0">
+            <span className="px-1.5 py-0.5 rounded text-[10px] border border-aegis-accent/40 bg-aegis-accent/10 text-aegis-accent shrink-0">
               LIVE
             </span>
           )}
@@ -279,14 +280,14 @@ const IngestModal = memo(function IngestModal({ isOpen, onClose, onSuccess }) {
     }
   }
 
-  const field = 'w-full bg-ink-panel border border-ink-border rounded px-3 py-2 text-white outline-none focus:border-aegis-green transition-colors'
+  const field = 'w-full bg-ink-panel border border-ink-border rounded px-3 py-2 text-white outline-none focus:border-aegis-accent transition-colors'
 
   return (
     <div className="fixed inset-0 bg-black/70 z-50 grid place-items-center p-4" onClick={onClose}>
       <div className="aegis-panel w-full max-w-lg p-5 bg-ink-surface border-ink-border" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between pb-3 border-b border-ink-border">
           <div className="text-[13px] font-semibold text-white flex items-center gap-2">
-            <Plus size={16} className="text-aegis-green" /> Add a 1930 case
+            <Plus size={16} className="text-aegis-accent" /> Add a 1930 case
           </div>
           <button onClick={onClose} aria-label="Close" className="text-zinc-400 hover:text-white text-[12px] px-1">✕</button>
         </div>
@@ -345,7 +346,7 @@ const IngestModal = memo(function IngestModal({ isOpen, onClose, onSuccess }) {
             <button type="button" onClick={onClose} className="px-4 py-2 rounded border border-ink-border text-zinc-400 hover:text-white">
               Cancel
             </button>
-            <button type="submit" disabled={busy} className="px-4 py-2 rounded bg-aegis-green text-black font-bold hover:bg-emerald-400 disabled:opacity-50 flex items-center gap-2">
+            <button type="submit" disabled={busy} className="px-4 py-2 rounded bg-aegis-accent text-black font-bold hover:bg-white disabled:opacity-50 flex items-center gap-2">
               {busy && <Loader2 size={13} className="animate-spin" />}
               {busy ? 'Adding…' : 'Add case'}
             </button>
@@ -390,13 +391,21 @@ const CaseStory = memo(function CaseStory({ complaint, sev, prediction, loading,
   const town = top ? townOf(top.address, complaint.city) : null
   const mins = prediction ? Math.max(1, Math.round(prediction.time_to_cashout_minutes)) : null
 
+  // Lines arrive in sequence. `skip` collapses the stagger to nothing, so an
+  // officer who does not want to wait can click once and read immediately --
+  // the animation must never be the reason a countdown was seen late.
+  const [skip, setSkip] = useState(false)
+  const line = i => (skip ? undefined : { animationDelay: `${i * 210}ms` })
+
   return (
-    <div className="rounded border border-ink-border bg-ink-bg/60 p-3 space-y-2.5">
+    <div
+      className="rounded border border-ink-border bg-ink-bg/60 p-3 space-y-2.5"
+      onClick={() => setSkip(true)}>
       <div className="text-[11px] text-zinc-500 font-medium">
         Summary
       </div>
 
-      <p className="text-[12.5px] leading-relaxed text-zinc-300">
+      <p className="case-line text-[12.5px] leading-relaxed text-zinc-300" style={line(0)}>
         <span className="text-white font-semibold">{amount}</span> was taken from{' '}
         <span className="text-white font-semibold">{complaint.victim_name}</span> in{' '}
         {complaint.city}, {complaint.state} — {article} {scam}, reported {when}.
@@ -411,7 +420,7 @@ const CaseStory = memo(function CaseStory({ complaint, sev, prediction, loading,
 
       {!loading && prediction && (
         <>
-          <p className="text-[12.5px] leading-relaxed text-zinc-300">
+          <p className="case-line text-[12.5px] leading-relaxed text-zinc-300" style={line(1)}>
             The money was moved through a chain of mule accounts and now sits in
             account <span className="text-white font-semibold">{prediction.terminal_account}</span>.
           </p>
@@ -422,7 +431,7 @@ const CaseStory = memo(function CaseStory({ complaint, sev, prediction, loading,
               only while the window is open, and as what the model placed at the
               time otherwise. */}
           {sev?.golden ? (
-            <p className="text-[12.5px] leading-relaxed text-zinc-300">
+            <p className="case-line text-[12.5px] leading-relaxed text-zinc-300" style={line(2)}>
               We expect a cash withdrawal in about{' '}
               <span className="text-white font-semibold">{mins} minutes</span>, most likely at{' '}
               <span className="text-white font-semibold">one of {nAtms} ATMs</span>
@@ -430,7 +439,7 @@ const CaseStory = memo(function CaseStory({ complaint, sev, prediction, loading,
               <span className="text-white font-semibold">{MODEL_STATS.atmTotal}</span> nationwide.
             </p>
           ) : (
-            <p className="text-[12.5px] leading-relaxed text-zinc-300">
+            <p className="case-line text-[12.5px] leading-relaxed text-zinc-300" style={line(2)}>
               On the evidence available, the model puts the withdrawal about{' '}
               <span className="text-white font-semibold">{mins} minutes</span> after the
               transfer, at <span className="text-white font-semibold">one of {nAtms} ATMs</span>
@@ -450,7 +459,7 @@ const CaseStory = memo(function CaseStory({ complaint, sev, prediction, loading,
       )}
 
       {/* The one line that tells an officer whether to move. */}
-      <div className="pt-2 border-t border-ink-border">
+      <div className="case-line pt-2 border-t border-ink-border" style={line(3)}>
         {sev?.golden ? (
           <p className="text-[12.5px] leading-relaxed text-red-300 font-semibold flex items-center gap-1.5">
             <Radio size={12} className="animate-pulse-dot shrink-0" />
@@ -462,6 +471,7 @@ const CaseStory = memo(function CaseStory({ complaint, sev, prediction, loading,
           <p className="text-[12.5px] leading-relaxed text-zinc-500">
             The interception window for this complaint has closed. It is kept for
             pattern analysis and to train the model.
+            <span className="case-caret" />
           </p>
         )}
       </div>
@@ -473,6 +483,7 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
   const [dismissed, setDismissed] = useState(() => new Set())
   const [officer, setOfficer] = useState('AS-1042')
   const [noteOpen, setNoteOpen] = useState(false)
+  const [dossierOpen, setDossierOpen] = useState(false)
   const [noteText, setNoteText] = useState('')
   const [notes, setNotes] = useState([])
   const [tab, setTab] = useState('Summary')
@@ -724,7 +735,7 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
           <div className="aegis-panel p-3">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2">
-                <ShieldAlert size={16} className="text-aegis-green" />
+                <ShieldAlert size={16} className="text-aegis-accent" />
                 <span className="text-[13px] font-semibold text-white">Case queue</span>
                 {/* Says what the sort actually does. "SEVERITY RANKED" in red
                     implied every row carried a severity worth alarming about. */}
@@ -736,7 +747,7 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
                 <button
                   onClick={() => setModalOpen(true)}
                   disabled={backendDown}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-aegis-green text-black text-[12px] font-medium hover:bg-emerald-400 disabled:opacity-40 transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-aegis-accent text-black text-[12px] font-medium hover:bg-white disabled:opacity-40 transition-colors"
                 >
                   <Plus size={14} /> Add case
                 </button>
@@ -889,6 +900,19 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
                   <StickyNote size={12} /> Note{notes.length ? ` · ${notes.length}` : ''}
                 </button>
 
+                {/* The intelligence report of deliverable (c). Assembled server-side
+                    from the ledger, the shipped model and the custody chain, so what
+                    prints is what the system holds -- see backend/dossier.py. */}
+                <button
+                  onClick={() => setDossierOpen(true)}
+                  disabled={!!busyAction}
+                  className="px-2.5 py-1.5 rounded border border-ink-border text-[11.5px] text-zinc-300
+                             hover:border-zinc-600 hover:text-white transition-colors flex items-center gap-1.5"
+                  title="Produce a printable police intelligence dossier for this case"
+                >
+                  <FileText size={12} /> Dossier
+                </button>
+
                 {busyAction && <Loader2 size={13} className="animate-spin text-zinc-500" />}
               </div>
 
@@ -912,7 +936,7 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
                     <button
                       onClick={submitNote}
                       disabled={!noteText.trim() || busyAction === 'note'}
-                      className="px-2.5 py-1 rounded bg-aegis-green text-black text-[11.5px] font-medium
+                      className="px-2.5 py-1 rounded bg-aegis-accent text-black text-[11.5px] font-medium
                                  disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
                     >
                       Save note
@@ -943,7 +967,7 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
                     aria-selected={tab === t}
                     className={`px-2.5 py-1.5 text-[12px] border-b-2 -mb-px transition-colors ${
                       tab === t
-                        ? 'border-aegis-green text-white'
+                        ? 'border-aegis-accent text-white'
                         : 'border-transparent text-zinc-500 hover:text-zinc-300'
                     }`}
                   >
@@ -969,7 +993,12 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
                 </div>
               ) : (
               <>
+              {/* Keyed on the case, so the reveal replays when an officer
+                  switches cases -- and NOT on every countdown tick, which is
+                  what a re-render without a key would have given us: the
+                  summary re-animating once a second, forever. */}
               <CaseStory
+                key={active.ticket_id}
                 complaint={active}
                 sev={activeSev}
                 prediction={prediction}
@@ -1009,7 +1038,7 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
                 {[
                   ['/map', MapPinned, 'text-red-400', 'hover:border-red-500/60 hover:bg-red-500/10', 'Cash-out locations', 'Ranked ATMs and field dispatch'],
                   ['/graph', GitBranch, 'text-blue-400', 'hover:border-blue-500/60 hover:bg-blue-500/10', 'Transaction trail', 'Fund movement and account risk'],
-                  ['/intercept', Zap, 'text-aegis-green', 'hover:border-aegis-green/60 hover:bg-aegis-green/10', 'Intervention', 'Freeze the terminal account'],
+                  ['/intercept', Zap, 'text-aegis-accent', 'hover:border-aegis-accent/60 hover:bg-aegis-accent/10', 'Intervention', 'Freeze the terminal account'],
                 ].map(([path, Icon, iconColor, hover, title, sub]) => (
                   <button
                     key={path}
@@ -1052,7 +1081,7 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
                 </div>
               ))}
               <div className="col-span-2 flex items-center gap-1.5 text-[10px] text-zinc-500 pt-1">
-                <Radio size={11} className={health ? 'text-aegis-green' : 'text-zinc-600'} />
+                <Radio size={11} className={health ? 'text-aegis-accent' : 'text-zinc-600'} />
                 Read from <span className="text-zinc-400">/health</span>
               </div>
             </div>
@@ -1061,6 +1090,9 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
       </div>
 
       <IngestModal isOpen={modalOpen} onClose={() => setModalOpen(false)} onSuccess={onIngested} />
+      {dossierOpen && active && (
+        <DossierModal caseId={active.ticket_id} onClose={() => setDossierOpen(false)} />
+      )}
     </div>
   )
 }

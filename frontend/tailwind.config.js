@@ -9,6 +9,9 @@ export default {
         display: ['Geist Sans', 'Inter', 'sans-serif'],
       },
       colors: {
+        // The console skin carries a slight green cast, so the surfaces sit
+        // under the signal green rather than beside it. Pure neutrals made the
+        // accent read as a sticker on the chrome; these do not.
         ink: {
           bg: '#080a0a',
           surface: '#0f1111',
@@ -17,7 +20,10 @@ export default {
           border2: '#252a2a',
         },
         aegis: {
-          green: '#7cf000',
+          // Signal green: primary actions, active nav, healthy/live state.
+          // Red and amber stay reserved for risk, so the three never collide.
+          accent: '#7cf000',
+          accentDim: '#5bb000',
         }
       },
       // Motion an operator benefits from, and nothing else. `pulseDot` and

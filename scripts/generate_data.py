@@ -30,8 +30,11 @@ Two further realism fixes:
     recur across complaints. Previously every chain minted fresh accounts, which
     left the graph as thousands of disconnected 5-node components with no ring
     structure for GraphSAGE to exploit.
-  - Chains stay regionally coherent instead of teleporting between random cities
-    at every hop.
+  - Chains are drawn from a syndicate rather than from the whole population.
+    NOTE: they are only partly regionally coherent. Syndicate membership is
+    assigned independently of geography (see build_account_registry), so a
+    chain can still cross states. MULE_CITY_CONCENTRATION reduces how often,
+    without fixing the cause.
 
 Ground truth that belongs in the data now lives in the data: each terminal
 transaction carries the ATM the cashout actually happened at, and the delay
@@ -302,6 +305,46 @@ HOTSPOT_CITIES = {
     "Delhi", "Mumbai", "Kolkata", "Patna", "Ranchi",
 }
 
+# ── Where mules actually are ─────────────────────────────────────────────────
+#
+# Mule recruitment is not spread evenly across India. A handful of districts
+# carry a share of mule activity wildly out of proportion to their population:
+# Nuh (Mewat), Jamtara, Alwar, Bharatpur, Deoghar, Mathura, Giridih are the ones
+# named repeatedly in I4C and state-police reporting.
+#
+# A uniform draw over the 79 cities made the top district 1.15x the twelfth, and
+# INDEPENDENT_AUDIT.md Sec 5.2 records that flatness as the largest evidence gap
+# in this project: the problem statement's entire premise is that cash-out
+# concentrates, and a corpus that shows it does not cannot demonstrate the thing
+# being claimed.
+#
+# TWO DELIBERATE LIMITS ON WHAT THIS WEIGHTS.
+#
+#   1. **Only mule accounts.** Victims are everywhere -- a retiree in Kochi is
+#      defrauded by a crew in Nuh, and the money travels. Concentrating the whole
+#      account population would concentrate victims too, which is both wrong
+#      about the world and would make the complaint feed look like it arrives
+#      from four districts. What should concentrate is where the money SURFACES,
+#      and that follows the mules.
+#
+#   2. **Not the ATM directory.** Machines are placed by banks, not by crews, so
+#      generate_atm_directory keeps the uniform draw. Weighting it too would
+#      change the candidate geometry every cash-out is ranked against, which is
+#      a change to the model's task rather than to the world it models.
+MULE_CITY_RANKING = (
+    "Nuh", "Jamtara", "Alwar", "Bharatpur", "Deoghar", "Mathura", "Giridih",
+    "Delhi", "Patna", "Ranchi", "Mumbai", "Kolkata",
+)
+
+MULE_CITY_CONCENTRATION = 0.0
+"""Zipf exponent over MULE_CITY_RANKING. 0.0 reproduces the uniform corpus.
+
+Rank i of the ranking is weighted (i+1) ** -alpha relative to an unranked city,
+so alpha=0 is uniform and larger alpha concentrates harder. Exposed as
+--mule-concentration; the default stays 0.0 so that regenerating without the
+flag reproduces the corpus every published figure was measured on.
+"""
+
 
 # ─────────────────────────────────────────────
 # HELPER GENERATION UTILITIES
@@ -330,7 +373,57 @@ def _random_bank():
 
 
 def _random_city():
+    """Uniform over the city list. Used for ATMs and for non-mule accounts."""
     return random.choice(INDIAN_CITIES)
+
+
+_MULE_CITY_WEIGHTS: list[float] | None = None
+
+
+def _build_mule_city_weights(alpha: float) -> list[float]:
+    """Zipf weights over the FULL city list, ranked recruitment districts first.
+
+    Every one of the 79 cities gets an overall rank r: the districts named in
+    MULE_CITY_RANKING take ranks 0..11 in that order, and the rest follow in
+    list order. City at rank r is weighted (r + 1) ** -alpha.
+
+    Ranking ALL of them is the point, and getting it wrong once is what this
+    docstring is for. An earlier version weighted only the named districts by
+    (i+1) ** -alpha and left the other 67 at 1.0 -- which weights every named
+    district at or BELOW the unnamed tail, so raising alpha concentrated mules
+    away from Nuh and Jamtara. The pre-flight sweep caught it because the top
+    district never moved off 1.3x.
+
+    At alpha=0 every weight is exactly 1.0 and the draw degenerates to
+    random.choice, which is what makes the default inert.
+    """
+    rank = {name: i for i, name in enumerate(MULE_CITY_RANKING)}
+    n_named = len(MULE_CITY_RANKING)
+    tail = n_named
+    order: list[int] = []
+    for city, _district, _state, _lat, _lon in INDIAN_CITIES:
+        i = rank.get(city)
+        if i is None:
+            order.append(tail)
+            tail += 1
+        else:
+            order.append(i)
+    return [float((r + 1) ** -alpha) for r in order]
+
+
+def _random_mule_city():
+    """Where a mule account sits: weighted toward the recruitment districts.
+
+    Falls through to the uniform draw when concentration is off, so the
+    alpha=0 corpus is bit-identical to the one produced before this existed
+    rather than merely statistically similar.
+    """
+    if not MULE_CITY_CONCENTRATION:
+        return random.choice(INDIAN_CITIES)
+    global _MULE_CITY_WEIGHTS
+    if _MULE_CITY_WEIGHTS is None:
+        _MULE_CITY_WEIGHTS = _build_mule_city_weights(MULE_CITY_CONCENTRATION)
+    return random.choices(INDIAN_CITIES, weights=_MULE_CITY_WEIGHTS, k=1)[0]
 
 
 def _split_amount(total: float, n: int):
@@ -401,7 +494,11 @@ def build_account_registry(n_accounts: int, n_syndicates: int = 180) -> dict:
         archetype = random.choices(names, weights=weights, k=1)[0]
         spec = ARCHETYPES[archetype]
         bank_name, bank_code = _random_bank()
-        city, district, state, lat, lon = _random_city()
+        # Mules concentrate in the recruitment districts; victims do not. See
+        # MULE_CITY_RANKING for why only one of these two draws is weighted.
+        city, district, state, lat, lon = (
+            _random_mule_city() if spec["is_mule"] else _random_city()
+        )
         alat, alon = _jitter_coords(lat, lon, radius_km=10.0)
 
         acc_id = _masked_account()
@@ -439,8 +536,32 @@ def build_account_registry(n_accounts: int, n_syndicates: int = 180) -> dict:
         if spec["is_mule"]:
             mule_ids.append(acc_id)
 
-    # Assign mules to syndicates. Syndicates are regionally clustered, which is
-    # how mule networks actually recruit.
+    # Assign mules to syndicates.
+    #
+    # CORRECTED COMMENT. This used to read "Syndicates are regionally clustered,
+    # which is how mule networks actually recruit." That was not true of this
+    # code: a global shuffle followed by `i % n_syndicates` assigns membership
+    # independently of geography, so a syndicate's ~8 members were scattered
+    # across all 79 cities. Three things followed, and they are still true:
+    #
+    #   1. assign_cashouts computes each crew's centroid as the mean of its
+    #      members' coordinates. Averaging uniformly scattered points lands near
+    #      the centre of India, so the "40 nearest ATMs" preference set is
+    #      central-India machines unrelated to where the crew operates --
+    #      diluting ATM_SYNDICATE_PREF_BOOST, the dominant designed non-distance
+    #      signal.
+    #   2. _pick_syndicate_members filters for same-state members to keep chains
+    #      regionally coherent; with members spread over 79 cities that filter
+    #      almost always finds nothing.
+    #   3. _build_chain needs 14 members but a syndicate holds ~8, so it borrows
+    #      from other syndicates on essentially every chain.
+    #
+    # MULE_CITY_CONCENTRATION partially mitigates 1 and 2 as a side effect --
+    # with mules drawn toward a dozen districts, a syndicate's members are more
+    # likely to share a region by chance. It is NOT a fix. Making syndicates
+    # genuinely geographic is a change to the generative process that would move
+    # the Bayes bound the Top-K band in tests/test_ranked_candidates.py is
+    # derived from, so it is deliberately left for a separate pass.
     random.shuffle(mule_ids)
     for i, acc_id in enumerate(mule_ids):
         registry[acc_id]["syndicate_id"] = i % max(1, n_syndicates)
@@ -1214,8 +1335,13 @@ def generate_node_features(transactions_df: pd.DataFrame, registry: dict) -> pd.
 # ─────────────────────────────────────────────
 
 def main(n_complaints=2500, n_transactions=20000, n_atms=1000, seed=42,
-         n_accounts=50000, n_legit_txns=600000):
+         n_accounts=50000, n_legit_txns=600000, mule_concentration=None):
     """Run the full Pan-India data generation pipeline."""
+    global MULE_CITY_CONCENTRATION, _MULE_CITY_WEIGHTS
+    if mule_concentration is not None:
+        MULE_CITY_CONCENTRATION = float(mule_concentration)
+        _MULE_CITY_WEIGHTS = None      # rebuild lazily against the new alpha
+
     random.seed(seed)
     np.random.seed(seed)
     fake = Faker("en_IN")
@@ -1347,6 +1473,13 @@ if __name__ == "__main__":
     ap.add_argument("--accounts", type=int, default=50000)
     ap.add_argument("--legit", type=int, default=600000)
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument(
+        "--mule-concentration", type=float, default=MULE_CITY_CONCENTRATION,
+        help=("Zipf exponent concentrating MULE accounts into the recruitment "
+              "districts (see MULE_CITY_RANKING). 0.0 = uniform, which is the "
+              "corpus every published figure was measured on. Victims and the "
+              "ATM directory are never weighted."),
+    )
     args = ap.parse_args()
 
     main(
@@ -1356,4 +1489,5 @@ if __name__ == "__main__":
         seed=args.seed,
         n_accounts=args.accounts,
         n_legit_txns=args.legit,
+        mule_concentration=args.mule_concentration,
     )

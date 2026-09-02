@@ -60,12 +60,12 @@ export function ToastProvider({ children }) {
                         px-3 py-2 text-[12px] shadow-lg max-w-sm ${
               t.tone === 'error'
                 ? 'bg-ink-surface border-red-500/40 text-red-300'
-                : 'bg-ink-surface border-aegis-green/40 text-zinc-200'
+                : 'bg-ink-surface border-aegis-accent/40 text-zinc-200'
             }`}
           >
             {t.tone === 'error'
               ? <AlertTriangle size={14} className="text-red-400 shrink-0 mt-0.5" />
-              : <CheckCircle2 size={14} className="text-aegis-green shrink-0 mt-0.5" />}
+              : <CheckCircle2 size={14} className="text-aegis-accent shrink-0 mt-0.5" />}
             <span className="flex-1 leading-snug">{t.message}</span>
             <button
               onClick={() => dismiss(t.id)}

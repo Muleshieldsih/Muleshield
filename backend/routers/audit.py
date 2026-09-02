@@ -19,8 +19,9 @@ record of the running session, not a compliance-grade archive.
 
 import logging
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
+from backend.auth import current_user
 from backend.models.schemas import AuditEntry
 import backend.state as state
 
@@ -33,6 +34,7 @@ router = APIRouter(prefix="/api/v1/audit", tags=["Audit"])
 async def list_audit(
     limit: int = Query(default=100, ge=1, le=1000),
     case_id: str = Query(default="", description="Restrict to one case"),
+    user: dict = Depends(current_user),
 ) -> list[AuditEntry]:
     return [AuditEntry(**e) for e in state.get_audit(case_id=case_id, limit=limit)]
 
@@ -42,5 +44,6 @@ async def list_audit(
 async def case_audit(
     complaint_id: str,
     limit: int = Query(default=100, ge=1, le=1000),
+    user: dict = Depends(current_user),
 ) -> list[AuditEntry]:
     return [AuditEntry(**e) for e in state.get_audit(case_id=complaint_id, limit=limit)]

@@ -443,7 +443,7 @@ export default function ForensicGraph() {
             {[
               [AlertTriangle, 'text-amber-400', 'Velocity', anomalies.velocity_count ?? 0, anomalies.velocity_rule],
               [Split, 'text-red-400', 'Fund splitting', anomalies.fund_split_count ?? 0, anomalies.fund_split_rule],
-              [Target, 'text-aegis-green', 'Terminal leaves', anomalies.terminal_count ?? 0, 'out-degree 0 = cashout candidate'],
+              [Target, 'text-aegis-accent', 'Terminal leaves', anomalies.terminal_count ?? 0, 'out-degree 0 = cashout candidate'],
             ].map(([Icon, tone, label, count, rule]) => (
               <div key={label} className="bg-ink-panel border border-ink-border rounded px-2.5 py-1.5">
                 <div className="flex justify-between items-center">
@@ -475,7 +475,7 @@ export default function ForensicGraph() {
                     const n = data?.nodes?.find(x => x.id === m.account_id)
                     if (n) setSelected(n)
                   }}
-                  className="w-full text-left bg-ink-panel border border-ink-border rounded px-2.5 py-1.5 hover:border-aegis-green/40 transition"
+                  className="w-full text-left bg-ink-panel border border-ink-border rounded px-2.5 py-1.5 hover:border-aegis-accent/40 transition"
                 >
                   <div className="flex justify-between items-center gap-2">
                     <span className="text-zinc-300 truncate">

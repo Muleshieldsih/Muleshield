@@ -1,0 +1,24 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html",           "x": 0,    "y": 0, "w": 1440, "h": 900, "title": "Sign in" },
+    { "file": "SignInError.dc.html",    "x": 1560, "y": 0, "w": 1440, "h": 900, "title": "Sign in - rejected" },
+    { "file": "ForgotPassword.dc.html", "x": 3120, "y": 0, "w": 1440, "h": 900, "title": "Reset password" }
+  ],
+  "annotations": [
+    {
+      "id": "tokens",
+      "x": 0,
+      "y": -190,
+      "w": 560,
+      "text": "Matched to the live console rather than designed fresh.\n\nField #080a0a, panel #0f1111, inputs #141717, borders #1e2323,\nsingle accent #7cf000. Inter for copy, JetBrains Mono for identifiers.\nType sits at 10.5-15px, the same ramp the console already uses.\n\nNo glow, no pulse, no backdrop blur - all three were deliberately\nstripped out of this product once already."
+    },
+    {
+      "id": "reset-note",
+      "x": 3120,
+      "y": -190,
+      "w": 560,
+      "text": "The reset token is shown on screen because this deployment has\nno mail server. The panel says so in place rather than implying\nan email went out.\n\nIn production the token goes to the officer's registered address\nand this panel is replaced by an acknowledgement."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

@@ -1,7 +1,9 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { Shield, Activity, GitBranch, MapPinned, Zap, BarChart3, Radio, Circle, WifiOff } from 'lucide-react'
+import { Activity, GitBranch, MapPinned, Zap, BarChart3, Flame, BellRing, Radio, Circle, WifiOff, LogOut } from 'lucide-react'
 import { useMemo } from 'react'
 import { amountShort, formatTicket } from '../utils/constants'
+import { useAuth } from '../context/AuthContext'
+import Mark from './Mark'
 import { timeAgo, useNow } from '../hooks/useCountdown'
 
 /** Compact city code for the ticker, derived from the city name itself. */
@@ -72,7 +74,7 @@ function SidebarStreamTicker({ complaints = [], onSelect, activeId }) {
                 title={`${formatTicket(c.ticket_id)} — ${c.victim_name}, ${c.city}`}
                 className={`w-full text-left p-1.5 rounded border transition-colors duration-100 flex items-center justify-between text-[11px] ${
                   isActive
-                    ? 'bg-ink-panel border-aegis-green/50'
+                    ? 'bg-ink-panel border-aegis-accent/50'
                     : 'bg-ink-panel/60 border-ink-border/80 hover:border-ink-border2 hover:bg-ink-panel'
                 }`}
               >
@@ -101,7 +103,7 @@ function SidebarStreamTicker({ complaints = [], onSelect, activeId }) {
 // CONNECTED is deliberately absent. The backend broadcasts it on socket open
 // (backend/main.py), so for 12 seconds after every connect the header rendered
 // "feed connected" beside the persistent "1930 FEED CONNECTED" pill -- same
-// green, same shape, saying the same thing twice. This pill is for events that
+// tone, same shape, saying the same thing twice. This pill is for events that
 // carry news; connection state is owned by the pill next to it.
 const EVENT_LABEL = {
   NEW_COMPLAINT: 'complaint ingested',
@@ -117,8 +119,12 @@ export function Topbar({ wsConnected, complaintId, backendDown, lastEvent }) {
   return (
     <header className="h-[48px] flex items-center justify-between gap-3 px-4 border-b border-ink-border bg-ink-bg shrink-0 z-30">
       <div className="flex items-center gap-3 min-w-0">
-        <div className="w-8 h-8 rounded bg-aegis-green grid place-items-center shrink-0">
-          <Shield size={16} className="text-black" />
+        {/* The mark keeps its own colour. The tile is pinned to white rather
+            than the accent token so restoring the green console skin does not
+            recolour the logo along with it. */}
+        <div className="w-8 h-8 rounded bg-[#fafafa] grid place-items-center shrink-0">
+          {/* The pip inverts on the light tile -- a white dot on white is a hole. */}
+          <Mark size={18} className="text-black" pip="#000000" />
         </div>
         <div className="leading-tight min-w-0">
           <div className="text-[13px] font-semibold tracking-tight text-white">MuleShield AI</div>
@@ -130,7 +136,7 @@ export function Topbar({ wsConnected, complaintId, backendDown, lastEvent }) {
 
       <div className="flex items-center gap-2 shrink-0">
         {recent && (
-          <span className="hidden lg:flex items-center gap-1.5 text-[11px] text-aegis-green bg-aegis-green/10 border border-aegis-green/30 rounded px-2.5 py-1">
+          <span className="hidden lg:flex items-center gap-1.5 text-[11px] text-aegis-accent bg-aegis-accent/10 border border-aegis-accent/30 rounded px-2.5 py-1">
             <Radio size={10} /> {EVENT_LABEL[recent.type]}
           </span>
         )}
@@ -143,10 +149,10 @@ export function Topbar({ wsConnected, complaintId, backendDown, lastEvent }) {
           ) : (
             <span
               className={`flex items-center gap-1.5 ${
-                wsConnected ? 'text-aegis-green font-semibold' : 'text-zinc-500'
+                wsConnected ? 'text-aegis-accent font-semibold' : 'text-zinc-500'
               }`}
             >
-              <Circle size={8} className={wsConnected ? 'fill-aegis-green' : ''} />
+              <Circle size={8} className={wsConnected ? 'fill-aegis-accent' : ''} />
               {wsConnected ? 'Connected' : 'Reconnecting…'}
             </span>
           )}
@@ -158,8 +164,39 @@ export function Topbar({ wsConnected, complaintId, backendDown, lastEvent }) {
             <span className="mono tnum font-semibold text-zinc-100">{formatTicket(complaintId)}</span>
           </div>
         )}
+
+        <OfficerChip />
       </div>
     </header>
+  )
+}
+
+/**
+ * Who is signed in, and the way out.
+ *
+ * Worth showing prominently rather than tucking in a menu: every freeze and every
+ * status change now carries this name into the audit trail, so an officer should
+ * never be unsure whose account they are acting under.
+ */
+function OfficerChip() {
+  const { user, logout } = useAuth()
+  if (!user) return null
+  return (
+    <div className="flex items-center gap-1.5 shrink-0">
+      <div className="hidden sm:flex flex-col items-end leading-tight border border-ink-border rounded px-3 py-1 bg-ink-panel">
+        <span className="text-[11px] text-zinc-200">{user.display_name}</span>
+        <span className="mono text-[9.5px] text-zinc-500">
+          {user.username}{user.is_admin ? ' · ADMIN' : ''}
+        </span>
+      </div>
+      <button
+        onClick={logout}
+        title="Sign out"
+        aria-label="Sign out"
+        className="p-1.5 rounded border border-ink-border text-zinc-500 hover:text-white hover:border-ink-border2 transition-colors">
+        <LogOut size={14} />
+      </button>
+    </div>
   )
 }
 
@@ -168,6 +205,8 @@ const NAV_ITEMS = [
   ['/graph', <GitBranch size={15} key="i" />, 'Transaction trail', 'Fund movement'],
   ['/map', <MapPinned size={15} key="i" />, 'Locations', 'Cash-out points'],
   ['/intercept', <Zap size={15} key="i" />, 'Intervention', 'Freeze and escalate'],
+  ['/risk', <Flame size={15} key="i" />, 'Risk heatmap', 'National to district'],
+  ['/alerts', <BellRing size={15} key="i" />, 'Alerts', 'Raised and acknowledged'],
   ['/model', <BarChart3 size={15} key="i" />, 'Model performance', 'Detection accuracy'],
 ]
 
@@ -199,7 +238,7 @@ export function Sidebar({ complaintId, complaints, onSelect }) {
           >
             {({ isActive }) => (
               <>
-                <span className={`shrink-0 ${isActive ? 'text-aegis-green' : 'text-zinc-500'}`}>
+                <span className={`shrink-0 ${isActive ? 'text-aegis-accent' : 'text-zinc-500'}`}>
                   {icon}
                 </span>
                 <span className="flex-1 leading-tight">
@@ -239,7 +278,7 @@ export function MobileNav({ onNavigate, pathname }) {
           onClick={() => onNavigate(to)}
           className={`px-3 py-1.5 rounded border mono text-[11px] whitespace-nowrap transition ${
             pathname === to
-              ? 'border-aegis-green/50 bg-ink-panel text-white font-bold'
+              ? 'border-aegis-accent/50 bg-ink-panel text-white font-bold'
               : 'border-ink-border bg-ink-panel text-zinc-300 hover:text-white'
           }`}
         >
@@ -271,7 +310,7 @@ export function Panel({ title, right, children, className = '', bodyClass = '' }
 export function Stat({ label, value, tone = 'default', sub }) {
   const tones = {
     default: 'text-white',
-    good: 'text-aegis-green',
+    good: 'text-aegis-accent',
     warn: 'text-amber-400',
     bad: 'text-red-400',
     info: 'text-blue-400',
