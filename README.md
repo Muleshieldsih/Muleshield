@@ -25,24 +25,31 @@
 
 ## 🖥️ Tactical Command Center Dashboard
 
-Seven screens, captured from a **live run** against the real backend — `scripts/capture_screens.py`
-drives a headless browser over the running console, so what is below is what the system renders,
-not a mockup. Every figure on screen is read from `data/metrics.json`, which only the training and
-evaluation scripts write.
+Ten screens, every one captured from a **live run** against the real backend —
+`scripts/capture_screens.py` drives a headless browser over the running console, signs in,
+opens the panels and modals that are not routes, and **refuses to save a screenshot of a
+screen that never rendered**. What is below is what the system draws, not a mockup. Every
+figure on screen is read from `data/metrics.json`, which only the training and evaluation
+scripts write.
 
-Screens 1–5 answer *this case*. Screens 6 and 7 answer *the country* — they are the framework
-layer the problem statement asks for and the layer `COMPLIANCE_AUDIT.md` found missing.
+Screens 1–5 answer *this case*. Screens 6 and 7 answer *the country* — the framework layer
+the problem statement asks for and the layer `COMPLIANCE_AUDIT.md` found missing. Screens
+8–10 are what leaves the building: custody, the certificate a court asks for, and the
+report an officer signs.
 
 <div align="center">
   <h3>1. Case Queue &amp; Triage</h3>
   <img src="docs/screens/01-case-queue.png" alt="MuleShield AI — case queue and triage" width="100%" />
-  <p><em>The working queue: 60 cases loaded of 2,500 on the national feed, with the amount at risk
-  across them. Severity is banded against the <strong>percentiles of the queue actually loaded</strong>,
-  not fixed rupee cuts — a flat ₹1.5L threshold marked 43% of this corpus CRITICAL and carried no
-  signal. Each case moves through a real status workflow (New → Under Review → Investigating →
-  Intervention Required → Resolved / Closed), can be assigned and annotated, and every action is
-  written to an audit trail. The right panel opens with a plain-language brief an officer can act on
-  without reading a model output.</em></p>
+  <p><em>The working queue: 60 cases loaded of <strong>3,167 on the national feed</strong> —
+  2,500 from the corpus plus 667 replayed through the real ingest API at the NCRP rate the
+  problem statement names, which is the load the forward surface was designed for. Every case
+  here is inside the golden hour and its countdown is <strong>live</strong>. Severity is banded
+  against the <strong>percentiles of the queue actually loaded</strong>, not fixed rupee cuts — a
+  flat ₹1.5L threshold marked 43% of this corpus CRITICAL and carried no signal. Each case moves
+  through a real status workflow (New → Under Review → Investigating → Intervention Required →
+  Resolved / Closed), can be assigned, annotated and <strong>turned into a signed dossier</strong>
+  (screen 10), and every action is written to an audit trail. The right panel opens with a
+  plain-language brief an officer can act on without reading a model output.</em></p>
 </div>
 
 <br/>
@@ -88,10 +95,14 @@ layer the problem statement asks for and the layer `COMPLIANCE_AUDIT.md` found m
   <img src="docs/screens/05-model-performance.png" alt="MuleShield AI — model performance" width="100%" />
   <p><em>The evaluation, in the product rather than only in a document. Mule detection scores
   <strong>F1 0.9051</strong> against 0.8758 for the best non-graph model, with the confusion matrix
-  over 7,500 held-out accounts read as an alert queue: of 231 flagged, 205 are mules. The Top-K
-  containment curve is shown in full, including the finding that works against us —
-  <strong>at K=1 the ranker still does not beat sorting by distance (0.2682 vs 0.2788)</strong>.
-  The defensible claim is the narrowing, 1,000 ATMs to 5.</em></p>
+  over 7,500 held-out accounts read as an alert queue: of 231 flagged, 205 are mules. Below it,
+  the screen does the thing an evaluation page usually will not — it shows
+  <strong>what the detector does at prevalences it has not been tested at</strong>. Precision
+  falls 88.7% → 2.5% as the mule rate falls 2.96% → 0.01%, while the number of innocent people in
+  the queue barely moves (347 → 357 per 100k). The recommended posture per band is printed beside
+  it and <strong>explicitly labelled as a recommendation the code does not enforce</strong>. The
+  Top-K curve is shown in full including the finding that works against us —
+  <strong>at K=1 the ranker still does not beat sorting by distance (0.2682 vs 0.2788)</strong>.</em></p>
 </div>
 
 <br/>
@@ -100,7 +111,10 @@ layer the problem statement asks for and the layer `COMPLIANCE_AUDIT.md` found m
   <h3>6. Risk Heatmap — national → state → district</h3>
   <img src="docs/screens/06-risk-heatmap.png" alt="MuleShield AI — forward risk heatmap" width="100%" />
   <p><em>The forward cash-out intensity surface: <strong>where stolen money is about to surface in
-  the next 30 / 60 / 120 minutes</strong>, aggregated over every complaint open right now. Drill-down
+  the next 30 / 60 / 120 minutes</strong>, aggregated over all 667 complaints open right now. The
+  shape on the map is the point: mule recruitment concentrates, so the surface concentrates with
+  it — <strong>Alwar, Bharatpur and the Mewat belt burn brightest</strong> while complaints
+  themselves still arrive from all 79 cities. Drill-down
   is national → state → district, with time-window and crime-category filters. This is
   <strong>not</strong> a density map of past cash-outs — history enters as one term capped at
   <strong>15%</strong> of the surface's conditional mass, and every cell reports its own
@@ -156,6 +170,25 @@ layer the problem statement asks for and the layer `COMPLIANCE_AUDIT.md` found m
   none. Printable from the console; it must be adopted and signed by the named custodian.</em></p>
 </div>
 
+<br/>
+
+<div align="center">
+  <h3>10. Police intelligence dossier</h3>
+  <img src="docs/screens/10-case-dossier.png" alt="MuleShield AI — police intelligence dossier" width="100%" />
+  <p><em>The middle clause of deliverable (c) &mdash; <em>&ldquo;intelligence reports&rdquo;</em> &mdash;
+  and the one that had nothing behind it until last. One click produces a printable case report:
+  the complaint as filed, <strong>every hop of the money trail with its own IFSC</strong> (from the
+  ledger, not the de-duplicated graph view, because a bank nodal officer acts on the hops), what
+  the graph engine flagged and under which thresholds, the forecast search zone with its ranked
+  candidates, the actions taken, and the custody chain with its s.63 statements nested whole.
+  <strong>Assembled server-side at the moment it is asked for</strong>, so it cannot describe a
+  state the system is not in &mdash; and it calls the same
+  <code>backend/forecast.py</code> the Interception screen does, so a printed dossier and the
+  console can never name a different ATM. Production is audit-logged, and the document carries the
+  same caveat that goes out on the wire: <em>&ldquo;a ranked forecast, not a confirmed
+  location&rdquo;</em>. Black on white, printed by the browser &mdash; no PDF dependency.</em></p>
+</div>
+
 > **Regenerate:** `cd frontend && npm run build`, start the backend, seed the live
 > window (step 5 below — `/risk` and `/alerts` photograph as empty without it), then
 > `MULESHIELD_ADMIN_PASSWORD=... python scripts/capture_screens.py`. Capture runs against
@@ -163,8 +196,11 @@ layer the problem statement asks for and the layer `COMPLIANCE_AUDIT.md` found m
 > on relative paths, so `npm run preview` alone would answer those calls with `index.html`.
 > The script signs in (it predated authentication and could not, so it quietly photographed
 > the login form), resolves a complaint from the live queue rather than pinning a ticket id,
-> and refuses to save a screenshot of a screen that never rendered. `MULESHIELD_CAPTURE_API`
-> points it at a different port.
+> seeds one evidence artefact so the custody panel is not an empty table, opens the panels and
+> modals that are not routes, and refuses to save a screenshot of a screen that never rendered.
+> Screens 8 and 9 were hand-made once, which is how two README images silently went stale when
+> the corpus was regenerated; **all ten are now produced by this one command.**
+> `MULESHIELD_CAPTURE_API` points it at a different port.
 
 ---
 
@@ -176,7 +212,7 @@ Cyber fraud incidents reported on the National Cybercrime Reporting Portal (**19
 1. **Trace multi-hop fund dispersal** in real time from victim complaint origins in $<185\text{ ms}$.
 2. **Detect fraud rings, fund-splitting, and velocity anomalies** using graph topology.
 3. **Generate 64-dimensional structural risk embeddings** via **GraphSAGE** (capturing complex neighborhood relationships).
-4. **Narrow 1,000 ATMs to a search zone containing the withdrawal 87.0% of the time** (a median of 7 machines), with a **countdown and prediction band**, in **under 5 ms** end-to-end.
+4. **Narrow 1,000 ATMs to a search zone containing the withdrawal 87.3% of the time** (a median of 7 machines), with a **countdown and prediction band**, in **~5 ms** end-to-end.
 
 ```
 [ 1930 Victim Complaint ]
@@ -192,7 +228,7 @@ Cyber fraud incidents reported on the National Cybercrime Reporting Portal (**19
            │
            ▼
 [ XGBoost Classifier & Regressor v2 ]
-  ├── 📍 Search Zone (87.0% containment; 1,000 ATMs -> a median of 7)
+  ├── 📍 Search Zone (87.3% containment; 1,000 ATMs -> a median of 7)
   ├── 📍 Top-5 ATM Ranking (Conditional Logit over 25 reachable candidates)
   ├── ⏱️ Time-to-Cashout Countdown (MAE: 11.7 min, R² 0.18, q05-q95 band)
   └── 🔒 Real-time Micro-Freeze Action Recommendation (<25ms latency)
@@ -223,16 +259,16 @@ Cyber fraud incidents reported on the National Cybercrime Reporting Portal (**19
   - `bearing_to_atm_1_deg` — Compass bearing to nearest ATM (0°–360°).
   - `is_nearest_same_bank`, `nearest_same_bank_atm_dist` — Bank affiliation preference features.
 - **Models:**
-  - **`ConditionalLogitRanker`**: ranks the 25 reachable ATMs per cashout — **Top-3 0.5781** vs a 0.5539 distance-only baseline, and aggregated into a **search zone with 87.0% containment** vs 75.5% for a nearest-3 centroid. Where a cashout happens is a *discrete choice among alternatives*, and the drivers compose multiplicatively, so in log space the choice is linear — which is exactly a conditional logit. A 953-way softmax over the national ATM directory saw ~5 examples per class and scored *below* a nearest-ATM rule; a gradient-boosted ranker had to approximate products with axis-aligned steps and also lost.
+  - **`ConditionalLogitRanker`**: ranks the 25 reachable ATMs per cashout — **Top-3 0.5621** vs a 0.5364 distance-only baseline, and aggregated into a **search zone with 87.3% containment** vs 77.7% for a nearest-3 centroid (paired exact McNemar p = 3.5e-14; see §4c). Where a cashout happens is a *discrete choice among alternatives*, and the drivers compose multiplicatively, so in log space the choice is linear — which is exactly a conditional logit. A 953-way softmax over the national ATM directory saw ~5 examples per class and scored *below* a nearest-ATM rule; a gradient-boosted ranker had to approximate products with axis-aligned steps and also lost.
   - **`XGBRegressor`**: Estimates countdown minutes — **11.88 min MAE** ($R^2 = 0.12$) against a 14.58 min mean-prediction baseline, with a q05-q95 band at 78.5% coverage. The observable-conditioned ceiling is ~9.4 min / $R^2$ ~0.45 — the cashout regime is not fully knowable.
 - **Interpretable utility weights** (recovered from data, checkable against the generator):
 
   | Term | Learned | True |
   |---|---|---|
-  | `-distance/5` | +0.99 | 1.00 |
-  | `log(1 + 2·risk)` | +0.79 | 1.00 |
+  | `-distance/5` | +1.03 | 1.00 |
+  | `log(1 + 2·risk)` | +1.05 | 1.00 |
   | `same_bank` | +0.60 | log 2 = 0.69 |
-  | `crew_prior` | +0.29 | — |
+  | `crew_prior` | +0.16 | — |
 
 ---
 
@@ -333,11 +369,22 @@ against expectation:
 
 | Utility term | Learned | Generative truth |
 |---|---|---|
-| `−distance / 5` | +0.99 | 1.00 |
-| `log(1 + 2·risk)` | +0.79 | 1.00 |
+| `−distance / 5` | +1.03 | 1.00 |
+| `log(1 + 2·risk)` | +1.05 | 1.00 |
 | `same_bank` | +0.60 | log 2 = 0.69 |
-  | `crew_prior` | +0.29 | — |
-| `crew_prior` | +0.29 | — |
+| `crew_prior` | +0.16 | — |
+
+Two of these got **closer** to truth when the corpus was concentrated — the
+surveillance-risk term moved +0.79 → +1.05 and distance +0.99 → +1.03 — because a
+concentrated population gives each term more to separate. One got **worse**:
+`crew_prior` fell +0.29 → +0.16, and the global ATM prior is now slightly negative
+(−0.17). That is a real weakness and its cause is known and written down:
+`scripts/generate_data.py` assigns syndicate membership independently of geography,
+so a crew's members scatter across the country and their "established cash-out
+points" are computed around a centroid near the middle of India. The crew signal the
+architecture is built to exploit is therefore diluted at source. Fixing it would move
+the generative process — and with it the Bayes bound the Top-K band is derived from —
+so it is deliberately left as a documented defect rather than folded into this pass.
 
 ### 4. Mule detection — supporting machinery
 
@@ -784,7 +831,7 @@ a stale complaint id.
   - Real-time sub-graph embedding extractor (<0.39s).
 - [x] **Phase 2b: XGBoost ATM Prediction Engine v2** *(53/53 Tests Passing)*
   - 80-dim hybrid vector for the GNN stage; 19-dim context+candidate vector for the ATM ranker.
-  - Search zone (87.0% containment), Top-3 ATM ranking (0.5781), countdown (11.66 min MAE).
+  - Search zone (87.3% containment), Top-3 ATM ranking (0.5621), countdown (11.88 min MAE).
   - Single inference latency: 25.8 ms.
 - [x] **Phase 3: Real-Time FastAPI Backend** *(51/51 Tests Passing)*
   - REST endpoints for complaint ingestion, graph exploration, GNN embeddings, and ATM predictions.

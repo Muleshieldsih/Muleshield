@@ -42,7 +42,11 @@ VIEWPORT = {"width": 1600, "height": 1000}
 TOKEN_KEY = "muleshield:token"        # services/auth.js
 # Leaflet tiles and React Flow layout settle well after networkidle.
 SETTLE_MS = {"triage": 5000, "map": 7000, "graph": 6000, "intercept": 4000,
-             "model": 3000, "risk": 7000, "alerts": 4000}
+             "model": 3000, "risk": 7000, "alerts": 4000,
+             # These three open a panel or a modal rather than a route. The
+             # dossier waits longest because producing one runs the full
+             # forecast and re-verifies the custody chain server-side.
+             "evidence": 4000, "certificate": 4000, "dossier": 4000}
 
 # Text that must appear before a screenshot is worth keeping. Without this the
 # script happily saved a 22 KB all-black PNG of the case queue -- the first
@@ -57,6 +61,35 @@ MUST_CONTAIN = {
     "model": "Model performance",
     "risk": "Tactical Risk Forecast",
     "alerts": "Alert Inbox",
+    "evidence": "Chain of custody",
+    "certificate": "Bharatiya Sakshya Adhiniyam",
+    "dossier": "Police Intelligence Dossier",
+}
+
+# Screens reached by an interaction rather than a URL. A modal is not a route,
+# and screenshots 08 and 09 were hand-made once because of that -- which meant
+# two images in the README were unreproducible and silently went stale when the
+# corpus was regenerated. Everything the README shows is now built by this file.
+def _open_certificate(page):
+    page.get_by_role("button", name="s.63 certificate").first.click()
+
+
+def _open_dossier(page):
+    # "Produce", not "Dossier": on the case screen the control sits in a panel
+    # header that already says Intelligence dossier, so the button is the verb.
+    # The case queue's button IS labelled "Dossier" -- same modal, different
+    # affordance.
+    page.get_by_role("button", name="Produce").first.click()
+
+
+def _scroll_to_evidence(page):
+    page.get_by_text("Chain of custody").first.scroll_into_view_if_needed()
+
+
+INTERACT = {
+    "evidence": _scroll_to_evidence,
+    "certificate": _open_certificate,
+    "dossier": _open_dossier,
 }
 
 
@@ -95,6 +128,27 @@ def pick_complaint(headers: dict) -> str:
     raise SystemExit("no complaint produced a 5-candidate prediction")
 
 
+def seed_evidence(headers: dict, cid: str) -> None:
+    """Put one artefact on the case so the custody chain is not an empty table.
+
+    Idempotent by content: the store rejects a duplicate digest, and a 409 here
+    means a previous run already seeded it, which is a success for our purposes.
+    """
+    files = {"file": ("victim-statement.pdf",
+                      b"%PDF-1.4 MuleShield capture fixture - not real evidence",
+                      "application/pdf")}
+    data = {"kind": "fir_copy",
+            "description": "Complainant statement recorded at the cyber cell",
+            "source": "Complainant"}
+    r = requests.post(f"{API}/api/v1/evidence/{cid}", files=files, data=data,
+                      headers=headers, timeout=60)
+    if r.status_code in (201, 409):
+        print(f"  evidence fixture: {'seeded' if r.status_code == 201 else 'already present'}")
+    else:
+        print(f"  evidence fixture: NOT seeded ({r.status_code}) - "
+              f"the custody panel will photograph empty")
+
+
 def main() -> None:
     from playwright.sync_api import sync_playwright
 
@@ -106,6 +160,7 @@ def main() -> None:
 
     headers = sign_in()
     cid = pick_complaint(headers)
+    seed_evidence(headers, cid)
     OUT.mkdir(parents=True, exist_ok=True)
 
     shots = [
@@ -116,6 +171,9 @@ def main() -> None:
         ("model", "/model", "05-model-performance"),
         ("risk", "/risk", "06-risk-heatmap"),
         ("alerts", "/alerts", "07-alert-inbox"),
+        ("evidence", f"/intercept?c={cid}", "08-evidence"),
+        ("certificate", f"/intercept?c={cid}", "09-evidence-certificate"),
+        ("dossier", f"/intercept?c={cid}", "10-case-dossier"),
     ]
 
     token = headers["Authorization"].split(" ", 1)[1]
@@ -133,9 +191,19 @@ def main() -> None:
             page.goto(APP + path, wait_until="networkidle", timeout=90_000)
             page.wait_for_timeout(SETTLE_MS[key])
 
-            needle = MUST_CONTAIN[key]
+            if key in INTERACT:
+                INTERACT[key](page)
+                # The content check below is what proves the interaction worked,
+                # so this only has to be long enough for a server round trip.
+                page.wait_for_timeout(SETTLE_MS[key])
+
+            # Case-insensitive: inner_text() returns RENDERED text, so a
+            # heading styled `text-transform: uppercase` comes back shouting.
+            # The dossier's title is one, and matching case-sensitively made a
+            # correctly-rendered modal look like a blank screen.
+            needle = MUST_CONTAIN[key].lower()
             for attempt in range(4):
-                if needle in page.inner_text("body"):
+                if needle in page.inner_text("body").lower():
                     break
                 page.wait_for_timeout(3000)
             else:
