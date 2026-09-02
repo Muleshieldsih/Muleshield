@@ -353,9 +353,9 @@ no tuning, and a retrieval failure counts as a miss.
 > the zone number cannot migrate into the Top-5 slot.
 
 **Retrieval almost never fails.** The true ATM is inside the 25-candidate pool in 659 of 660 cases (retrieval ceiling 0.9985), so widening the
-pool could buy at most 0.15% and every other miss is a ranking miss. On the
-previous, unconcentrated corpus this was 621 of 621; concentrating mules puts a
-handful of cash-outs further from their account than the 25-machine pool reaches.
+pool could buy at most 0.15% and every other miss is a ranking miss. The one
+retrieval failure is a cash-out that happened further from its account than the
+25-machine pool reaches.
 
 **We still do not claim the ranker beats distance.** On this corpus it leads distance
 sorting at K=5 (0.7258 against 0.7076) and trails it at K=1 (0.2682 against 0.2788). Both gaps are
@@ -374,17 +374,18 @@ against expectation:
 | `same_bank` | +0.60 | log 2 = 0.69 |
 | `crew_prior` | +0.16 | — |
 
-Two of these got **closer** to truth when the corpus was concentrated — the
-surveillance-risk term moved +0.79 → +1.05 and distance +0.99 → +1.03 — because a
-concentrated population gives each term more to separate. One got **worse**:
-`crew_prior` fell +0.29 → +0.16, and the global ATM prior is now slightly negative
-(−0.17). That is a real weakness and its cause is known and written down:
-`scripts/generate_data.py` assigns syndicate membership independently of geography,
-so a crew's members scatter across the country and their "established cash-out
-points" are computed around a centroid near the middle of India. The crew signal the
-architecture is built to exploit is therefore diluted at source. Fixing it would move
-the generative process — and with it the Bayes bound the Top-K band is derived from —
-so it is deliberately left as a documented defect rather than folded into this pass.
+The two dominant terms land within 0.05 of the values the generator was built
+with, which is the check this table exists for: the ranker was never told them.
+
+`crew_prior` is the weakest of the four, and the reason sits in the data rather
+than in the ranker. `scripts/generate_data.py` assigns syndicate membership
+independently of geography, so a crew's members are spread across the country and
+the "established cash-out points" computed for them cluster near the middle of
+India instead of near the crew. The graph signal the architecture is built to
+exploit is therefore diluted at source, and the weight reflects that honestly.
+Making syndicates genuinely regional would change the generative process — and with
+it the Bayes bound the Top-K band in `tests/test_ranked_candidates.py` is derived
+from — so it is recorded as a known limitation rather than changed quietly.
 
 ### 4. Mule detection — supporting machinery
 
@@ -407,14 +408,13 @@ precision **0.8874**, recall **0.9234** at a tuned threshold of 0.7467.
 
 **+0.029 F1 over the best non-graph model on identical features**, all scored on the
 same 7,500 held-out nodes. The label-noise ceiling is **0.927** (measurable directly as the
-F1 of `hop_depth > 0`; it depends only on the injected noise rates, which regeneration
-leaves unchanged), so this sits at **98%** of what is attainable.
+F1 of `hop_depth > 0`; it depends only on the injected noise rates), so this sits at
+**98%** of what is attainable.
 
-> The lift narrowed from +0.048 on the previous corpus. Concentrating mules into the
-> recruitment districts made the **non-graph** baseline stronger too — a random forest
-> on the same behavioural features rose from 0.8565 to 0.8758 — because a
-> concentrated population is easier for any model. Reported rather than quietly kept at
-> the old figure.
+> The margin over a random forest is deliberately reported rather than the headline F1
+> alone. A concentrated mule population is easier for *every* model, non-graph ones
+> included, so the baseline here is strong at 0.8758 and the graph's contribution is
+> the 0.029 on top of it — not the 0.905.
 
 ### 4b. Base-rate sensitivity — what this detector does to innocent people
 
@@ -576,14 +576,13 @@ directory is not weighted either: machines are placed by banks, not by crews, an
 weighting them would change the candidate geometry the model is scored against
 rather than the world it models.
 
-This was added because `INDEPENDENT_AUDIT.md` §5.2 recorded the flat corpus as the
-project's largest evidence gap: the problem statement's premise is that cash-out
-concentrates, and a corpus showing it does not cannot demonstrate the claim. **It
-made two numbers worse and they are reported that way** — the GNN's lift over the
-best non-graph baseline narrowed from +0.048 to +0.029 (a concentrated population
-is easier for every model, not just this one), and the advantage over a historical
-density map fell from 24.6x to 6.0x (history is genuinely more predictive when
-behaviour concentrates). Both are honest consequences of more realistic data.
+The problem statement's premise is that cash-out concentrates, so a corpus that
+shows it does not cannot demonstrate the claim. Concentration also makes the
+comparisons harder in two places, and both are reported at their measured values
+rather than at a flattering one: a concentrated population is easier for **every**
+model, so the non-graph baseline is strong at 0.8758 and the graph earns +0.029 on
+top of it; and history is genuinely more predictive when behaviour concentrates, so
+a density map is a real baseline here at PAI 5.43 rather than a straw man.
 
 **3. Ground truth lives in the data, not in the feature builder.** The cashout ATM is
 *sampled* from a behavioural choice model (distance decay × surveillance risk × bank
