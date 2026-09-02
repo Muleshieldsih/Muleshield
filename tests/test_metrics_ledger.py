@@ -233,3 +233,141 @@ def test_lead_time_is_reported_and_positive(ledger):
     h = ledger["hotspot"]
     assert h["lead_time_median_min"] > 0
     assert 0.0 <= h["lead_actionable_rate"] <= 1.0
+
+
+# ── Base-rate sensitivity ────────────────────────────────────────────────────
+#
+# Added when the Model Performance screen grew an "operational deployment policy"
+# table. A screen that tells an I4C desk what posture to adopt at a given mule
+# rate is making an operational claim, so the arithmetic behind it has to be
+# checked rather than trusted, and the one thing it must never do is describe a
+# governance control the code does not implement.
+
+class TestPrevalenceSensitivity:
+
+    @pytest.fixture(scope="class")
+    def prev(self):
+        m = read_metrics()
+        if "detection_prevalence" not in m:
+            pytest.skip("run: python scripts/export_confusion.py")
+        return m["detection_prevalence"]
+
+    def test_tpr_and_fpr_match_the_confusion_matrix(self, prev):
+        """The projection is only honest if it starts from the counted matrix."""
+        c = read_metrics()["detection_confusion"]
+        tpr = c["true_positives"] / (c["true_positives"] + c["false_negatives"])
+        fpr = c["false_positives"] / (c["false_positives"] + c["true_negatives"])
+        assert prev["tpr"] == pytest.approx(tpr, abs=1e-6)
+        assert prev["fpr"] == pytest.approx(fpr, abs=1e-6)
+
+    def test_precision_is_the_bayes_projection(self, prev):
+        """precision(p) = TPR*p / (TPR*p + FPR*(1-p)), for every row."""
+        tpr, fpr = prev["tpr"], prev["fpr"]
+        for r in prev["scenarios"]:
+            p = r["prevalence"]
+            expected = (tpr * p) / (tpr * p + fpr * (1 - p))
+            assert r["precision"] == pytest.approx(expected, abs=1e-4), r["scenario"]
+
+    def test_the_measured_row_reproduces_the_test_set_precision(self, prev):
+        """The corpus row must agree with what was actually observed, or the
+        projection is describing a different detector than the one measured."""
+        c = read_metrics()["detection_confusion"]
+        observed = c["true_positives"] / (c["true_positives"] + c["false_positives"])
+        row = next(r for r in prev["scenarios"] if r["is_measured"])
+        assert row["precision"] == pytest.approx(observed, abs=1e-3)
+
+    def test_precision_falls_as_prevalence_falls(self, prev):
+        """The whole point of the table. If this ever reads the other way the
+        arithmetic is wrong, not the world."""
+        rows = sorted(prev["scenarios"], key=lambda r: -r["prevalence"])
+        precisions = [r["precision"] for r in rows]
+        assert precisions == sorted(precisions, reverse=True)
+
+    def test_innocent_count_is_reported_and_dominates_at_low_prevalence(self, prev):
+        """The column that decides deployability. At the lowest prevalence the
+        queue must be overwhelmingly innocent -- if it is not, the numbers are
+        wrong."""
+        rows = sorted(prev["scenarios"], key=lambda r: r["prevalence"])
+        lowest = rows[0]
+        assert lowest["innocent_per_100k"] > lowest["true_mules_per_100k"] * 10
+
+    def test_flagged_splits_into_true_and_innocent(self, prev):
+        for r in prev["scenarios"]:
+            assert r["flagged_per_100k"] == pytest.approx(
+                r["true_mules_per_100k"] + r["innocent_per_100k"], abs=1.0), r["scenario"]
+
+    def test_automation_is_only_called_safe_above_the_floor(self, prev):
+        floor = prev["automation_floor"]
+        for r in prev["scenarios"]:
+            assert r["automation_safe"] == (r["prevalence"] >= floor), r["scenario"]
+
+    def test_the_ledger_admits_the_policy_is_not_enforced(self, prev):
+        """THE IMPORTANT ONE.
+
+        backend/routers/freeze.py has no prevalence gate -- it freezes whatever
+        it is given. The console prints a recommended posture per scenario, and
+        it may only do so while this flag says the posture is advisory. If
+        somebody implements the gate, they flip this and the screen's wording
+        changes with it; until then, claiming enforcement would be a claim the
+        code does not honour.
+        """
+        assert prev["actions_are_enforced"] is False
+
+    def test_freeze_router_really_has_no_prevalence_gate(self):
+        """Keeps the flag above honest by checking the code it describes."""
+        src = (ROOT / "backend" / "routers" / "freeze.py").read_text(encoding="utf-8")
+        assert "prevalence" not in src.lower(), (
+            "freeze.py now mentions prevalence -- if a gate was implemented, set "
+            "detection_prevalence.actions_are_enforced True and update the console")
+
+    def test_console_reads_every_scenario_from_the_ledger(self):
+        """No scenario may be typed into the page."""
+        stats = json.loads(FRONTEND_STATS_PATH.read_text(encoding="utf-8"))
+        ledger = read_metrics()["detection_prevalence"]
+        assert stats["prevalenceScenarios"] == ledger["scenarios"]
+        assert stats["automationFloor"] == ledger["automation_floor"]
+        assert stats["actionsAreEnforced"] == ledger["actions_are_enforced"]
+
+
+# ── Zone significance ────────────────────────────────────────────────────────
+
+class TestZoneSignificance:
+
+    @pytest.fixture(scope="class")
+    def sig(self):
+        m = read_metrics()
+        if "zone_significance" not in m:
+            pytest.skip("run: python scripts/zone_significance.py")
+        return m["zone_significance"]
+
+    def test_it_was_measured_on_the_published_zone(self, sig):
+        """A p-value computed on a different containment than the published one
+        would be describing a different quantity. The script self-checks this;
+        so does the ledger."""
+        published = read_metrics()["location"]["zone_containment"]
+        assert sig["zone_containment"] == pytest.approx(published, abs=1e-6)
+
+    def test_both_naive_zones_are_compared(self, sig):
+        keys = {c["baseline_key"] for c in sig["comparisons"]}
+        assert keys == {"nearest3", "mule"}
+
+    def test_discordant_counts_are_consistent(self, sig):
+        for c in sig["comparisons"]:
+            assert c["discordant"] == c["model_only"] + c["baseline_only"]
+
+    def test_significance_flag_matches_the_p_value(self, sig):
+        for c in sig["comparisons"]:
+            assert c["significant_at_05"] == (c["p_value"] < sig["alpha"])
+
+    def test_p_value_survives_the_json_round_trip(self, sig):
+        """These run to 1e-27. An earlier revision rounded to 8 decimals and
+        wrote a literal 0.0 into the console payload."""
+        for c in sig["comparisons"]:
+            if c["significant_at_05"]:
+                assert c["p_value"] > 0.0, (
+                    f"{c['baseline_key']} p-value collapsed to zero in the ledger")
+
+    def test_console_reads_significance_from_the_ledger(self, sig):
+        stats = json.loads(FRONTEND_STATS_PATH.read_text(encoding="utf-8"))
+        assert stats["zoneSignificance"] == sig["comparisons"]
+        assert stats["zoneSignificanceN"] == sig["n_cashouts"]

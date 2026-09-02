@@ -53,7 +53,7 @@
     "test_precision": 0.8874458874458875,
     "test_recall": 0.9234234234234234,
     "test_accuracy": 0.9942666666666666,
-    "measured_utc": "2026-09-01T18:19:15Z",
+    "measured_utc": "2026-09-01T19:28:28Z",
     "source": "python engine/train_gnn.py"
   },
   "ranking": {
@@ -174,7 +174,7 @@
     "flagged_total": 231,
     "flagged_precision": 0.8874,
     "missed_rate": 0.0766,
-    "measured_utc": "2026-09-01T18:19:13Z",
+    "measured_utc": "2026-09-01T19:25:05Z",
     "source": "python scripts/export_confusion.py"
   },
   "hotspot": {
@@ -374,5 +374,92 @@
     "mean_ms": 202.86,
     "measured_utc": "2026-09-01T15:04:30Z",
     "source": "python scripts/bench_golden_hour.py"
+  },
+  "detection_prevalence": {
+    "tpr": 0.923423,
+    "fpr": 0.003572,
+    "measured_prevalence": 0.0296,
+    "automation_floor": 0.005,
+    "actions_are_enforced": false,
+    "_about": "Precision projected onto deployment prevalences from the measured TPR/FPR. recommended_action is a POLICY RECOMMENDATION; this build does not enforce it -- backend/routers/freeze.py has no prevalence gate.",
+    "scenarios": [
+      {
+        "scenario": "Evaluated corpus",
+        "prevalence": 0.0296,
+        "is_measured": true,
+        "precision": 0.8874,
+        "flagged_per_100k": 3080.0,
+        "true_mules_per_100k": 2733.3,
+        "innocent_per_100k": 346.7,
+        "recommended_action": "Automated micro-hold",
+        "automation_safe": true
+      },
+      {
+        "scenario": "High-risk district",
+        "prevalence": 0.005,
+        "is_measured": false,
+        "precision": 0.565,
+        "flagged_per_100k": 817.2,
+        "true_mules_per_100k": 461.7,
+        "innocent_per_100k": 355.5,
+        "recommended_action": "Dual-officer review",
+        "automation_safe": true
+      },
+      {
+        "scenario": "National average",
+        "prevalence": 0.001,
+        "is_measured": false,
+        "precision": 0.2056,
+        "flagged_per_100k": 449.2,
+        "true_mules_per_100k": 92.3,
+        "innocent_per_100k": 356.9,
+        "recommended_action": "Watchlist alert only",
+        "automation_safe": false
+      },
+      {
+        "scenario": "Low-risk district",
+        "prevalence": 0.0001,
+        "is_measured": false,
+        "precision": 0.0252,
+        "flagged_per_100k": 366.4,
+        "true_mules_per_100k": 9.2,
+        "innocent_per_100k": 357.2,
+        "recommended_action": "Passive audit log",
+        "automation_safe": false
+      }
+    ],
+    "measured_utc": "2026-09-01T19:25:05Z",
+    "source": "python scripts/export_confusion.py"
+  },
+  "zone_significance": {
+    "n_cashouts": 660,
+    "zone_containment": 0.872727,
+    "alpha": 0.05,
+    "comparisons": [
+      {
+        "baseline": "nearest-3 ATM centroid",
+        "baseline_key": "nearest3",
+        "baseline_containment": 0.777273,
+        "model_only": 70,
+        "baseline_only": 7,
+        "discordant": 77,
+        "p_value": 3.5245694262351566e-14,
+        "significant_at_05": true,
+        "model_better": true
+      },
+      {
+        "baseline": "mule location",
+        "baseline_key": "mule",
+        "baseline_containment": 0.733333,
+        "model_only": 93,
+        "baseline_only": 1,
+        "discordant": 94,
+        "p_value": 9.592548607487504e-27,
+        "significant_at_05": true,
+        "model_better": true
+      }
+    ],
+    "measured_utc": "2026-09-01T19:28:25Z",
+    "source": "python scripts/zone_significance.py"
   }
 }

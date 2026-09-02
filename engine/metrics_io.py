@@ -195,6 +195,21 @@ def write_frontend_stats(path: Path = FRONTEND_STATS_PATH,
         "hotspotPrecisionCurve": require(m, "hotspot", "precision_coverage_curve"),
         "hotspotNTestCashouts": require(m, "hotspot", "n_test_cashouts"),
         "inferenceMeanMs": require(m, "location", "inference_mean_ms"),
+        # Base-rate sensitivity. Precision is a property of the classifier AND
+        # the population it meets; the console shows what this detector's
+        # measured TPR/FPR imply at deployment prevalences, including how many
+        # innocent account holders land in the queue. `actionsAreEnforced` is
+        # projected too, so the screen cannot claim a governance policy the
+        # build does not implement.
+        "prevalenceScenarios": require(m, "detection_prevalence", "scenarios"),
+        "prevalenceTpr": require(m, "detection_prevalence", "tpr"),
+        "prevalenceFpr": require(m, "detection_prevalence", "fpr"),
+        "automationFloor": require(m, "detection_prevalence", "automation_floor"),
+        "actionsAreEnforced": require(m, "detection_prevalence", "actions_are_enforced"),
+        # Paired significance of the search zone against its naive alternatives.
+        "zoneBaselineMule": require(m, "location", "zone_containment_baseline_mule"),
+        "zoneSignificance": require(m, "zone_significance", "comparisons"),
+        "zoneSignificanceN": require(m, "zone_significance", "n_cashouts"),
         "measuredUtc": require(m, "detection", "measured_utc"),
     }
     path.parent.mkdir(parents=True, exist_ok=True)

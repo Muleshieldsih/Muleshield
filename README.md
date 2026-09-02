@@ -369,6 +369,59 @@ leaves unchanged), so this sits at **98%** of what is attainable.
 > concentrated population is easier for any model. Reported rather than quietly kept at
 > the old figure.
 
+### 4b. Base-rate sensitivity — what this detector does to innocent people
+
+Precision is not a property of a classifier. It is a property of a classifier
+**and** a base rate. Every detection figure above is measured at this corpus's
+mule rate of 2.96%; a real bank book is far below that, and the same
+model at the same threshold behaves very differently there.
+
+| Scenario | Mule rate | Precision | Flagged / 100k | **Innocent / 100k** | Recommended posture |
+|---|---|---|---|---|---|
+| Evaluated corpus *(measured)* | 2.96% | 88.7% | 3,080 | **347** | Automated micro-hold |
+| High-risk district | 0.50% | 56.5% | 817 | **356** | Dual-officer review |
+| National average | 0.10% | 20.6% | 449 | **357** | Watchlist alert only |
+| Low-risk district | 0.01% | 2.5% | 366 | **357** | Passive audit log |
+
+*Projected from the measured operating point — TPR 0.9234, FPR 0.003572 — held
+fixed across all four rows. Written by `scripts/export_confusion.py`.*
+
+Read the last column, not the third. At a national-average mule rate this
+detector raises **449 alerts per 100,000 accounts screened and
+357 of them are people who have done nothing wrong.** No threshold tuning
+fixes that; it is arithmetic on the base rate, not a weakness of this model in
+particular. It is the reason an alert queue is triage for an investigator rather
+than an instruction to a bank.
+
+**Recommended governance policy:** no automated irreversible action below
+**0.5%** prevalence — route to a human instead. **This is a
+recommendation, not a behaviour of this build.** `backend/routers/freeze.py` has
+no prevalence gate, the ledger records `actions_are_enforced: false`, and a test
+fails if the console ever claims otherwise. Enforcing it needs a real per-bank
+prevalence estimate to gate on, which is a deployment input we do not have.
+
+### 4c. Is the search zone's advantage real?
+
+The zone is the headline of §1, so it needs a paired significance test rather
+than a gap. `scripts/zone_significance.py` runs an **exact McNemar** over the
+660 held-out cash-outs — paired, because the same cash-out is scored by both
+zones at the same radius, so only the discordant cases carry information.
+
+| Comparison | Containment | Discordant (model / baseline) | Exact McNemar |
+|---|---|---|---|
+| Model zone vs nearest-3 ATM centroid | 0.8727 vs 0.7773 | 70 / 7 | p = 3.52e-14 |
+| Model zone vs mule location | 0.8727 vs 0.7333 | 93 / 1 | p = 9.59e-27 |
+
+Both are significant, and the script **refuses to publish** unless its own
+recomputed containment matches `location.zone_containment` to 1e-9 — a p-value
+measured on a different quantity than the published one would be worse than none.
+
+> **This does not rescue the Top-K result.** Ranking individual ATMs still does
+> not beat sorting by distance (0.7258 against 0.7076 at K=5), and that gap
+> is still not significant. Aggregating the same scores into a zone is a
+> different question with a different answer. A patrol is dispatched to an area,
+> which is why the zone is the headline and the five ATMs are the drill-down.
+
 ### 5. Forward hotspot forecast — the framework layer
 
 The per-case sections above answer *this case*. This one answers *the country*:
@@ -429,6 +482,8 @@ Reproduce with:
 
 ```bash
 python scripts/evaluate_baselines.py       # baseline tables
+python scripts/export_confusion.py         # confusion matrix + base-rate sensitivity
+python scripts/zone_significance.py        # paired McNemar on the search zone
 python engine/train_xgb.py                 # zone, ranking and countdown metrics
 python scripts/generate_model_matrix.py    # regenerates the two figures above
 python scripts/eda_report.py               # data-integrity evidence
