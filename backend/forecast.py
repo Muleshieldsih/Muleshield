@@ -82,6 +82,22 @@ def chain_timing_for(complaint_id: str) -> tuple[float, float, float]:
     )
 
 
+_unknown_atms: set[str] = set()
+
+
+def _warn_unknown_atm(atm_id: str) -> None:
+    """Warn once per id, so a systemic mismatch is loud but not a log flood."""
+    if atm_id in _unknown_atms:
+        return
+    _unknown_atms.add(atm_id)
+    logger.warning(
+        "[FORECAST] ranked ATM %s is absent from atm_directory (%d loaded). "
+        "Its location falls back to the centroid of India. This means the "
+        "XGBoost bundle and data/atm_directory.csv disagree -- regenerate the "
+        "corpus and restart, or retrain: the map cannot be trusted until they "
+        "match.", atm_id, len(state.atm_directory))
+
+
 def compute(complaint_id: str) -> dict:
     """Run the full cash-out forecast for one complaint.
 
@@ -149,6 +165,14 @@ def compute(complaint_id: str) -> dict:
     enriched = []
     for pred in raw["ranked_candidates"]:
         meta = state.get_atm(pred["atm_id"]) or {}
+        # An id the ranker returned that the directory has never heard of means
+        # the model bundle and atm_directory.csv came from different corpus
+        # generations. The fallback below is a real coordinate -- the centroid of
+        # India -- so the console renders it as a confident answer 800 km from
+        # the victim instead of showing an error. Say so in the log, or the only
+        # symptom is a map that looks wrong for reasons nobody can see.
+        if not meta:
+            _warn_unknown_atm(pred["atm_id"])
         enriched.append({
             "rank": pred["rank"],
             "atm_id": pred["atm_id"],

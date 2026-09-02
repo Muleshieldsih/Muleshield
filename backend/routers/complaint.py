@@ -58,11 +58,18 @@ async def ingest_complaint(
     record = state.add_complaint(data)
     logger.info(f"[COMPLAINT] Ingested: {record['ticket_id']} | ₹{record['stolen_amount']:,.0f} | {record['city']}")
 
-    # Broadcast to all connected dashboards
+    # Broadcast to all connected dashboards.
+    #
+    # Decorated, not raw. The console inserts this payload straight into its
+    # queue, so an undecorated record arrived carrying the stored legacy status
+    # "ACTIVE" -- which is not one of the six workflow states. The queue filter
+    # compares against those six, so a case the officer had just created was
+    # dropped from the list it was created in, while the REST reader of the same
+    # record showed it correctly. Both paths now emit one shape.
     await manager.broadcast({
         "event_type": "NEW_COMPLAINT",
         "complaint_id": record["ticket_id"],
-        "payload": record,
+        "payload": _decorate(record),
     })
 
     state.record_audit("SYSTEM", "Case created", record["ticket_id"],
