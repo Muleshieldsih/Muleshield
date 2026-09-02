@@ -6,7 +6,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688.svg)](https://fastapi.tiangolo.com/)
 [![PyTorch Geometric](https://img.shields.io/badge/PyG-GraphSAGE-orange.svg)](https://pytorch-geometric.readthedocs.io/)
 [![XGBoost](https://img.shields.io/badge/ML-XGBoost%20v2-green.svg)](https://xgboost.readthedocs.io/)
-[![Tests](https://img.shields.io/badge/Tests-481%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-497%20passed-brightgreen.svg)]()
 [![SIH 2026](https://img.shields.io/badge/SIH-2026%20Problem%20ID%3A%20SIH26184-red.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -234,6 +234,105 @@ Cyber fraud incidents reported on the National Cybercrime Reporting Portal (**19
   └── 🔒 Real-time Micro-Freeze Action Recommendation (<25ms latency)
 ```
 
+### End-to-end flow — complaint to intervention
+
+The ASCII block above is the per-case ML pipeline. This is the whole system: what
+comes in, what the models do with it, how many cases become one national surface,
+and what a human has to sign before anything happens to anybody.
+
+```mermaid
+flowchart TD
+    subgraph IN["INBOUND"]
+        direction LR
+        C["1930 / NCRP complaint<br/><i>victim · bank · amount · city</i>"]
+        T["Inter-bank transaction trace<br/><i>assumed — RBI/NPCI is building it</i>"]
+        R["Suspect registry<br/><i>MuleHunter.AI · Samanvaya</i>"]
+    end
+
+    subgraph PER["PER CASE — one complaint at a time"]
+        direction TB
+        G["Directed transaction graph<br/>BFS · velocity · 1-to-N splitting"]
+        E["GraphSAGE<br/>64-dim structural risk embedding"]
+        F["80-dim hybrid feature vector<br/>64 GNN + 16 geospatial &amp; temporal"]
+        RK["Conditional-logit ranker<br/><b>posterior over 25 reachable ATMs</b>"]
+        CD["XGBoost regressor<br/><b>countdown band q05 · median · q95</b>"]
+        G --> E --> F
+        F --> RK
+        F --> CD
+    end
+
+    subgraph AGG["FRAMEWORK — every open case at once"]
+        direction TB
+        P["Project onto 226 cells at 12 km"]
+        W["Conditional-lognormal survival kernel<br/>renormalised on <i>T &gt; elapsed</i>"]
+        S["<b>Forward intensity surface</b><br/>cells × 0–30 / 30–60 / 60–120 min"]
+        PR["Historical prior<br/><b>capped at 15% of the mass</b>"]
+        P --> S
+        W --> S
+        PR -.->|"one term, never the driver"| S
+    end
+
+    subgraph ACT["POLICY — what fires when nobody is looking"]
+        direction TB
+        RU["4 rules on a 60s tick<br/>CRITICAL · HIGH · WATCH"]
+        AL["Alert<br/><i>carries its own live-vs-prior split</i>"]
+        DL["Scoped recipients<br/>LEA · I4C · BANK, by state and district"]
+        CH["SMS · email · CFCFRMS &amp; Samanvaya webhooks<br/><i>simulated transport, labelled on screen</i>"]
+        RU --> AL --> DL --> CH
+    end
+
+    subgraph HUM["HUMAN — the gate"]
+        direction TB
+        OF["Officer acknowledges<br/><b>disposition required</b><br/><i>Dispatched · Monitoring · False positive · Duplicate</i>"]
+        FR["Micro-freeze<br/><i>simulated bank hold</i>"]
+        OF --> FR
+    end
+
+    subgraph REC["RECORD — what survives the case"]
+        direction TB
+        EV["Evidence custody<br/>SHA-256 at collection · hash chain · no delete"]
+        CE["BSA 2023 s.63 certificate"]
+        DO["Police dossier"]
+        EV --> CE
+    end
+
+    C --> G
+    T -.->|"the load-bearing assumption"| G
+    RK --> P
+    CD --> W
+    R -.->|"routing signal, not a model feature"| RU
+    S --> RU
+    AL --> OF
+    OF --> EV
+    OF --> DO
+
+    classDef deliverable fill:#1F4D3D,stroke:#123027,color:#fff,font-weight:bold
+    classDef gate fill:#A03227,stroke:#6E211A,color:#fff,font-weight:bold
+    classDef assumed fill:#F4F5F2,stroke:#9AA5AE,color:#16191A,stroke-dasharray:4 3
+    class S deliverable
+    class OF gate
+    class T,R assumed
+```
+
+**Three things the diagram is making a point of.**
+
+The **dashed inbound edges** are what we do not own. The inter-bank trace is the
+load-bearing assumption of the entire system — a victim at 2 am knows an amount and
+nothing else, so the chain has to come from the banking side, which is exactly what
+RBI/NPCI is building CFCFRMS to do. The suspect registry is consumed as a *routing
+signal*, not as a model feature. `docs/INTEGRATION_SEAMS.md` §1.2 states both.
+
+The **prior enters the surface as one dashed term, capped at 15%**. A surface the
+prior could dominate is a density map of where fraud has already happened — which
+I4C already has, in Pratibimb. Every cell publishes its own
+`conditional_rupees` / `prior_rupees` split so a reader can check which half is
+carrying the forecast.
+
+**Nothing crosses into the red node automatically.** No unit is dispatched and no
+account is frozen without an officer acknowledging an alert with a disposition, and
+*False positive* is one of the four buttons — it feeds the false-positive rate the
+console publishes on its own header.
+
 ---
 
 ## 🔬 Core AI / ML Architecture
@@ -281,7 +380,7 @@ about a model, and an accuracy that looks too good usually is (see
 [Honest Evaluation](#-honest-evaluation)).
 
 Validated on a Pan-India dataset of **50,000 accounts**, **622,304 transactions**
-(22,311 laundering + 599,993 legitimate) and **1,000 ATMs**, with **481 tests passing**.
+(22,311 laundering + 599,993 legitimate) and **1,000 ATMs**, with **497 tests passing**.
 
 <div align="center">
   <img src="docs/sih_performance_matrix_slide.png" alt="MuleShield AI - validated performance summary" width="100%" />
@@ -295,6 +394,41 @@ Validated on a Pan-India dataset of **50,000 accounts**, **622,304 transactions*
   <code>scripts/generate_model_matrix.py</code> (matplotlib + scikit-learn + PyTorch + XGBoost).
   Every panel carries its baseline, and ceilings are drawn where one exists.</em></p>
 </div>
+
+### The matrix, in one table
+
+Every component, the question it answers, and the baseline it has to beat. Read from
+`data/metrics.json` — nothing below is typed.
+
+| Component | The question it answers | Achieved | Baseline it has to beat | Verdict |
+|---|---|---|---|---|
+| **Forward cash-out surface**<br/>*the deliverable* | Where will the money surface in the next 0–120 minutes? | PAI@5 **32.67**<br/>hit rate **0.9530** | historical density (= Pratibimb)<br/>PAI 5.43, hit rate 0.2333 | **6.0× the density map** |
+| Rupees covered @5 cells | How much of the money at risk is inside the cells we flag? | **0.9637** | flagging 2.92% of the ATM estate | the operationally meaningful denominator |
+| Lead time<br/>*"in Advance"* | Does the forecast arrive before the cash does? | median **40.2 min**<br/>p10 4.3 min | a report that lands after the withdrawal | **82.7%** with ≥15 min to act |
+| Search zone | Which *area* does a patrol get sent to? | **87.3%** containment<br/>median **7** ATMs, 9.7 km | nearest-3 ATM centroid 77.7% | **+9.5 points**, exact McNemar p = 3.5e-14 |
+| Top-5 ATM ranking | Which machines does a team walk into first? | **0.7258** | nearest-5 by distance 0.7076 | ahead; significance not re-established on this corpus |
+| Top-1 ATM | The single most likely machine. | 0.2682 | nearest ATM 0.2788 | **behind — published, not hidden** |
+| Countdown | How long until the withdrawal? | **11.88 min** MAE<br/>R² 0.12, band 78.5% coverage | predict-the-mean 14.58 min | observable ceiling ≈ 9.4 min — headroom remains |
+| Mule detection<br/>*supporting machinery* | Who is the crew behind the chain? | F1 **0.9051**<br/>AUC 0.9713, PR-AUC 0.8232 | Random forest (no graph) 0.8758 | +0.0292 F1 on identical features |
+| Complaint → alert dispatched | Does it fit inside the golden hour? | p95 **0.32 s** | the 60-minute 1930 golden hour | measured on a LOADED surface, not an empty one |
+| Ingestion throughput | Can it take the national load? | **3,451/min** = 4.97M/day | NCRP runs ~8,000 complaints/day | **621× headroom** |
+
+> **The row that works against us.** Ranking cells by plain distance from the
+> *traced terminal account* scores **1.0000** at k=5 — better than the
+> forecast's 0.9530. It is in the ledger, printed by
+> `scripts/evaluate_hotspots.py`, and guarded by a test that fails if the baseline is
+> deleted. The honest reading: the **trace** earns most of the location value — the same
+> geography with no trace, using only the 1930 intake fields, scores
+> **0.0106** — and what the forecast adds on top is the time
+> dimension, the rupee weighting, and the ability to aggregate many complaints into one
+> national surface, none of which a distance rule can supply.
+
+Every number above is read from `data/metrics.json`, which only the training and
+evaluation scripts write. `tests/test_metrics_ledger.py` fails the build if a figure
+appears on screen that no script produced, and each ledger section records the command
+that regenerates it. Held-out set: **660 cash-outs** and
+**7,500 accounts**, split by complaint at seed 42 so no laundering
+chain straddles the boundary.
 
 ### 1. Withdrawal-location forecast — the deliverable
 
@@ -520,10 +654,12 @@ aggregate into one national surface.
 |---|---|---|
 | Per-complaint graph build | < 500 ms | **~2 ms** ✅ |
 | Full national graph build (startup) | < 1200 ms | **~670 ms** ✅ |
-| End-to-end inference | < 200 ms | **~3.9 ms** ✅ |
-| Complaint filed → alert dispatched | < 60 min | **p95 0.25 s** ✅ |
-| Ingestion throughput | ≥ 8,000/day | **3,499/min = 630× headroom** ✅ |
-| Automated test coverage | 100% | **481 / 481** ✅ |
+| End-to-end inference (one case) | < 200 ms | **~5.2 ms** ✅ |
+| National forward surface, cold | — | **~33 ms** ✅ |
+| National forward surface, 667 open cases | — | **~47 ms** ✅ |
+| Complaint filed → alert dispatched | < 60 min | **p95 0.32 s** ✅ |
+| Ingestion throughput | ≥ 8,000/day | **3,451/min = 621× headroom** ✅ |
+| Automated test coverage | 100% | **497 / 497** ✅ |
 
 Reproduce with:
 
@@ -532,6 +668,8 @@ python scripts/evaluate_baselines.py       # baseline tables
 python scripts/export_confusion.py         # confusion matrix + base-rate sensitivity
 python scripts/zone_significance.py        # paired McNemar on the search zone
 python engine/train_xgb.py                 # zone, ranking and countdown metrics
+python scripts/evaluate_hotspots.py        # the forward forecast: hit rate, PAI, four baselines
+python scripts/bench_golden_hour.py        # complaint -> alert latency and ingestion throughput
 python scripts/generate_model_matrix.py    # regenerates the two figures above
 python scripts/eda_report.py               # data-integrity evidence
 python scripts/feature_analysis.py         # feature signal ranking + heatmap
@@ -557,12 +695,18 @@ salary credits, merchant settlements, remittances — so legitimate accounts rec
 money too. The `transit_business` archetype (payment aggregators, trading firms)
 forwards almost everything it receives within minutes, exactly like a mule. The best
 single feature in the model's own feature set, with its threshold chosen on train and
-scored on test, reaches only **F1 0.4970** (`burst_out_5min` — the row in the table
+scored on test, reaches only **F1 0.5436** (`burst_out_5min` — the row in the table
 above). Sweeping every column of `node_features.csv`, the strongest is `hop_depth` at
 F1 0.9276, and it is *excluded from the model by design* (`engine/gnn_model.py`): it is
 non-zero only for accounts already known to sit in a traced chain, so using it would
 assume the answer. That 0.9276 is a useful check rather than a leak — it is what the
 2% label-noise ceiling looks like measured directly.
+
+**3. Ground truth lives in the data, not in the feature builder.** The cashout ATM is
+*sampled* from a behavioural choice model (distance decay × surveillance risk × bank
+affinity × the syndicate's established cashout points) and written to the ledger.
+Previously the label was `argmin(distance)` while distance was feature #67 — the model
+was asked to find the nearest ATM while holding the distance to it.
 
 **4. Mule geography is concentrated; victim geography is not.** Mule accounts are
 drawn toward the districts that actually carry recruitment — Nuh (Mewat), Jamtara,
@@ -584,12 +728,6 @@ model, so the non-graph baseline is strong at 0.8758 and the graph earns +0.029 
 top of it; and history is genuinely more predictive when behaviour concentrates, so
 a density map is a real baseline here at PAI 5.43 rather than a straw man.
 
-**3. Ground truth lives in the data, not in the feature builder.** The cashout ATM is
-*sampled* from a behavioural choice model (distance decay × surveillance risk × bank
-affinity × the syndicate's established cashout points) and written to the ledger.
-Previously the label was `argmin(distance)` while distance was feature #67 — the model
-was asked to find the nearest ATM while holding the distance to it.
-
 Additionally: models are split **by complaint**, never by row, so no laundering chain
 straddles train and test; ATM priors are computed only from the earliest 50% of
 complaints, which are then excluded from training and evaluation; baselines are scored
@@ -609,6 +747,15 @@ reporting.
   empty without `scripts/seed_live_feed.py` (step 5 below), which replays the corpus
   through the real ingest API at the stated national rate. Geography is now concentrated;
   arrival rate is not.
+- **One alert threshold is still an absolute rupee figure and a deployment has to
+  set it.** `R-HIGH-CONVERGE` and `R-WATCH-SCORE` are relative to the surface they
+  read, so they hold at any load. `R-CRIT-RUPEES` is deliberately not — "₹50 lakh is
+  about to be withdrawn in the next hour" means the same thing whatever else is
+  happening. But at 8,000 complaints/day there is order-of-₹10-crore in flight
+  nationally at any moment, so many cells clear ₹50 lakh: one pass raises ~23 alerts
+  and a sustained hour raises ~108. `MULESHIELD_CRIT_RUPEES` is an environment
+  variable because how many alerts a shift can action is a fact about the force, not
+  about the model.
 - Micro-freeze and the SMS gateway are **simulated**; NPCI/CBS integration is a
   deployment step. WhatsApp dispatch opens a real message.
 - A live-ingested complaint has its laundering chain **synthesised at ingestion** from
@@ -691,7 +838,7 @@ SIH2026/
 │   ├── 04_xgboost_countdown.ipynb
 │   └── 05_forward_hotspot_forecast.ipynb   # PAI, baselines, the anti-Pratibimb case
 │
-├── tests/                              # Pytest regression suites (481 tests total)
+├── tests/                              # Pytest regression suites (497 tests total)
 │   ├── test_phase1.py                  # Data generation, schema & generator invariants
 │   ├── test_phase2a.py                 # GraphSAGE & graph engine
 │   ├── test_phase2b.py                 # XGBoost & 80-dim inference
@@ -793,9 +940,9 @@ authentication, chain synthesis, GNN inference and ATM ranking all run exactly a
 they do in production. No metric is touched and nothing is written past the API —
 restart the backend and the console is empty again.
 
-### 6. Run the Full Test Suite (481 Tests)
+### 6. Run the Full Test Suite (497 Tests)
 ```bash
-python -m pytest -q                 # 481 passed, ~8-13 min
+python -m pytest -q                 # 497 passed in 8m47s
 # One skip is possible: the graph-build budget test declines to measure a
 # machine already under load. That is its designed behaviour, not a gap.
 
