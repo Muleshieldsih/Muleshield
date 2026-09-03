@@ -55,7 +55,7 @@ function fmtWhen(iso) {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString()
 }
 
-export default function EvidencePanel({ caseId }) {
+export default function EvidencePanel({ caseId, className = '', bodyClass = '' }) {
   const toast = useToast()
   const fileRef = useRef(null)
 
@@ -175,8 +175,10 @@ export default function EvidencePanel({ caseId }) {
             {count} artefact{count === 1 ? '' : 's'}
           </span>
         }
+        className={className}
+        bodyClass={`p-3 flex-1 flex flex-col min-h-0 ${bodyClass}`}
       >
-        <div className="p-3 space-y-3">
+        <div className="flex-1 flex flex-col space-y-3 min-h-0">
           {/* Chain state first. A broken chain is the most important fact about
               a case's evidence and must not be something you find by scrolling. */}
           {check && (
@@ -282,13 +284,13 @@ export default function EvidencePanel({ caseId }) {
           {error && <div className="text-[11.5px] text-red-300">{error}</div>}
 
           {loading && !items.length ? (
-            <div className="text-[11.5px] text-zinc-500 py-4 text-center">Loading…</div>
+            <div className="text-[11.5px] text-zinc-500 py-6 text-center flex-1 flex items-center justify-center">Loading…</div>
           ) : !items.length ? (
-            <div className="text-[11.5px] text-zinc-500 py-4 text-center">
+            <div className="text-[11.5px] text-zinc-500 py-6 text-center flex-1 flex items-center justify-center">
               No artefacts held against this case.
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0">
               <table className="w-full text-[11px]">
                 <thead>
                   <tr className="text-zinc-500 text-left border-b border-ink-border">
@@ -411,7 +413,7 @@ export default function EvidencePanel({ caseId }) {
             </div>
           )}
 
-          <div className="text-[10.5px] text-zinc-600 leading-relaxed">
+          <div className="text-[10.5px] text-zinc-600 leading-relaxed mt-auto pt-2.5 border-t border-ink-border shrink-0">
             Withdrawal is not deletion: the artefact, its hash and its position in
             the chain stay on the record with the reason attached. The chain shows
             that this set is internally consistent; it is not anchored outside this
