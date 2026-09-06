@@ -97,6 +97,14 @@ class TestPasswordStorage:
         assert db.verify_password("anything", "not-a-real-hash") is False
         assert db.verify_password("anything", "") is False
 
+    def test_verify_reads_iterations_from_stored_record(self, monkeypatch):
+        """Verification must extract iteration count from the hash string itself,
+        so existing credentials remain valid when PBKDF2_ITERATIONS is changed."""
+        h50k = db.hash_password("my-password", iterations=50_000)
+        assert "$50000$" in h50k
+        monkeypatch.setattr(db, "PBKDF2_ITERATIONS", 600_000)
+        assert db.verify_password("my-password", h50k) is True
+
 
 class TestLogin:
     def test_login_returns_a_token(self, client):
@@ -174,6 +182,39 @@ class TestLockout:
             assert client.post("/api/v1/auth/login",
                                json={"username": username,
                                      "password": "wrong"}).status_code == 401
+
+    def test_lockout_disabled_flag_allows_retries_while_recording_failures(self, client, admin, monkeypatch, caplog):
+        """When LOCKOUT_ENABLED is False (e.g. demo mode), unlimited retries are allowed,
+        while the failed_logins signal is preserved for security audit/telemetry.
+        
+        NOTE: db.LOCKOUT_ENABLED is read at module import time, so tests must patch
+        db.LOCKOUT_ENABLED directly via monkeypatch, not os.environ."""
+        import logging
+        caplog.set_level(logging.WARNING)
+        monkeypatch.setattr(db, "LOCKOUT_ENABLED", False)
+        username, _, uid = make_officer(client, admin, password="right-password-5")
+        for _ in range(10):
+            assert client.post("/api/v1/auth/login",
+                               json={"username": username,
+                                     "password": "wrong"}).status_code == 401
+        u = db.get_user(uid)
+        assert u["failed_logins"] == 10
+        assert u["failed_logins_total"] == 10
+        assert u["locked"] is False
+        assert "potential credential stuffing" in caplog.text
+        # Correct password still works after multiple retries
+        assert client.post("/api/v1/auth/login",
+                           json={"username": username,
+                                 "password": "right-password-5"}).status_code == 200
+        # Windowed counter resets to 0, cumulative counter preserves total for credential stuffing detection
+        u_after = db.get_user(uid)
+        assert u_after["failed_logins"] == 0
+        assert u_after["failed_logins_total"] == 10
+
+    def test_is_locked_handles_naive_and_corrupt_timestamps(self):
+        """_is_locked must never raise TypeError on offset-naive timestamps or ValueError on corrupt strings."""
+        assert db._is_locked("2020-01-01T00:00:00") is False  # past naive timestamp
+        assert db._is_locked("not-a-timestamp") is False
 
 
 class TestSession:

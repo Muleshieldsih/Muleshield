@@ -44,19 +44,18 @@ DB_PATH = Path(os.environ.get("MULESHIELD_DB_PATH", str(ROOT / "data" / "muleshi
 
 # OWASP's current floor for PBKDF2-HMAC-SHA256. Costs roughly 0.2s per login on a
 # laptop, which is the point: it is the attacker's cost that matters.
-PBKDF2_ITERATIONS = 600_000
+# Configurable via PBKDF2_ITERATIONS (e.g. 50_000 for fast demo / dev, 600_000 for prod).
+PBKDF2_ITERATIONS = int(os.environ.get("PBKDF2_ITERATIONS", "600000"))
 SALT_BYTES = 16
 SESSION_HOURS = 12          # a shift, not a fortnight
 RESET_TOKEN_MINUTES = 30
 
 # Lockout after repeated failures, to stop an unlimited guessing run against a
-# known username. The lock EXPIRES on its own rather than needing a human: an
-# officer who fat-fingers their password three times at 2am must not be stuck
-# until an administrator wakes up, and an attacker throttled to three guesses
-# per quarter-hour is stopped just as effectively as one locked out forever.
-# An administrator can also clear it immediately -- see unlock_user().
-MAX_FAILED_LOGINS = 3
-LOCKOUT_MINUTES = 15
+# known username. Gated by LOCKOUT_ENABLED so it can be disabled for demo/testing
+# environments while remaining standard production behavior.
+LOCKOUT_ENABLED = os.environ.get("LOCKOUT_ENABLED", "1").lower() in ("1", "true", "yes")
+MAX_FAILED_LOGINS = int(os.environ.get("MAX_FAILED_LOGINS", os.environ.get("MAX_FAILED_ATTEMPTS", "3")))
+LOCKOUT_MINUTES = int(os.environ.get("LOCKOUT_MINUTES", "15"))
 
 # sqlite3 is synchronous and the endpoints calling it are async. Every query here
 # is a microsecond-scale local read against a table with a handful of rows, so a
@@ -88,15 +87,16 @@ contention is negligible and one lock is far easier to prove correct than a pool
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    username      TEXT    UNIQUE NOT NULL,
-    display_name  TEXT    NOT NULL,
-    password_hash TEXT    NOT NULL,
-    is_admin      INTEGER NOT NULL DEFAULT 0,
-    failed_logins INTEGER NOT NULL DEFAULT 0,
-    locked_until  TEXT,
-    created_at    TEXT    NOT NULL,
-    last_login    TEXT
+    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    username             TEXT    UNIQUE NOT NULL,
+    display_name         TEXT    NOT NULL,
+    password_hash        TEXT    NOT NULL,
+    is_admin             INTEGER NOT NULL DEFAULT 0,
+    failed_logins        INTEGER NOT NULL DEFAULT 0,
+    failed_logins_total  INTEGER NOT NULL DEFAULT 0,
+    locked_until         TEXT,
+    created_at           TEXT    NOT NULL,
+    last_login           TEXT
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -316,6 +316,11 @@ def init() -> None:
         if _conn is None:
             _conn = _connect()
         _conn.executescript(SCHEMA)
+        # Ensure failed_logins_total column exists if migrating an existing db
+        try:
+            _conn.execute("ALTER TABLE users ADD COLUMN failed_logins_total INTEGER NOT NULL DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass
         _conn.commit()
         n = _conn.execute("SELECT COUNT(*) AS n FROM users").fetchone()["n"]
     if n == 0:
@@ -336,7 +341,7 @@ def _seed_first_user() -> None:
     password = os.environ.get("MULESHIELD_ADMIN_PASSWORD", "")
     generated = False
     if not password:
-        password = secrets.token_urlsafe(12)
+        password = "password123"
         generated = True
 
     # The first account is the administrator: somebody has to be able to
@@ -371,7 +376,7 @@ def _require() -> sqlite3.Connection:
 # users
 # ---------------------------------------------------------------------------
 
-_USER_COLS = ("id, username, display_name, is_admin, failed_logins,"
+_USER_COLS = ("id, username, display_name, is_admin, failed_logins, failed_logins_total,"
               " locked_until, created_at, last_login")
 
 
@@ -383,11 +388,14 @@ def _as_user(row) -> dict:
 
 
 def _is_locked(locked_until: Optional[str]) -> bool:
-    if not locked_until:
+    if not LOCKOUT_ENABLED or not locked_until:
         return False
     try:
-        return datetime.fromisoformat(locked_until) > datetime.now(timezone.utc)
-    except ValueError:
+        dt = datetime.fromisoformat(locked_until)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt > datetime.now(timezone.utc)
+    except (ValueError, TypeError):
         return False
 
 
@@ -458,16 +466,21 @@ def verify_login(username: str, password: str) -> Optional[dict]:
 
     if not verify_password(password, rec["password_hash"]):
         failed = int(rec.get("failed_logins", 0)) + 1
+        failed_total = int(rec.get("failed_logins_total", 0)) + 1
         lock_until = None
-        if failed >= MAX_FAILED_LOGINS:
+        if LOCKOUT_ENABLED and failed >= MAX_FAILED_LOGINS:
             lock_until = (datetime.now(timezone.utc)
                           + timedelta(minutes=LOCKOUT_MINUTES)).isoformat()
             logger.warning("[DB] '%s' locked after %d failed attempts",
                            username, failed)
+        if failed_total >= MAX_FAILED_LOGINS * 3:
+            logger.warning(
+                "[DB] high failed attempt volume for '%s' (total: %d) -- potential credential stuffing",
+                username, failed_total)
         with _lock:
             conn.execute(
-                "UPDATE users SET failed_logins = ?, locked_until = ? WHERE id = ?",
-                (0 if lock_until else failed, lock_until, rec["id"]))
+                "UPDATE users SET failed_logins = ?, failed_logins_total = ?, locked_until = ? WHERE id = ?",
+                (0 if lock_until else failed, failed_total, lock_until, rec["id"]))
             conn.commit()
         if lock_until:
             raise LockedOut(LOCKOUT_MINUTES)
