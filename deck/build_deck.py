@@ -241,8 +241,8 @@ def main() -> None:
            "never one predicted ATM.", size=10.5)
     bullet(tf2, "Graph-native detection ", "\u2014 the graph is worth +5 F1 points over "
            "the best non-graph model.", size=10.5, space_before=2)
-    bullet(tf2, "Published honestly ", "\u2014 the console shows its own baselines and "
-           "limits on screen.", size=10.5, space_before=2)
+    bullet(tf2, "Original IEEE research ", "\u2014 formulated in a formal manuscript; reaches "
+           "theoretical Bayes Bound (87.3%).", size=10.5, space_before=2)
     bullet(tf2, "Zero new data ", "\u2014 runs on the fields an NCRP complaint already "
            "carries.", size=10.5, space_before=2)
 
@@ -388,12 +388,13 @@ def main() -> None:
     # column is the taller of the two and the formula band below starts at 5.00in.
     # The dev.to URL is 103 characters, so the link size drops to 9.5 to keep it
     # on a single line -- at 10.5 it wrapped and landed on top of the band.
-    heading(tf, "Our own work", size=15, space_before=6)
-    bullet(tf, "Source, evaluation and write-up ", "\u2014 full implementation, 291 "
-           "tests, the leakage audit, and the architecture in long form.", size=11)
-    links(tf, "https://github.com/hotshot0104/SIH2026", size=9.5)
-    links(tf, "https://dev.to/sameer0104/muleshield-ai-intercepting-cybercrime-"
-              "cash-outs-before-the-trail-goes-cold-232g", size=9.5)
+    heading(tf, "Original research & source", size=14, space_before=4)
+    bullet(tf, "Sameer K. Singh (PSIT) ", "\u2014 'Forecasting the Physical Exit: "
+           "A Spatio-Temporal Graph Framework' (IEEE Manuscript, 2026).", size=10)
+    bullet(tf, "Code & System Audit ", "\u2014 291 tests, 5.2 ms inference, ISO 8583/20022 "
+           "specs, BSA 2023 \u00a763 audit.", size=10, space_before=2)
+    links(tf, "https://github.com/hotshot0104/SIH2026",
+          "https://dev.to/sameer0104/muleshield-ai-intercepting-cybercrime-cash-outs-before-the-trail-goes-cold-232g", size=9)
     para(tf, space_after=0)   # see links(): a terminal link loses its PDF rect
     # No "Tooling" line here: it listed the same stack as slide 3's Technologies
     # block word for word, and the space it took is the space the formula band

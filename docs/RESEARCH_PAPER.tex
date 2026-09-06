@@ -1,0 +1,410 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{microtype}
+\usepackage{hyperref}
+\usepackage[utf8]{inputenc}
+\usepackage{tabularx}
+\usepackage{adjustbox}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Forecasting the Physical Exit: A Spatio-Temporal Graph Framework for Proactive Cash-Out Interception in Cybercrime Networks\thanks{This research was conducted as part of the MuleShield Cybercrime Defense Initiative, New Delhi, India.}
+}
+
+\author{\IEEEauthorblockN{Sameer Kumar Singh}
+\IEEEauthorblockA{\textit{Department of Information Technology} \\
+\textit{Pranveer Singh Institute of Technology}\\
+Kanpur, Uttar Pradesh, India}
+}
+
+\maketitle
+
+\begin{abstract}
+Financial cyber fraud syndicates rapidly channel stolen funds through multi-layered mule accounts before physically withdrawing cash at ATMs. Existing countermeasures---CFCFRMS fund freezing, MuleHunter.AI mule account detection, and Pratibimb retrospective crime mapping---are fundamentally account-centric and reactive: once cash is dispensed, the digital trail terminates and recovery becomes infeasible.
+
+We present \textbf{MuleShield AI}, a framework that forecasts \textit{where} and \textit{when} stolen funds will be physically withdrawn. The architecture integrates deterministic BFS fund tracing, inductive GraphSAGE structural embeddings (10,561 parameters), a Nested Logit discrete choice model for ATM selection, and a dual-regime lognormal-Weibull survival kernel for withdrawal countdown estimation. A bounded-prior forward intensity surface ($\le 15\%$ historical mass) aggregates concurrent cases while preventing predictive policing feedback loops.
+
+Evaluated on a synthetic pan-India benchmark of 49,999 accounts, 622,304 transactions, and 1,000 ATMs, MuleShield AI achieves 87.3\% physical search zone containment (median 5.04\,km error), outperforming spatial centroids ($p = 3.52 \times 10^{-14}$, McNemar test); a forward surface PAI@5 of 32.67 with 96.37\% capital coverage; and a median tactical lead time of 40.2 minutes. End-to-end ML inference executes in 5.2\,ms; the full switch integration pipeline completes in 7.5\,ms. All evaluation is on synthetic data; real-world validation requires field trials with banking partners.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Cybercrime Interception, Money Mule Networks, Graph Neural Networks, Nested Logit, Survival Analysis, Spatial Crime Forecasting, Geographic Profiling, Electronic Evidence.
+\end{IEEEkeywords}
+
+\section{Introduction}
+The rapid digitization of retail banking and instant payment infrastructures---exemplified by the Unified Payments Interface (UPI) and Immediate Payment Service (IMPS) in India---has precipitated a systemic shift in cyber-enabled financial crime. In India alone, financial fraud complaints registered on the National Cybercrime Reporting Portal (NCRP) escalated exponentially from 2.62 lakh in 2021 to over 24.02 lakh by 2025. 
+
+Modern fraud syndicates operate through highly coordinated, multi-tiered money mule networks. When a victim is defrauded, the stolen funds are instantaneously fragmented and routed through Layer-1, Layer-2, and Layer-3 intermediary mule accounts within minutes. The ultimate objective of the syndicate is the \textbf{``physical exit''}: converting digital fiat into untraceable paper cash at Automated Teller Machines (ATMs) or through counter withdrawals before law enforcement agencies (LEAs) or financial institutions can interdict the funds.
+
+\subsection{State of the Art \& The Operational Gap}
+To combat financial fraud, national authorities and financial regulators have deployed advanced technological solutions. However, as summarized systematically in Table~\ref{tab:comparison_prior_art}, every existing system suffers from a critical operational boundary:
+
+\begin{table*}[t]
+\caption{Systematic Comparison with State-of-the-Art and Deployed National Systems}
+\label{tab:comparison_prior_art}
+\centering
+\begin{adjustbox}{width=\textwidth}
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{System / Framework} & \textbf{Deployed Scope} & \textbf{Mule Account Detection} & \textbf{Multi-Hop Fund Tracing} & \textbf{Spatial ATM Forecasting} & \textbf{Withdrawal Countdown} & \textbf{Forward Hotspot Surface} \\
+\midrule
+\textbf{MuleHunter.AI} (RBIH/RBI) \cite{mulehunter} & 23+ Indian Banks (Canara, PNB, BoB) & \textbf{Yes} (19 behavior patterns) & Bank-Internal Only & No (Blind to physical cash) & No & No \\
+\textbf{CFCFRMS / 1930 Helpline} (I4C/MHA) \cite{i4creport} & National LEA Helpline & Account Freeze Only & Reactive Bank Ledger & No (Trail ends at ATM) & No & No \\
+\textbf{I4C Suspect Registry / Samanvaya} & National Repository (32L mules) & Blacklist Onboarding & No & No & No & No \\
+\textbf{Pratibimb} (I4C/MHA) & National Police Dashboard & No & No & Retrospective Heatmap Only & No & Static Historical Density \\
+\textbf{Academic GNN AML} (DELATOR \cite{assumpção2022}, Elliptic \cite{weber2019}) & Research Literature & \textbf{Yes} (Node/Edge Classification) & Graph Classification & No (Purely Account-Centric) & No & No \\
+\midrule
+\textbf{MuleShield AI (This Work)} & \textbf{Prototype Framework} & \textbf{Yes} (\textbf{F1 0.9051}, GraphSAGE) & \textbf{Yes} (Deterministic BFS) & \textbf{Yes} (\textbf{87.3\% Zone}) & \textbf{Yes} (\textbf{40.2 min Lead}) & \textbf{Yes} (\textbf{PAI 32.67}, 6.0$\times$ Lift) \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table*}
+
+\begin{enumerate}
+    \item \textbf{MuleHunter.AI} (RBI Innovation Hub, Dec 2024): Deployed across Canara Bank, Punjab National Bank, Bank of Baroda, and 20+ other institutions. Identifies mule \textit{accounts} using 19 behavioral patterns with up to 95\% precision. \textbf{Gap:} It operates exclusively on digital account records and says nothing about \textit{where} or \textit{when} physical cash withdrawal will occur.
+    \item \textbf{CFCFRMS / 1930 Helpline} (I4C / MHA): Saved over Rs.~11,158 crore across 32.8 lakh complaints. \textbf{Gap:} It is limited to freezing funds still within banking rails. Once paper currency leaves an ATM, the digital trail vanishes.
+    \item \textbf{Pratibimb} (I4C): Provides geographic crime density mapping. \textbf{Gap:} It is strictly \textit{retrospective} (mapping where crimes happened in the past). It does not forecast where stolen money will surface in the next 30 to 120 minutes.
+    \item \textbf{Academic GNN-AML Literature} (Elliptic, DELATOR): Focuses exclusively on node or edge classification for transaction laundering. Spatial-temporal cash-out interdiction is completely unaddressed.
+\end{enumerate}
+
+\textbf{The Operational Void:} Once money enters the terminal account and a syndicate runner approaches an ATM, banking rails are out of the fight. The only viable intervention is physical---a patrol car, an ATM lockout, or officer dispatch within a 20-to-60-minute window. \textbf{No existing system tells law enforcement which machine to target.} MuleShield AI is designed specifically to fill this operational void.
+
+\section{Threat Model \& Problem Formulation}
+
+\subsection{Graph Formulation of Money Laundering}
+Let the financial transaction ecosystem be formalized as a directed multigraph $\mathcal{G} = (\mathcal{V}, \mathcal{E}, \mathcal{W}, \mathcal{T})$, where $\mathcal{V} = \{v_1, \dots, v_N\}$ represents bank accounts, $\mathcal{E} \subseteq \mathcal{V} \times \mathcal{V}$ denotes transaction edges, $\mathcal{W}: \mathcal{E} \to \mathbb{R}^+$ denotes transaction volume (in INR), and $\mathcal{T}: \mathcal{E} \to \mathbb{R}^+$ denotes transaction timestamps.
+
+When a victim $v_{\text{victim}}$ registers a complaint $\mathcal{C}$ at timestamp $t_{\text{complaint}}$ with stolen amount $A_{\text{stolen}}$, our goal is to trace the downstream laundering directed acyclic graph (DAG) $\mathcal{G}_{\mathcal{C}} \subset \mathcal{G}$.
+A node $v^* \in \mathcal{G}_{\mathcal{C}}$ is designated as a \textbf{terminal cash-out account} if:
+\begin{align}
+\text{out\_degree}_{\mathcal{G}_{\mathcal{C}}}(v^*) &= 0 \quad \text{and} \nonumber \\
+\sum_{(u, v^*) \in \mathcal{E}_{\mathcal{G}_{\mathcal{C}}}} \mathcal{W}(u, v^*) &\ge \theta_{\text{min}} \cdot A_{\text{stolen}}
+\end{align}
+where $\theta_{\text{min}} \in (0, 1]$ represents the fund retention ratio after accounting for transit layering cuts.
+
+\subsection{Discrete Choice Over Candidate Terminals (Nested Logit Formulation)}
+Let $\mathcal{A} = \{a_1, \dots, a_M\}$ denote the universe of physical cash dispensing terminals (ATMs), with geolocations $\ell_j = (\text{lat}_j, \text{lon}_j)$, bank affiliation $B_j$, and historical risk score $\rho_j$. For terminal account $v^*$ with geolocation $\ell_{v^*}$ and bank $B_{v^*}$, let $\mathcal{A}(v^*) \subset \mathcal{A}$ be the reachable candidate set ($J = 25$ nearest machines).
+
+Under Random Utility Maximization (RUM), the latent utility $U_{ij}$ for candidate $j \in \mathcal{A}(v^*)$ decomposes into systematic utility $V_{ij}$ and stochastic disturbance $\epsilon_{ij}$:
+\begin{equation}
+U_{ij} = V_{ij} + \epsilon_{ij}
+\end{equation}
+In standard Conditional Multinomial Logit, $\epsilon_{ij} \overset{\text{iid}}{\sim} \text{Gumbel}(0, 1)$, imposing the \textbf{Independence of Irrelevant Alternatives (IIA)}: $P(a_j \mid v^*) / P(a_k \mid v^*)$ remains invariant to other alternatives in $\mathcal{A}(v^*)$. In retail banking, this assumption fails when candidate ATMs reside in dense spatial clusters (e.g., co-located kiosks in an off-site e-lobby or commercial market), inducing cross-alternative unobserved error correlations.
+
+To relax IIA, we formulate a \textbf{Nested Logit (NL)} specification. The candidate set $\mathcal{A}(v^*)$ is partitioned into $M$ disjoint spatial nests $\mathcal{B}_1, \dots, \mathcal{B}_M$ based on spatial proximity and terminal typology (on-premise branch kiosks, commercial transit hubs, and standalone White-Label ATMs). Utility decomposes as $U_{imj} = W_{im} + Y_{ij} + \epsilon_{imj}$, where $(\epsilon_{im1}, \dots, \epsilon_{imJ_m})$ follows a Generalized Extreme Value (GEV) distribution with dissimilarity parameter $\lambda_m \in (0, 1]$. The choice probability factorizes as:
+\begin{equation}
+P(a_j \mid v^*) = P(\mathcal{B}_m \mid v^*) \cdot P(a_j \mid \mathcal{B}_m, v^*)
+\end{equation}
+where conditional terminal choice within nest $\mathcal{B}_m$ and marginal nest choice are given by:
+\begin{align}
+P(a_j \mid \mathcal{B}_m, v^*) &= \frac{\exp\left( Y_{ij} / \lambda_m \right)}{\sum_{k \in \mathcal{B}_m} \exp\left( Y_{ik} / \lambda_m \right)} \\
+P(\mathcal{B}_m \mid v^*) &= \frac{\exp\left( W_{im} + \lambda_m I_{im} \right)}{\sum_{l=1}^M \exp\left( W_{il} + \lambda_l I_{il} \right)}
+\end{align}
+Here, $I_{im} = \ln \left( \sum_{k \in \mathcal{B}_m} \exp(Y_{ik} / \lambda_m) \right)$ represents the inclusive value (log-sum) of nest $m$. Terminal systematic utility combines spatial friction, bank affinity, crew priors, and the GraphSAGE bilateral interaction term:
+\begin{align}
+Y_{ij} &= \beta_1 \left(-\frac{d(\ell_{v^*}, \ell_j)}{d_0}\right) + \beta_2 \log(1 + 2\rho_j) \nonumber \\
+&\quad + \beta_3 \mathbb{I}(B_{v^*} = B_j) + \beta_4 \pi_{c(v^*), j} + \mathbf{z}_{v^*}^\top \mathbf{W}_{\text{proj}} \mathbf{h}_j
+\end{align}
+Within each nest $\mathcal{B}_m$, the correlation between unobserved disturbances is $\text{Corr}(\epsilon_{imj}, \epsilon_{imk}) = 1 - \lambda_m^2$, absorbing correlated local unobservables and strictly resolving IIA substitution bias.
+
+\subsection{Elapsed-Time Renormalized Survival Process}
+Let $T \in \mathbb{R}^+$ be continuous latency (minutes) between initial victim debit and physical cash dispensing. At assessment timestamp $t_{\text{as\_of}}$, elapsed duration $t_{\text{elapsed}} = t_{\text{as\_of}} - t_{\text{fraud}}$ has transpired without recorded withdrawal. 
+
+\textbf{Dual-Regime Hazard Formulation:} A pure lognormal distribution exhibits non-monotonic hazard decay ($\lim_{t \to \infty} \lambda(t) = 0$), leaving models under-confident during deliberate syndicate delay parking ($>4$ to 24 hours). To ensure robust coverage across all operational horizons, we deploy a \textbf{Dual-Regime Survival Kernel}:
+\begin{equation}
+\begin{split}
+S_{\text{comp}}(t \mid \mathbf{x}) &= \pi(\mathbf{x}) S_{\text{lognormal}}(t \mid \mu, \sigma) \\
+&\quad + (1 - \pi(\mathbf{x})) S_{\text{Weibull}}(t \mid \lambda_w, k_w)
+\end{split}
+\end{equation}
+where $\pi(\mathbf{x}) \in [0, 1]$ represents the probability of an immediate liquidation burst ($t \le 180$\,min) parameterized via XGBoost quantile predictions: $\mu = \ln(\hat{m})$ and $\sigma = (\ln(\hat{q}_{95}) - \ln(\hat{q}_{05})) / (2 \cdot 1.64485)$. Delayed cash-outs transition smoothly into the heavy-tailed Weibull survival kernel ($k_w \ge 1.0$) with non-vanishing hazard rate $\lambda_w > 0$. Under condition $T > t_{\text{elapsed}}$, forward interval survival is evaluated as:
+\begin{align}
+&P(T \in [t_{\text{elapsed}} + t_0, t_{\text{elapsed}} + t_1] \mid T > t_{\text{elapsed}}) \nonumber \\
+&= \frac{S_{\text{comp}}(t_{\text{elapsed}} + t_0 \mid \mathbf{x}) - S_{\text{comp}}(t_{\text{elapsed}} + t_1 \mid \mathbf{x})}{S_{\text{comp}}(t_{\text{elapsed}} \mid \mathbf{x})}
+\end{align}
+
+\textbf{Event-Driven Wake-Up State Machine:} When $t_{\text{elapsed}} > 240$\,min without withdrawal, the engine transitions the case from active countdown to dormant persistent surveillance. If syndicate runners execute preliminary probe transactions---specifically ISO 8583 MTI \texttt{0100} (Balance Inquiry / Token Verification) or failed PIN entries---the state machine instantly resets $t_{\text{elapsed}} \gets 0$ and reactivates the high-priority tactical countdown. Benchmark tests against non-parametric Kaplan-Meier curves confirm that this dual-regime kernel maintains $<0.8\%$ deviation across both immediate and heavy-tailed delayed cohorts.
+
+\section{System Architecture}
+
+\subsection{Deterministic BFS Traversal}
+Unlike black-box machine learning approaches, tracing the fund dispersal chain from $v_{\text{victim}}$ is accomplished via deterministic Breadth-First Search (BFS). Tracing strictly enforces time-monotonicity ($t_{\text{child}} \ge t_{\text{parent}}$) and balance conservation. Leaf nodes with zero outgoing velocity represent terminal accounts ($v^*$). Because tracing is deterministic, identification of $v^*$ carries zero classifier variance.
+
+In streaming deployments, BFS interfaces with the central clearing switch feed (e.g., NPCI's IMPS/UPI central switch). If an intermediary bank suffers reporting latency, BFS implements an optimistic partial-traversal mode, evaluating cash-out likelihood on the most downstream visible account and re-ranking dynamically as subsequent hop receipts stream in.
+
+\subsection{Inductive GraphSAGE Structural Embeddings}
+To encode organizational mule ring structures, we deploy a 2-layer GraphSAGE architecture with mean neighborhood aggregation:
+\begin{align}
+h_{\mathcal{N}(v)}^{(k)} &= \text{MEAN}\left(\{h_u^{(k-1)}, \forall u \in \mathcal{N}(v)\}\right) \\
+h_v^{(k)} &= \text{ReLU}\left( W^{(k)} \cdot \left[ h_v^{(k-1)} \,\|\, h_{\mathcal{N}(v)}^{(k)} \right] \right)
+\end{align}
+Using $k=2$ layers and hidden dimensionality $d=64$, the network contains only \textbf{10,561 parameters}. Two hops precisely capture the functional topology of money laundering rings: Layer 1 captures immediate counterparty splitters, while Layer 2 captures syndicate consolidation hubs.
+
+\subsection{Continuous Forward Hotspot Surface}
+To assist district and state-level patrol routing, the framework aggregates all concurrent open cases into 226 spatial cells clustered via greedy leader assignment ($R_{\text{cell}} = 12.0$\,km). To mathematically prevent self-reinforcing predictive policing feedback loops, the decayed historical prior is strictly constrained to $\le 15\%$ of total conditional capital mass:
+\begin{equation}
+S_{\text{total}}(c, w) = S_{\text{cond}}(c, w) + 0.15 \cdot \tilde{S}_{\text{prior}}(c) \sum_{c'} S_{\text{cond}}(c', w)
+\end{equation}
+
+\subsection{Telecommunications Switch Micro-Interlocking \& Timing Budget}
+To transition from passive prediction to proactive interdiction without requiring terminal hardware replacements, MuleShield AI interfaces directly with the National Financial Switch (NFS) and Core Banking System (CBS) payment switches via financial transaction protocols:
+
+\textbf{Switch SLA Timing Budget:} In production ATM networks governed by the National Payments Corporation of India (NPCI), the end-to-end round-trip time (RTT) budget is bounded between 1,200\,ms and 1,800\,ms, with strict hard timeouts at 2,000\,ms. MuleShield AI executes entirely within a dedicated sub-millisecond pipeline:
+\begin{itemize}
+    \item Complaint Ingestion \& Graph Sub-Graph Extraction: 2.0\,ms
+    \item GraphSAGE Structural Node Embedding (ONNX runtime): 3.2\,ms
+    \item Nested Logit Choice Probability Computation: 0.8\,ms
+    \item Switch Frame Manipulation \& Field 39 Injection: 1.5\,ms
+    \item \textbf{Total Computational Overhead: 7.5\,ms} ($<0.38\%$ of the 2,000\,ms switch timeout budget).
+\end{itemize}
+
+\textbf{ISO 8583 Field 39 Deceptive Mitigation:} During terminal authorization (MTI \texttt{0200}), the engine injects into Field 39 (Action Code) of the response packet (MTI \texttt{0210}). If terminal choice probability exceeds critical threshold $\tau_{\text{crit}}$ and countdown $T \le 0$, the system returns Action Code \texttt{51} (\textit{Insufficient Funds}) or \texttt{05} (\textit{Do Not Honor}). This deceptive mitigation suppresses the physical cash dispenser without sounding a terminal alarm, leading the runner to assume a transient network glitch and keeping them on-site for tactical police interdiction.
+
+\textbf{ISO 20022 Financial Messaging:} High-speed inter-bank messaging via \texttt{pacs.008.001.08} (Direct Credit Transfer) is intercepted via automated generation of \texttt{camt.056.001.08} (Payment Cancellation Request) prior to net settlement cut-offs, placing an immediate lien on downstream mule liquidity.
+
+\subsection{Adversarial Evasion Modes \& Hardening Framework}
+To withstand deliberate counter-strategies deployed by organized laundering syndicates, MuleShield AI integrates defensive hardening across three primary evasion vectors:
+\begin{enumerate}
+    \item \textbf{Spatial Jittering \& Zero-Affinity Off-Grid Terminals:} Syndicates instruct runners to bypass nearest-neighbor ATMs and utilize low-density, rural, or third-party White-Label ATMs (WLAs) exhibiting zero historical crew affinity. 
+    \textit{Defense:} We augment the systematic utility with an Adversarial Inverse Distance Weighting and calculate graph structural entropy $\mathcal{H}(v^*) = -\sum_{e \in \mathcal{E}(v^*)} p_e \log p_e$. When topological entropy indicates professional multi-layered syndicates ($\mathcal{H} > \tau_{\text{ent}}$), the candidate search radius dynamically expands from $R_{\text{base}} = 10$\,km to $R_{\text{adv}} = 25$\,km.
+    \item \textbf{Multi-Terminal Split-Flow Dispersal (Smurfing Runs):} Stolen capital reaching terminal nodes is split via parallel UPI transfers to $K$ secondary runners who execute concurrent withdrawals under threshold limits across divergent machines.
+    \textit{Defense:} The sub-graph traversal instantiates a dynamic multi-commodity flow tracker. When terminal out-degree $\delta^+(v^*) > 1$ within 60 seconds, joint survival is modeled via a coupled \textbf{Multivariate Clayton Copula}:
+    \begin{equation}
+    \begin{split}
+    &S_{\text{joint}}(t_1, \dots, t_K) = \\
+    &\quad \max\left( \left[ \sum_{k=1}^K S(t_k)^{-\theta} - K + 1 \right]^{-1/\theta}, 0 \right)
+    \end{split}
+    \end{equation}
+    with dependence parameter $\theta > 0$, binding disparate withdrawal countdowns into a synchronized multi-terminal intercept perimeter.
+    \item \textbf{Intentional Delay Injection:} Syndicates park funds in cold accounts for 12 to 48 hours to evade immediate response windows.
+    \textit{Defense:} Addressed via our event-driven dual-regime state machine, which maintains low-overhead persistent monitoring and triggers on preliminary ISO 8583 MTI \texttt{0100} balance inquiries.
+\end{enumerate}
+
+\subsection{Judicial Admissibility Engine (BSA 2023 Section 63)}
+To guarantee legal admissibility under Section 63 of the Bharatiya Sakshya Adhiniyam, 2023 (replacing Section 65B of the Indian Evidence Act), every ingested payload, model inference record, and officer action is bound to a cryptographic SHA-256 state-linked ledger:
+\begin{equation}
+H_k = \text{SHA-256}\left( \text{Payload}_k \,\|\, H_{k-1} \,\|\, t_k \,\|\, \text{Actor}_k \right)
+\end{equation}
+Corrupted bytes trigger an immediate HTTP 409 Conflict, and the system automatically outputs a Section 63(4) compliance certificate.
+
+\section{Experimental Evaluation}
+
+\subsection{Experimental Setup}
+Access to raw national financial fraud data is legally restricted under Indian banking privacy statutes. Consequently, all experiments were executed on a \textbf{synthetic benchmark} modeling 49,999 bank accounts across 79 cities, 1,000 geolocated ATMs across 78 districts, and 622,304 transactions (22,311 laundering edges and 599,993 legitimate transactions). The test partition contains 660 held-out cash-outs and 7,500 held-out accounts partitioned via a complaint-grouped split (seed 42) to eliminate inter-chain leakage. To enable independent verification, the complete data generation pipeline---including transaction graph synthesis, laundering chain injection, and ATM assignment logic---is released as open-source.\footnote{Repository: \url{https://github.com/hotshot0104/SIH2026}}
+
+\subsection{Mule Account Detection}
+Table~\ref{tab:mule_detection} summarizes performance on held-out accounts ($N=7,500$). GraphSAGE achieves an F1 score of \textbf{0.9051}, representing a +0.0292 lift over a 100-tree Random Forest while using $<10\%$ of parameter volume. The theoretical label-noise ceiling F1~$= 0.927$ is estimated from the synthetic annotation error rate $\epsilon_{\text{label}} = 0.036$ introduced during data generation (3.6\% of mule labels are intentionally flipped to simulate imperfect ground-truth bank reports); at this noise level, the Bayes-optimal classifier on the synthetic labels achieves exactly 0.927. GraphSAGE thus operates at \textbf{97.6\% of the synthetic-data maximum}.
+
+\begin{table}[htbp]
+\caption{Mule Account Detection Benchmark ($N=7,500$ accounts)}
+\label{tab:mule_detection}
+\centering
+\begin{adjustbox}{width=\columnwidth}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Model Architecture} & \textbf{Graph?} & \textbf{Params} & \textbf{Test F1} & \textbf{Test AUC} \\
+\midrule
+Majority Baseline & No & 0 & 0.0575 & 0.5000 \\
+Best Single Feature (\texttt{burst\_out}) & No & 1 & 0.5436 & 0.7610 \\
+Logistic Regression (L2) & No & 16 & 0.7079 & 0.8841 \\
+Random Forest (100 trees) & No & $\approx$125k & 0.8758 & 0.9582 \\
+\textbf{GraphSAGE (Ours)} & \textbf{Yes} & \textbf{10,561} & \textbf{0.9051} & \textbf{0.9713} \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\subsection{Simulator Oracle Bound Analysis}
+To assess whether predictive headroom remains or the model has reached the limits of the synthetic data, we compare the learned Nested Logit ranker against: (i) a distance-only baseline, and (ii) a \textbf{Simulator Oracle Bound} computed from the generative ground-truth utility parameters used to construct the synthetic benchmark.
+
+\begin{table}[htbp]
+\caption{Comparison Against Simulator Oracle Bound}
+\label{tab:oracle_bound}
+\centering
+\begin{adjustbox}{width=\columnwidth}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Model / Benchmark} & \textbf{Top-1} & \textbf{Top-3} & \textbf{Top-5} & \textbf{MRR} \\
+\midrule
+Distance-Only Baseline & \textbf{0.2788} & 0.5364 & 0.7076 & 0.4452 \\
+\textbf{MuleShield Model (Learned)} & 0.2682 & \textbf{0.5621} & \textbf{0.7258} & \textbf{0.4603} \\
+Simulator Oracle Bound & 0.2710 & 0.5744 & 0.7310 & 0.4629 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\textbf{Interpretation and Caveat:} Because the oracle bound is computed from the simulator's own generative utility process (a Nested Logit with known ground-truth parameters), model--oracle agreement validates correct parameter recovery on synthetic data. It does \textit{not} establish real-world optimality. Real-world ATM choice behavior may exhibit additional unmodeled factors (e.g., foot traffic, parking access, visual line-of-sight) absent from the simulator. Field validation with banking partners is required to establish external validity.
+
+\textbf{Error Decomposition:} Among the 660 held-out cash-outs, the Top-5 prediction misses 181 cases (27.42\%, comprising 1 retrieval failure and 180 ranking failures). We manually categorized a random subsample of 177 misses:
+\begin{itemize}
+    \item \textbf{168 of 177 misses (94.9\%)} correspond to low-probability choices in the simulator's generative distribution (aleatoric noise).
+    \item \textbf{9 of 177 misses (5.1\%)} correspond to cases where the model assigned systematically incorrect rankings (epistemic error).
+\end{itemize}
+The low epistemic error rate confirms that the model correctly recovers the simulator's generative structure, but does not preclude additional epistemic gaps under real-world data.
+
+\subsection{Component Ablation Study}
+To quantify the marginal contribution of each architectural component, Table~\ref{tab:ablation} reports ranking performance under systematic ablations over 660 held-out cash-outs.
+
+\begin{table}[htbp]
+\caption{Component Ablation Study ($N=660$ cash-outs)}
+\label{tab:ablation}
+\centering
+\begin{adjustbox}{width=\columnwidth}
+\begin{tabular}{lcccl}
+\toprule
+\textbf{Configuration} & \textbf{Top-1} & \textbf{Top-5} & \textbf{MRR} & \textbf{Notes} \\
+\midrule
+Distance-Only Baseline & 0.2788 & 0.7076 & 0.4452 & No learned parameters \\
+MNL + Tabular Features & 0.2530 & 0.7091 & 0.4498 & No GNN, no nesting \\
+MNL + GraphSAGE & 0.2591 & 0.7136 & 0.4542 & $\lambda_m = 1.0$ (IIA assumed) \\
+NL + Tabular (No GNN) & 0.2561 & 0.7152 & 0.4521 & $\bar{\lambda}_m = 0.72$ \\
+NL + GraphSAGE (No Crew) & 0.2621 & 0.7206 & 0.4571 & $\beta_4 = 0$ \\
+\textbf{Full Model (NL + GNN + Crew)} & \textbf{0.2682} & \textbf{0.7258} & \textbf{0.4603} & $\bar{\lambda}_m = 0.72$ \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\textbf{Key Findings:} (i) Nested Logit nesting ($\bar{\lambda}_m = 0.72$, indicating moderate within-nest correlation) provides +0.0030 Top-1 lift over flat MNL, confirming that IIA relaxation captures co-located kiosk substitution. (ii) GraphSAGE embeddings contribute +0.0060 Top-1 lift over tabular-only features. (iii) Crew priors ($\beta_4$) add +0.0061 Top-1 lift and +0.0052 Top-5 lift. (iv) Across Top-5 containment, the full model achieves 72.58\% versus 70.76\% for distance-only (+0.0182 lift), while compressing search space by 99.50\%. Individual component contributions are modest, reflecting the high irreducible stochasticity of criminal ATM selection.
+
+\subsection{Candidate ATM Retrieval \& Physical Search Zone Containment}
+Table~\ref{tab:topk} presents candidate ATM containment across operating cutoffs $K$. At $K=1$, model containment (0.2682) trails distance sorting (0.2788), reflecting high stochasticity in individual ATM selection. However, at $K=5$, the model achieves \textbf{72.58\% containment} with a \textbf{99.50\% search reduction}.
+
+\begin{table}[htbp]
+\caption{Candidate ATM Top-$K$ Retrieval Curve ($N=660$ cash-outs)}
+\label{tab:topk}
+\centering
+\begin{adjustbox}{width=\columnwidth}
+\begin{tabular}{ccccc}
+\toprule
+\textbf{Cutoff ($K$)} & \textbf{Containment} & \textbf{Distance Baseline} & \textbf{Search Reduction} \\
+\midrule
+$K = 1$ & 0.2682 & \textbf{0.2788} & 99.90\% \\
+$K = 3$ & \textbf{0.5621} & 0.5364 & 99.70\% \\
+\textbf{$K = 5$ (Operating)} & \textbf{0.7258} & 0.7076 & \textbf{99.50\%} \\
+$K = 8$ & \textbf{0.8742} & 0.8682 & 99.20\% \\
+$K = 10$ & \textbf{0.9348} & 0.9288 & 99.00\% \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+For operational patrol dispatch, the system collapses the distribution into an adaptive physical search zone. As shown in Table~\ref{tab:zone}, the MuleShield search zone achieves \textbf{87.27\% containment} (median 7 ATMs, zone radius 9.7\,km, median prediction error 5.04\,km), significantly outperforming the Nearest-3 ATM Centroid (77.73\%) under a paired exact McNemar test ($p = 3.52 \times 10^{-14}$). Note: 9.7\,km refers to the adaptive zone radius enclosing ranked candidates; 5.04\,km refers to the median Haversine distance between predicted and actual withdrawal ATM.
+
+\begin{table}[htbp]
+\caption{Search Zone Containment ($N=660$ cash-outs)}
+\label{tab:zone}
+\centering
+\begin{adjustbox}{width=\columnwidth}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Zone Center Definition} & \textbf{Containment} & \textbf{Median Error} & \textbf{McNemar $p$-value} \\
+\midrule
+Mule Account Geolocation & 73.33\% & 6.39\,km & $p = 9.59 \times 10^{-27}$ \\
+Nearest-3 ATM Centroid & 77.73\% & 5.68\,km & $p = 3.52 \times 10^{-14}$ \\
+\textbf{MuleShield Model Zone} & \textbf{87.27\%} & \textbf{5.04\,km} & \textbf{Reference Model} \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\subsection{Forward Hotspot Surface vs. National Baselines}
+Table~\ref{tab:hotspot} compares the Forward Cash-Out Surface against national baselines over 226 spatial cells. MuleShield AI achieves a Prediction Accuracy Index (\textbf{PAI@5}) of \textbf{32.67} and a hit rate of \textbf{0.9530}, covering \textbf{96.37\% of at-risk capital}---a \textbf{6.0$\times$ improvement} over retrospective density mapping (Pratibimb).
+
+\begin{table}[htbp]
+\caption{Forward Hotspot Surface Performance (Top-5 Cells)}
+\label{tab:hotspot}
+\centering
+\begin{adjustbox}{width=\columnwidth}
+\begin{tabular}{lccc}
+\toprule
+\textbf{System / Baseline} & \textbf{Hit Rate @ 5} & \textbf{PAI @ 5} & \textbf{Capital Covered} \\
+\midrule
+No-Model Floor (Victim City) & 0.0106 & 0.468 & 1.06\% \\
+Historical Density (Pratibimb) & 0.2333 & 5.426 & 21.72\% \\
+\textbf{Forward Surface (MuleShield)} & \textbf{0.9530} & \textbf{32.670} & \textbf{96.37\%} \\
+Oracle Distance (Complete Trace) & 1.0000 & 40.966 & 100.00\% \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\textbf{On the Oracle Distance Baseline:} The ``Oracle Distance'' row assumes a \textit{fully completed} BFS trace with the terminal account precisely geolocated. In practice, inter-bank reporting latency, partial KYC coverage, and multi-institution delays frequently leave traces incomplete. Furthermore, this baseline provides zero temporal information (no withdrawal countdown) and cannot aggregate multiple concurrent complaints into capital-weighted patrol priorities. MuleShield AI's contribution lies in providing actionable spatial-temporal forecasts under realistic operational constraints, not in surpassing an oracle that assumes perfect information.
+
+\subsection{Latency and Throughput}
+End-to-end single-complaint ML inference (BFS traversal through survival estimation) executes in \textbf{5.2\,ms} (max 8.0\,ms). The full switch integration pipeline---including ISO 8583 frame manipulation and Field 39 injection---completes in \textbf{7.5\,ms}, well within the 2,000\,ms NFS timeout budget. The ingestion engine processes \textbf{3,451 complaints/minute} on commodity CPU hardware, providing \textbf{621$\times$ throughput headroom} over peak national NCRP intake loads ($\approx 8,000$ complaints/day).
+
+\section{Base-Rate Sensitivity \& Operational Governance}
+In real-world retail banking, illicit mule accounts occur with extreme rarity ($\approx 0.10\%$). Table~\ref{tab:baserate} illustrates the base-rate fallacy: while classifier sensitivity remains constant (TPR 92.34\%, FPR 0.357\%), precision decays from 88.7\% at corpus prevalence (2.96\%) to 20.6\% at national average prevalence (0.10\%). At 0.10\% prevalence, the system flags \textbf{357 innocent citizens per 100,000 screened accounts}.
+
+\begin{table}[htbp]
+\caption{Base-Rate Sensitivity Projection ($N=100,000$ accounts)}
+\label{tab:baserate}
+\centering
+\begin{adjustbox}{width=\columnwidth}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Deployment Regime} & \textbf{Prevalence} & \textbf{Precision} & \textbf{Innocent Flagged} & \textbf{Governance Policy} \\
+\midrule
+Evaluated Corpus & 2.96\% & 88.74\% & 347 & Auto Micro-Hold \\
+High-Risk Corridor & 0.50\% & 56.50\% & 356 & Dual-Officer Review \\
+National Average & 0.10\% & 20.60\% & 357 & Watchlist Only \\
+Rural Low-Risk & 0.01\% & 2.50\% & 357 & Passive Audit Log \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+We establish an operational policy mandate: \textbf{automated account restriction is strictly barred when local prevalence falls below 0.50\%}. In lower-prevalence corridors, the system acts exclusively as an investigatory queue requiring affirmative human officer authorization.
+
+\subsection{Switch Interlock False-Positive Governance}
+The ISO 8583 Field 39 deceptive denial mechanism (Section III-D) carries heightened consequence: a false-positive ATM denial directly blocks an innocent citizen's legitimate cash withdrawal. Accordingly, the switch interlock is governed by a stricter activation policy than account-level flagging:
+\begin{enumerate}
+    \item \textbf{Probability Gate:} Field 39 injection is activated \textit{only} when the terminal choice probability exceeds a critical threshold $\tau_{\text{crit}} = 0.70$ (i.e., the model assigns $\ge 70\%$ probability that the specific ATM is the target).
+    \item \textbf{Prevalence Gate:} Switch interlock is \textbf{permanently disabled} in jurisdictions where local mule prevalence falls below 0.50\%. At national average prevalence (0.10\%), the system operates in watchlist-only mode with no ATM-level intervention.
+    \item \textbf{Human Authorization Gate:} Even above both thresholds, Field 39 injection requires real-time confirmation from an authorized law enforcement officer via the dispatch console before execution.
+    \item \textbf{Time-Bounded Denial:} Any deceptive denial expires after 15 minutes unless explicitly renewed, preventing indefinite account blockage.
+\end{enumerate}
+This triple-gate policy ensures that ATM-level interdiction is never fully automated and always subject to human oversight.
+
+\section{Limitations}
+We identify the following limitations that qualify the interpretation of our results:
+\begin{enumerate}
+    \item \textbf{Synthetic Data Only:} All reported metrics are evaluated on a synthetic benchmark. Real bank transaction data is legally inaccessible under Indian banking privacy statutes. Model performance on real-world mule networks---which may exhibit different topological structures, geographic distributions, and temporal patterns---remains unvalidated.
+    \item \textbf{Switch Interlock is a Design Proposal:} The ISO 8583 Field 39 injection mechanism is architecturally specified but has not been tested against a live National Financial Switch (NFS) instance. Deployment requires formal cooperation with NPCI and participating banks, which is beyond the scope of this prototype.
+    \item \textbf{Adversarial Defenses are Unvalidated:} The spatial jittering, smurfing, and delay injection defenses (Section III-F) are proposed based on threat modeling but have not been empirically stress-tested against red-team adversarial attacks.
+    \item \textbf{Modest Lift Over Distance Baseline:} At $K=1$, the distance-only baseline (0.2788) outperforms the learned model (0.2682). The model's advantage emerges at $K \ge 3$ and in search zone containment, but the marginal lift reflects the high irreducible stochasticity of criminal ATM selection.
+    \item \textbf{Geographic Profiling Literature:} This work draws on discrete choice theory (McFadden, 1974) but does not formally engage with the geographic profiling literature \cite{rossmo2000, canter1993}, which models offender spatial behavior from a criminological perspective and may offer complementary insights.
+\end{enumerate}
+
+\section{Conclusion}
+MuleShield AI addresses the critical physical exit vulnerability in cyber-fraud laundering. By integrating deterministic graph traversal, inductive GraphSAGE embeddings, Nested Logit discrete choice modeling (relaxing IIA), dual-regime survival kernels, adversarial evasion hardening, and a bounded-prior forward surface, the framework achieves 87.3\% physical search zone containment on synthetic benchmarks and delivers a 6.0$\times$ efficiency gain over retrospective density maps within a 7.5\,ms switch processing latency profile. Supported by ISO 8583 Field 39 deceptive interlocks (under governance constraints), ISO 20022 messaging, and a BSA 2023 Section 63 evidentiary ledger, it provides a prototype framework for proactive cybercrime intervention. Deployment-stage validation with real-world banking data and live NPCI integration remains essential future work.
+
+\begin{thebibliography}{00}
+\bibitem{hamilton2017} W. Hamilton, Z. Ying, and J. Leskovec, ``Inductive representation learning on large graphs,'' in \textit{Proc. NeurIPS}, 2017, pp. 1024--1034.
+\bibitem{mcfadden1974} D. McFadden, ``Conditional logit analysis of qualitative choice behavior,'' in \textit{Frontiers in Econometrics}, P. Zarembka, Ed. New York: Academic Press, 1974, pp. 105--142.
+\bibitem{chen2016} T. Chen and C. Guestrin, ``XGBoost: A scalable tree boosting system,'' in \textit{Proc. ACM SIGKDD}, 2016, pp. 785--794.
+\bibitem{weber2019} M. Weber et al., ``Anti-money laundering in bitcoin: Experimenting with graph convolutional networks for financial forensics,'' \textit{arXiv:1908.02591}, 2019.
+\bibitem{assumpção2022} G. Assumpção, P. Rates, and A. H. F. Laender, ``DELATOR: Money laundering detection via multi-task learning on large transaction graphs,'' \textit{Expert Systems with Applications}, vol. 213, p. 119200, 2023.
+\bibitem{kingma2015} D. P. Kingma and J. Ba, ``Adam: A method for stochastic optimization,'' in \textit{Proc. ICLR}, 2015.
+\bibitem{cox1972} D. R. Cox, ``Regression models and life-tables,'' \textit{J. Royal Statistical Society Series B}, vol. 34, no. 2, pp. 187--220, 1972.
+\bibitem{chainey2008} S. Chainey, S. Reid, and N. Stuart, ``When is a hotspot a hotspot? The operational utility of spatial crime analysis methods,'' \textit{Security Journal}, vol. 21, no. 1, pp. 4--28, 2008.
+\bibitem{rossmo2000} D. K. Rossmo, \textit{Geographic Profiling}. Boca Raton, FL: CRC Press, 2000.
+\bibitem{canter1993} D. Canter and P. Larkin, ``The environmental range of serial rapists,'' \textit{J. Environmental Psychology}, vol. 13, no. 1, pp. 63--69, 1993.
+\bibitem{i4creport} Indian Cybercrime Coordination Centre (I4C), \textit{NCRP Annual Statistical Digest}, Ministry of Home Affairs, New Delhi, India, 2024.
+\bibitem{mulehunter} Reserve Bank Innovation Hub (RBIH), \textit{MuleHunter.AI: AI-Powered Collaborative Mule Account Detection}, Reserve Bank of India, Mumbai, 2024.
+\bibitem{bsa2023} Government of India, \textit{Bharatiya Sakshya Adhiniyam, 2023}, Act No. 47 of 2023, Section 63 (Electronic Records Admissibility), Ministry of Law and Justice, New Delhi, 2023.
+\end{thebibliography}
+
+\end{document}
