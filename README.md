@@ -762,6 +762,7 @@ reporting.
   real graph accounts in the victim's city. The GNN embeddings, ATM directory and
   inference path are genuine; only the bank/NPCI transaction feed is simulated.
 - We have **not** run a field trial, so we claim no fund-recovery-rate improvement.
+- **Rate limiting under demo configuration:** Under the demo configuration (`LOCKOUT_ENABLED=0`), account lockout is disabled to permit unrestricted retries, leaving the login endpoint without rate constraints. Per-IP sliding-window throttling at the reverse proxy is direct future work.
 
 ---
 
@@ -963,6 +964,81 @@ python scripts/smoke_ui.py
 Last run: **209 controls across 4 routes, 0 console errors, 0 failed requests**
 in normal operation. The only 404 is the deliberate existence-check that discards
 a stale complaint id.
+
+### 7. Pre-Demo Authentication Telemetry Reset
+```bash
+python scripts/reset_demo_auth.py
+```
+Zeros out windowed failed login counts, cumulative credential-stuffing counters, and any active lockouts on `data/muleshield.db`. Run this immediately before live jury demonstrations so rehearsal attempts do not trigger alerts or lockouts during the walkthrough.
+
+---
+
+## ☁️ Deployment & Microsoft Azure Cloud Readiness
+
+### 1. Deployment Status Overview
+- **Current Operational Status:** Local evaluation and execution (FastAPI backend on port 8000, Vite React console on port 5173).
+- **Cloud Architecture Readiness:** **Container-ready.** The repository ships with a multi-stage, production-grade [Dockerfile](Dockerfile) packaging the pre-built React frontend SPA and the Python 3.11/FastAPI backend into a unified single-container runtime.
+- **State Model:** In-memory graph traversal, XGBoost inference, and pre-warmed GNN node embeddings execute within a single worker process to guarantee instant sub-50ms query latency without inter-process contention.
+
+### 2. Azure Sizing & Prerequisites
+- **Recommended Azure Service:** **Azure Container Apps (ACA)** (preferred for serverless container operations and built-in HTTPS ingress) or **Azure App Service (Linux Web App with Docker)**.
+- **Hardware Sizing:**
+  - **Memory:** Minimum **2.0 GiB** (recommended 4.0 GiB). The runtime pre-loads 50,000 GraphSAGE embeddings, 1,000 spatial ATM records, 2,500 complaints, and the XGBoost model in memory. Standard 512 MB tiers will trigger OOM.
+  - **CPU:** 1.0 to 2.0 vCPUs.
+- **Port:** Default is `7860` (configurable via `PORT` environment variable).
+
+### 3. Step-by-Step Azure Deployment Guide
+
+#### Step A: Build & Push Image to Azure Container Registry (ACR)
+```bash
+# Log in to your Azure subscription
+az login
+
+# Create a dedicated Resource Group and Azure Container Registry
+az group create --name rg-muleshield --location centralindia
+az acr create --resource-group rg-muleshield --name acrmuleshield --sku Standard --admin-enabled true
+
+# Build and push the multi-stage Docker image directly in ACR
+az acr build --registry acrmuleshield --image muleshield:latest .
+```
+
+#### Step B: Deploy to Azure Container Apps (ACA)
+```bash
+# Create the Container Apps managed environment
+az containerapp env create \
+  --name env-muleshield \
+  --resource-group rg-muleshield \
+  --location centralindia
+
+# Deploy the container application
+az containerapp create \
+  --name muleshield-app \
+  --resource-group rg-muleshield \
+  --environment env-muleshield \
+  --image acrmuleshield.azurecr.io/muleshield:latest \
+  --target-port 7860 \
+  --ingress external \
+  --cpu 1.0 --memory 2.0Gi \
+  --env-vars \
+    PORT=7860 \
+    LOCKOUT_ENABLED=1 \
+    PBKDF2_ITERATIONS=600000 \
+    MAX_FAILED_LOGINS=3 \
+    LOCKOUT_MINUTES=15 \
+    MULESHIELD_ADMIN_USER=officer \
+    MULESHIELD_ADMIN_PASSWORD=change-me \
+    MULESHIELD_SCHEDULER=on \
+    MULESHIELD_TICK_SECONDS=60
+```
+
+#### Step C: Verify Cloud Deployment
+```bash
+# Obtain the public FQDN of the deployed Azure container
+az containerapp show --name muleshield-app --resource-group rg-muleshield --query properties.configuration.ingress.fqdn -o tsv
+
+# Health check verification
+curl https://<app-fqdn>/health
+```
 
 ---
 
