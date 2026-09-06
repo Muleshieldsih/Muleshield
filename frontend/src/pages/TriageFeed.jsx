@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useCallback, memo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { endpoints, describeError } from '../services/api'
-import { amountFmt, amountShort, formatTicket, MODEL_STATS, FRAUD_TYPES, BANKS, CITIES } from '../utils/constants'
+import { amountFmt, amountShort, formatTicket, MODEL_STATS, FRAUD_TYPES, BANKS, CITIES, CITY_STATE_MAP } from '../utils/constants'
 import { timeAgo, useNow } from '../hooks/useCountdown'
 import { useToast } from '../components/Toast'
 import CaseTimeline from '../components/CaseTimeline'
@@ -320,7 +320,17 @@ const IngestModal = memo(function IngestModal({ isOpen, onClose, onSuccess }) {
             </div>
             <div>
               <label className="block text-zinc-400 mb-1">City</label>
-              <input required list="ms-cities" type="text" value={form.city} onChange={set('city')} className={field} />
+              <input required list="ms-cities" type="text" value={form.city}
+                onChange={e => {
+                  const city = e.target.value
+                  const autoState = CITY_STATE_MAP[city]
+                  setForm(prev => ({
+                    ...prev,
+                    city,
+                    ...(autoState ? { state: autoState } : {}),
+                  }))
+                }}
+                className={field} />
               <datalist id="ms-cities">{CITIES.map(c => <option key={c} value={c} />)}</datalist>
             </div>
           </div>

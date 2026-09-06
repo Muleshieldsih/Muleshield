@@ -43,6 +43,26 @@ export const CITIES = [
   'Pune', 'Jaipur', 'Lucknow', 'Gurgaon', 'Jamtara', 'Deoghar',
 ]
 
+/**
+ * City → correct state mapping for the "Add case" form.
+ * When the operator selects a known city, the state field auto-fills.
+ * This prevents invalid combinations like "Pune, Uttar Pradesh".
+ */
+export const CITY_STATE_MAP = {
+  'Delhi': 'Delhi',
+  'Mumbai': 'Maharashtra',
+  'Bengaluru': 'Karnataka',
+  'Hyderabad': 'Telangana',
+  'Chennai': 'Tamil Nadu',
+  'Kolkata': 'West Bengal',
+  'Pune': 'Maharashtra',
+  'Jaipur': 'Rajasthan',
+  'Lucknow': 'Uttar Pradesh',
+  'Gurgaon': 'Haryana',
+  'Jamtara': 'Jharkhand',
+  'Deoghar': 'Jharkhand',
+}
+
 /** Benchmarked model figures — generated, never typed. */
 // These previously read 98.5% Top-3 / 1.2 s MAE / 0.9996 F1. Those numbers were
 // retracted by the leakage audit (OVERNIGHT_ML_AUDIT.md) and were still being
