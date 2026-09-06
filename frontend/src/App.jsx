@@ -116,6 +116,10 @@ function Layout() {
       })
       setSelected(msg.payload.ticket_id)
       storeComplaintId(msg.payload.ticket_id)
+    } else if (msg.event_type === 'CASE_UPDATED' && msg.complaint_id && msg.payload) {
+      setComplaints(prev => prev.map(c => (
+        c.ticket_id === msg.complaint_id ? { ...c, ...msg.payload } : c
+      )))
     }
   }, [])
 
