@@ -96,6 +96,9 @@ prd_summary.md
 # Officer credentials. Never commit this -- it holds password hashes and live
 # session tokens, and a committed copy would put a working login for every
 # deployment into a public repository.
+muleshield.db
+muleshield.db-wal
+muleshield.db-shm
 data/muleshield.db
 data/muleshield.db-wal
 data/muleshield.db-shm

@@ -14,6 +14,7 @@ Boot sequence:
   5. Load GNN embeddings → embeddings dict (account → 64-dim vector)
 """
 
+import json
 import logging
 import sys
 import uuid
@@ -82,51 +83,43 @@ _feature_builder = None
 _xgb_predictor = None
 
 
-# City → State authoritative mapping for Indian hubs
-CITY_STATE_MAP: dict[str, str] = {
-    "delhi": "Delhi",
-    "new delhi": "Delhi",
-    "mumbai": "Maharashtra",
-    "bengaluru": "Karnataka",
-    "bangalore": "Karnataka",
-    "hyderabad": "Telangana",
-    "chennai": "Tamil Nadu",
-    "kolkata": "West Bengal",
-    "pune": "Maharashtra",
-    "jaipur": "Rajasthan",
-    "lucknow": "Uttar Pradesh",
-    "kanpur": "Uttar Pradesh",
-    "agra": "Uttar Pradesh",
-    "varanasi": "Uttar Pradesh",
-    "allahabad": "Uttar Pradesh",
-    "prayagraj": "Uttar Pradesh",
-    "bareilly": "Uttar Pradesh",
-    "ghaziabad": "Uttar Pradesh",
-    "noida": "Uttar Pradesh",
-    "gorakhpur": "Uttar Pradesh",
-    "gurgaon": "Haryana",
-    "gurugram": "Haryana",
-    "jamtara": "Jharkhand",
-    "deoghar": "Jharkhand",
-    "patna": "Bihar",
-    "ranchi": "Jharkhand",
-    "ahmedabad": "Gujarat",
-    "surat": "Gujarat",
-    "bhopal": "Madhya Pradesh",
-    "indore": "Madhya Pradesh",
-    "chandigarh": "Punjab",
-    "amritsar": "Punjab",
-    "ludhiana": "Punjab",
-    "guwahati": "Assam",
-    "kohima": "Nagaland",
-    "dimapur": "Nagaland",
-}
+# ─────────────────────────────────────────────────────────────────────────────
+# CANONICAL CITY DIRECTORY (generated, never typed)
+# ─────────────────────────────────────────────────────────────────────────────
+
+CITIES_JSON = DATA_DIR / "cities.json"
+
+if CITIES_JSON.exists():
+    with open(CITIES_JSON, "r", encoding="utf-8") as _f:
+        _cities_data = json.load(_f)
+    CITY_STATE_MAP: dict[str, str] = dict(_cities_data.get("city_to_state", {}))
+    CITY_ALIASES: dict[str, str] = {
+        k.lower(): v for k, v in _cities_data.get("aliases", {}).items()
+    }
+else:
+    CITY_STATE_MAP = {}
+    CITY_ALIASES = {}
+
+# Private lowercase lookup for case-insensitive and alias resolution
+_CITY_BY_KEY: dict[str, str] = {k.lower(): k for k in CITY_STATE_MAP}
+for _alias_key, _canonical_name in CITY_ALIASES.items():
+    _CITY_BY_KEY[_alias_key.lower()] = _canonical_name
+
+
+def canonical_city(value: Optional[str]) -> Optional[str]:
+    """Resolve any casing, spacing, or alias to canonical city name, or None."""
+    if not value:
+        return None
+    key = " ".join(str(value).split()).lower()
+    return _CITY_BY_KEY.get(key)
 
 
 def normalize_city_state(city: str, state: str) -> str:
-    """Enforce geographically correct state if city is in master directory."""
-    key = str(city or "").strip().lower()
-    return CITY_STATE_MAP.get(key, str(state or "").strip())
+    """Return authoritative state if city resolves, else fall back to caller's string."""
+    canon = canonical_city(city)
+    if canon and canon in CITY_STATE_MAP:
+        return CITY_STATE_MAP[canon]
+    return str(state or "").strip()
 
 
 # ─────────────────────────────────────────────────────────────────────────────

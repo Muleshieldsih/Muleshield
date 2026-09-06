@@ -302,7 +302,7 @@ const IngestModal = memo(function IngestModal({ isOpen, onClose, onSuccess }) {
             <div>
               <label className="block text-zinc-400 mb-1">Victim Bank</label>
               <select value={form.victim_bank} onChange={set('victim_bank')} className={field}>
-                {BANKS.map(b => <option key={b} value={b}>{b}</option>)}
+                {BANKS.map(b => <option key={b} value={b} className="bg-ink-panel text-white">{b}</option>)}
               </select>
             </div>
             <div>
@@ -311,33 +311,31 @@ const IngestModal = memo(function IngestModal({ isOpen, onClose, onSuccess }) {
             </div>
           </div>
 
+          <div>
+            <label className="block text-zinc-400 mb-1">Fraud Category</label>
+            <select value={form.fraud_type} onChange={set('fraud_type')} className={field}>
+              {FRAUD_TYPES.map(f => <option key={f} value={f} className="bg-ink-panel text-white">{f}</option>)}
+            </select>
+          </div>
+
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-zinc-400 mb-1">Fraud Category</label>
-              <select value={form.fraud_type} onChange={set('fraud_type')} className={field}>
-                {FRAUD_TYPES.map(f => <option key={f} value={f}>{f}</option>)}
+              <label className="block text-zinc-400 mb-1">City</label>
+              <select required value={form.city} className={field}
+                onChange={e => {
+                  const city = e.target.value
+                  setForm(prev => ({ ...prev, city, state: CITY_STATE_MAP[city] || '' }))
+                }}>
+                <option value="" disabled className="bg-ink-panel text-zinc-400">Select a city</option>
+                {CITIES.map(c => <option key={c} value={c} className="bg-ink-panel text-white">{c}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-zinc-400 mb-1">City</label>
-              <input required list="ms-cities" type="text" value={form.city}
-                onChange={e => {
-                  const city = e.target.value
-                  const autoState = CITY_STATE_MAP[city]
-                  setForm(prev => ({
-                    ...prev,
-                    city,
-                    ...(autoState ? { state: autoState } : {}),
-                  }))
-                }}
-                className={field} />
-              <datalist id="ms-cities">{CITIES.map(c => <option key={c} value={c} />)}</datalist>
+              <label className="block text-zinc-400 mb-1">State</label>
+              <input type="text" value={form.state} readOnly tabIndex={-1}
+                aria-readonly="true"
+                className={`${field} opacity-75 cursor-not-allowed`} />
             </div>
-          </div>
-
-          <div>
-            <label className="block text-zinc-400 mb-1">State</label>
-            <input required type="text" value={form.state} onChange={set('state')} className={field} />
           </div>
 
           <p className="text-[10px] text-zinc-500 leading-relaxed">

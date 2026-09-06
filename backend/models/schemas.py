@@ -7,7 +7,9 @@ All request/response models for the FastAPI backend.
 """
 
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, ValidationInfo
+
+from backend.state import CITY_STATE_MAP, canonical_city
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -22,8 +24,28 @@ class ComplaintIngestRequest(BaseModel):
     fraud_type: str
     stolen_amount: float = Field(..., gt=0)
     city: str
-    state: str
+    state: str = Field(default="", validate_default=True)
     complaint_timestamp: Optional[str] = None
+
+    @field_validator("city", mode="before")
+    @classmethod
+    def validate_city(cls, v: object) -> str:
+        resolved = canonical_city(str(v or ""))
+        if not resolved:
+            raise ValueError(
+                f"Invalid city '{v}'. Must be one of the {len(CITY_STATE_MAP)} recognized operational hubs."
+            )
+        return resolved
+
+    @field_validator("state", mode="before")
+    @classmethod
+    def validate_state(cls, v: object, info: ValidationInfo) -> str:
+        city_raw = info.data.get("city") if info.data else None
+        resolved = canonical_city(str(city_raw or ""))
+        if resolved and resolved in CITY_STATE_MAP:
+            return CITY_STATE_MAP[resolved]
+        return str(v or "").strip()
+
 
     model_config = {
         "json_schema_extra": {

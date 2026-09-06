@@ -38,30 +38,10 @@ export const BANKS = [
   'IndusInd Bank',
 ]
 
-export const CITIES = [
-  'Delhi', 'Mumbai', 'Bengaluru', 'Hyderabad', 'Chennai', 'Kolkata',
-  'Pune', 'Jaipur', 'Lucknow', 'Gurgaon', 'Jamtara', 'Deoghar',
-]
+import cityData from '../data/cities.json'
 
-/**
- * City → correct state mapping for the "Add case" form.
- * When the operator selects a known city, the state field auto-fills.
- * This prevents invalid combinations like "Pune, Uttar Pradesh".
- */
-export const CITY_STATE_MAP = {
-  'Delhi': 'Delhi',
-  'Mumbai': 'Maharashtra',
-  'Bengaluru': 'Karnataka',
-  'Hyderabad': 'Telangana',
-  'Chennai': 'Tamil Nadu',
-  'Kolkata': 'West Bengal',
-  'Pune': 'Maharashtra',
-  'Jaipur': 'Rajasthan',
-  'Lucknow': 'Uttar Pradesh',
-  'Gurgaon': 'Haryana',
-  'Jamtara': 'Jharkhand',
-  'Deoghar': 'Jharkhand',
-}
+export const CITIES = cityData.cities
+export const CITY_STATE_MAP = cityData.city_to_state
 
 /** Benchmarked model figures — generated, never typed. */
 // These previously read 98.5% Top-3 / 1.2 s MAE / 0.9996 F1. Those numbers were
