@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
-import ReactFlow, { Background, Controls, MiniMap, MarkerType } from 'reactflow'
+import ReactFlow, { Background, Controls, MiniMap, MarkerType, Position } from 'reactflow'
 import 'reactflow/dist/style.css'
 import { endpoints, describeError } from '../services/api'
 import useActiveComplaint from '../hooks/useActiveComplaint'
@@ -38,8 +38,8 @@ function buildLayout(nodes = [], edges = [], anomalies = {}, highlighted = null,
     byDepth.get(d).push(n)
   })
 
-  const COL_W = 230
-  const ROW_H = 96
+  const COL_W = 270
+  const ROW_H = 110
   const flowNodes = []
 
   const depths = [...byDepth.keys()].sort((a, b) => a - b)
@@ -58,6 +58,8 @@ function buildLayout(nodes = [], edges = [], anomalies = {}, highlighted = null,
 
       flowNodes.push({
         id: n.id,
+        sourcePosition: Position.Right,
+        targetPosition: Position.Left,
         position: { x: 40 + col * COL_W, y: 40 + offset + i * ROW_H },
         data: {
           label: `${header} · ${n.bank || '—'}\n${shortAccount(n.id)}${
