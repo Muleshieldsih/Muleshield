@@ -53,7 +53,21 @@ export default function useActiveComplaint() {
     }
 
     const resolve = async () => {
-      const known = urlCid || readStoredComplaintId()
+      // When the URL already carries a complaint id (e.g. App.jsx just navigated
+      // to ?c=<id> after a sidebar click), adopt it immediately without a network
+      // round-trip. The verify-then-set path below is only needed when we are
+      // falling back to localStorage or fetching the newest complaint — both
+      // heuristics that can be stale. A ?c= param from the URL is authoritative.
+      if (urlCid) {
+        if (!cancelled) {
+          setComplaintId(urlCid)
+          storeComplaintId(urlCid)
+          setResolving(false)
+        }
+        return
+      }
+
+      const known = readStoredComplaintId()
       setResolving(true)
 
       try {
@@ -63,7 +77,7 @@ export default function useActiveComplaint() {
           // A stored id outlives the data it points at: a ticket from a previous
           // dataset, or one that was only ever in the removed demo fixtures, stays
           // in localStorage forever. Trusting it blindly left every screen stuck on
-          // "complaint not found" while the live queue beside them was populated —
+          // \"complaint not found\" while the live queue beside them was populated —
           // which reads as a broken app rather than a stale selection.
           try {
             await endpoints.getComplaint(known)

@@ -1,4 +1,4 @@
-import { NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { Activity, GitBranch, MapPinned, Zap, BarChart3, Flame, BellRing, Radio, Circle, WifiOff, LogOut } from 'lucide-react'
 import { useMemo } from 'react'
 import { amountShort, formatTicket } from '../utils/constants'
@@ -36,17 +36,17 @@ function cityCode(city) {
  */
 function SidebarStreamTicker({ complaints = [], onSelect, activeId }) {
   const now = useNow(1000)
-  const navigate = useNavigate()
-  const location = useLocation()
 
   const rows = useMemo(() => (complaints || []).slice(0, 24), [complaints])
 
-  // Stay on the screen the operator is using. This used to navigate to "/"
-  // unconditionally, so picking a complaint while working the map threw you back
-  // to the triage queue and you had to navigate to the map a second time.
+  // onSelect (App.jsx handleSelect) already calls navigate with { replace: true },
+  // keeping the ?c= param in step with the selected complaint and staying on the
+  // current path. A second navigate() here created a push entry on top of that
+  // replace, which caused useActiveComplaint to re-run its resolving:true cycle
+  // and gate the data-fetch effects on /graph and /intercept -- making those
+  // screens appear stuck whenever a sidebar row was clicked.
   const handleClick = (id) => {
     onSelect?.(id)
-    navigate(`${location.pathname}?c=${encodeURIComponent(id)}`)
   }
 
   return (
