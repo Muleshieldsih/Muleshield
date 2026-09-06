@@ -173,14 +173,16 @@ def compute(complaint_id: str) -> dict:
         # symptom is a map that looks wrong for reasons nobody can see.
         if not meta:
             _warn_unknown_atm(pred["atm_id"])
+        aid = pred["atm_id"]
+        fallback_addr = aid if aid.startswith("ATM") else f"ATM {aid}"
         enriched.append({
             "rank": pred["rank"],
-            "atm_id": pred["atm_id"],
+            "atm_id": aid,
             "confidence": pred["confidence"],
             "lat": float(meta.get("lat", 20.5937)),
             "lon": float(meta.get("long", 78.9629)),
-            "bank": str(meta.get("bank_name", meta.get("bank", "Unknown"))),
-            "address": str(meta.get("address", f"ATM {pred['atm_id']}")),
+            "bank": str(meta.get("bank_name", meta.get("bank", "Unknown Bank"))),
+            "address": str(meta.get("address", fallback_addr)),
             "historical_fraud_count": int(meta.get("historical_fraud_count", 0)),
             "city": str(meta.get("city", "") or ""),
             "district": str(meta.get("district", "") or ""),

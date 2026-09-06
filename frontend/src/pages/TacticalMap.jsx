@@ -54,9 +54,10 @@ function TacticalLeafletMap({ terminal, atms, zone, selectedAtmId, onSelectAtm, 
     const map = L.map(containerRef.current, {
       center: INDIA_CENTER,
       zoom: 5,
-      zoomControl: true,
+      zoomControl: false,
       attributionControl: false,
     })
+    L.control.zoom({ position: 'bottomright' }).addTo(map)
 
     const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
@@ -305,7 +306,7 @@ export default function TacticalMap() {
                   </div>
                 )}
 
-                <div className="absolute top-3 left-14 flex flex-wrap gap-2 text-[11.5px] z-[1000] max-w-[calc(100%-70px)]">
+                <div className="absolute top-3 left-3 flex flex-wrap gap-2 text-[11.5px] z-[1000] max-w-[calc(100%-24px)]">
                   <span className="px-2.5 py-1 rounded bg-ink-panel border border-ink-border text-zinc-300">
                     ATM directory
                   </span>
