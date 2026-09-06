@@ -22,9 +22,10 @@ htmlcov/
 Thumbs.db
 *.log
 
-# Scratch files
+# Scratch and internal files
 scratch/
 *.tmp
+internal_docs/
 
 # Node / Frontend
 node_modules/
