@@ -755,15 +755,14 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
             </div>
 
             <div className="flex flex-wrap gap-2 mb-3">
-              <div className="flex-1 min-w-[200px] flex items-center gap-2 bg-ink-bg border border-ink-border rounded px-2.5 py-1.5 focus-within:border-zinc-500 transition-colors">
+              <div className="flex-1 min-w-[200px] flex items-center gap-2 bg-ink-bg border border-ink-border rounded px-2.5 py-1.5">
                 <Search size={13} className="text-zinc-500 shrink-0" />
                 <input
                   type="text"
                   placeholder="Search case, victim, city…"
                   value={q}
                   onChange={e => setQ(e.target.value)}
-                  style={{ outline: 'none', boxShadow: 'none' }}
-                  className="bg-transparent outline-none focus:!outline-none focus-visible:!outline-none text-[12px] w-full text-zinc-200 placeholder:text-zinc-600"
+                  className="bg-transparent outline-none text-[12px] w-full text-zinc-200 placeholder:text-zinc-600"
                 />
               </div>
               <select

@@ -333,6 +333,39 @@ export default function Interception() {
             <span className="ml-auto text-zinc-500">Simulated bank hold — no live NPCI or core-banking call is made</span>
           </div>
         </Panel>
+      </div>
+
+      {/* ── Dispatch preview ─────────────────────────────────────────────── */}
+      <div className="col-span-12 lg:col-span-5 space-y-3">
+        {/* Evidence sits on the case screen because that is where an officer
+            works the case, and above the dispatch preview because what is held
+            against a case -- and whether its chain is intact -- is a fact about
+            the case rather than an attachment drawer. */}
+        {complaintId && (
+          <Panel
+            title="Intelligence dossier"
+            right={
+              <button
+                onClick={() => setDossierOpen(true)}
+                className="px-2.5 py-1 rounded border border-ink-border text-[11px] text-zinc-300
+                           hover:border-zinc-600 hover:text-white transition-colors
+                           flex items-center gap-1.5"
+              >
+                <FileText size={12} /> Produce
+              </button>
+            }
+          >
+            <div className="p-3 text-[11.5px] text-zinc-400 leading-relaxed">
+              A printable case report — the complaint as filed, every hop of the money
+              trail with its IFSC, what the graph engine flagged, the forecast search
+              zone and its ranked candidates, the actions taken, and the evidence held.
+              Assembled from the store and the shipped model at the moment it is asked
+              for, so it cannot describe a state the system is not in.
+            </div>
+          </Panel>
+        )}
+
+        {complaintId && <EvidencePanel caseId={complaintId} />}
 
         <Panel title="Field notification" right="Nearest unit">
           <div className="p-3 space-y-3">
@@ -403,40 +436,6 @@ export default function Interception() {
             </div>
           </div>
         </Panel>
-      </div>
-
-      {/* ── Intelligence & Evidence ───────────────────────────────────────── */}
-      <div className="col-span-12 lg:col-span-5 flex flex-col space-y-3">
-        {/* Evidence sits on the case screen because that is where an officer
-            works the case, and above the dispatch preview because what is held
-            against a case -- and whether its chain is intact -- is a fact about
-            the case rather than an attachment drawer. */}
-        {complaintId && (
-          <Panel
-            title="Intelligence dossier"
-            className="shrink-0"
-            right={
-              <button
-                onClick={() => setDossierOpen(true)}
-                className="px-2.5 py-1 rounded border border-ink-border text-[11px] text-zinc-300
-                           hover:border-zinc-600 hover:text-white transition-colors
-                           flex items-center gap-1.5"
-              >
-                <FileText size={12} /> Produce
-              </button>
-            }
-          >
-            <div className="p-3 text-[11.5px] text-zinc-400 leading-relaxed">
-              A printable case report — the complaint as filed, every hop of the money
-              trail with its IFSC, what the graph engine flagged, the forecast search
-              zone and its ranked candidates, the actions taken, and the evidence held.
-              Assembled from the store and the shipped model at the moment it is asked
-              for, so it cannot describe a state the system is not in.
-            </div>
-          </Panel>
-        )}
-
-        {complaintId && <EvidencePanel caseId={complaintId} className="flex-1 flex flex-col" />}
       </div>
 
       {/* ── Dispatch modal ───────────────────────────────────────────────── */}

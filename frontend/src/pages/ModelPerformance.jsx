@@ -43,10 +43,10 @@ export default function ModelPerformance() {
   })
 
   return (
-    <div className="p-4 space-y-4 w-full">
+    <div className="p-4 space-y-4 max-w-[1400px]">
       <div>
         <h1 className="text-[15px] font-semibold text-white">Model performance</h1>
-        <p className="text-[12.5px] text-zinc-400 mt-1 max-w-4xl leading-relaxed">
+        <p className="text-[12.5px] text-zinc-400 mt-1 max-w-3xl leading-relaxed">
           How the detection and location models score against held-out data they
           were never trained on. These describe the system as a whole. They are
           not a confidence level for any individual case, and should not be read
@@ -322,7 +322,7 @@ export default function ModelPerformance() {
           </p>
 
           <div className="overflow-x-auto">
-            <table className="data-table w-full">
+            <table className="data-table max-w-2xl">
               <thead>
                 <tr>
                   <th>Locations searched</th>

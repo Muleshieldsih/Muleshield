@@ -272,14 +272,12 @@ export default function TacticalMap() {
 
   return (
     <div className="grid grid-cols-12 gap-3 p-3">
-      <div className="col-span-12 lg:col-span-8 flex flex-col">
+      <div className="col-span-12 lg:col-span-8">
         <Panel
           title={`Cash-out locations — ${formatTicket(complaintId)}`}
           right={loading ? 'predicting…' : prediction ? `${label} remaining` : ''}
-          className="flex-1 flex flex-col"
-          bodyClass="flex-1 flex flex-col min-h-0 relative"
         >
-          <div className="flex-1 relative w-full min-h-[520px]">
+          <div className="h-[64vh] relative">
             {error ? (
               <div className="absolute inset-0 grid place-items-center px-6 text-center text-[12.5px] z-[1200] bg-ink-bg">
                 <div>
@@ -290,16 +288,14 @@ export default function TacticalMap() {
               </div>
             ) : (
               <>
-                <div className="absolute inset-0">
-                  <TacticalLeafletMap
-                    terminal={terminal}
-                    atms={atms}
-                    zone={prediction?.search_zone}
-                    selectedAtmId={selectedAtmId}
-                    onSelectAtm={setSelectedAtmId}
-                    onTilesFailed={onTilesFailed}
-                  />
-                </div>
+                <TacticalLeafletMap
+                  terminal={terminal}
+                  atms={atms}
+                  zone={prediction?.search_zone}
+                  selectedAtmId={selectedAtmId}
+                  onSelectAtm={setSelectedAtmId}
+                  onTilesFailed={onTilesFailed}
+                />
 
                 {loading && (
                   <div className="absolute inset-0 grid place-items-center bg-ink-bg/70 z-[1100] text-[12.5px] text-zinc-300">
@@ -332,37 +328,6 @@ export default function TacticalMap() {
               </>
             )}
           </div>
-
-          {prediction && (
-            <div className="px-3 py-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[11.5px] border-t border-ink-border bg-ink-panel/60 shrink-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-zinc-400">
-                  Target: <span className="text-white font-semibold">{activeAtm?.atm_id || '—'}</span>
-                  {activeAtm?.bank ? ` (${activeAtm.bank})` : ''}
-                </span>
-                <span className="text-zinc-600">·</span>
-                <span className="text-zinc-400">
-                  Distance: <span className="mono tnum text-zinc-200">{distanceKm} km</span>
-                </span>
-                {prediction.terminal_account && (
-                  <>
-                    <span className="text-zinc-600">·</span>
-                    <span className="text-zinc-400">
-                      Mule: <span className="mono text-zinc-200">{prediction.terminal_account}</span>
-                    </span>
-                  </>
-                )}
-              </div>
-              {prediction.search_zone && (
-                <div className="flex items-center gap-2 text-zinc-400">
-                  <span>Search zone:</span>
-                  <span className="mono text-amber-300 font-semibold">{prediction.search_zone.radius_km.toFixed(2)} km radius</span>
-                  <span className="text-zinc-600">·</span>
-                  <span>{prediction.search_zone.atm_count} ATMs</span>
-                </div>
-              )}
-            </div>
-          )}
         </Panel>
       </div>
 
