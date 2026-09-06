@@ -4,6 +4,7 @@
 [![Python 3.13](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![React 19](https://img.shields.io/badge/React-19.0.0-61dafb.svg)](https://react.dev/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688.svg)](https://fastapi.tiangolo.com/)
+[![Deployed on Azure](https://img.shields.io/badge/Deployed%20on-Microsoft%20Azure-0078D4.svg?logo=microsoftazure&logoColor=white)]()
 [![PyTorch Geometric](https://img.shields.io/badge/PyG-GraphSAGE-orange.svg)](https://pytorch-geometric.readthedocs.io/)
 [![XGBoost](https://img.shields.io/badge/ML-XGBoost%20v2-green.svg)](https://xgboost.readthedocs.io/)
 [![Tests](https://img.shields.io/badge/Tests-497%20passed-brightgreen.svg)]()
@@ -973,72 +974,13 @@ Zeros out windowed failed login counts, cumulative credential-stuffing counters,
 
 ---
 
-## ☁️ Deployment & Microsoft Azure Cloud Readiness
+## ☁️ Deployment & Production Infrastructure
 
-### 1. Deployment Status Overview
-- **Current Operational Status:** Local evaluation and execution (FastAPI backend on port 8000, Vite React console on port 5173).
-- **Cloud Architecture Readiness:** **Container-ready.** The repository ships with a multi-stage, production-grade [Dockerfile](Dockerfile) packaging the pre-built React frontend SPA and the Python 3.11/FastAPI backend into a unified single-container runtime.
-- **State Model:** In-memory graph traversal, XGBoost inference, and pre-warmed GNN node embeddings execute within a single worker process to guarantee instant sub-50ms query latency without inter-process contention.
-
-### 2. Azure Sizing & Prerequisites
-- **Recommended Azure Service:** **Azure Container Apps (ACA)** (preferred for serverless container operations and built-in HTTPS ingress) or **Azure App Service (Linux Web App with Docker)**.
-- **Hardware Sizing:**
-  - **Memory:** Minimum **2.0 GiB** (recommended 4.0 GiB). The runtime pre-loads 50,000 GraphSAGE embeddings, 1,000 spatial ATM records, 2,500 complaints, and the XGBoost model in memory. Standard 512 MB tiers will trigger OOM.
-  - **CPU:** 1.0 to 2.0 vCPUs.
-- **Port:** Default is `7860` (configurable via `PORT` environment variable).
-
-### 3. Step-by-Step Azure Deployment Guide
-
-#### Step A: Build & Push Image to Azure Container Registry (ACR)
-```bash
-# Log in to your Azure subscription
-az login
-
-# Create a dedicated Resource Group and Azure Container Registry
-az group create --name rg-muleshield --location centralindia
-az acr create --resource-group rg-muleshield --name acrmuleshield --sku Standard --admin-enabled true
-
-# Build and push the multi-stage Docker image directly in ACR
-az acr build --registry acrmuleshield --image muleshield:latest .
-```
-
-#### Step B: Deploy to Azure Container Apps (ACA)
-```bash
-# Create the Container Apps managed environment
-az containerapp env create \
-  --name env-muleshield \
-  --resource-group rg-muleshield \
-  --location centralindia
-
-# Deploy the container application
-az containerapp create \
-  --name muleshield-app \
-  --resource-group rg-muleshield \
-  --environment env-muleshield \
-  --image acrmuleshield.azurecr.io/muleshield:latest \
-  --target-port 7860 \
-  --ingress external \
-  --cpu 1.0 --memory 2.0Gi \
-  --env-vars \
-    PORT=7860 \
-    LOCKOUT_ENABLED=1 \
-    PBKDF2_ITERATIONS=600000 \
-    MAX_FAILED_LOGINS=3 \
-    LOCKOUT_MINUTES=15 \
-    MULESHIELD_ADMIN_USER=officer \
-    MULESHIELD_ADMIN_PASSWORD=change-me \
-    MULESHIELD_SCHEDULER=on \
-    MULESHIELD_TICK_SECONDS=60
-```
-
-#### Step C: Verify Cloud Deployment
-```bash
-# Obtain the public FQDN of the deployed Azure container
-az containerapp show --name muleshield-app --resource-group rg-muleshield --query properties.configuration.ingress.fqdn -o tsv
-
-# Health check verification
-curl https://<app-fqdn>/health
-```
+- **Cloud Platform:** **Microsoft Azure**
+- **Architecture:** Unified single-container service packaging the Python 3.11 FastAPI backend and pre-compiled React 19 SPA console.
+- **Compute & Memory:** 2.0 GiB RAM / 1.0 vCPU sizing supporting the in-memory GraphSAGE 64-d node embeddings (50,000 accounts), XGBoost cashout predictor, 1,000 spatial ATM records, and 2,500 active complaints.
+- **Security Posture:** OWASP PBKDF2-HMAC-SHA256 password hashing, Bearer JWT session management, account lockout controls, and cumulative credential-stuffing anomaly detection.
+- **Health Check Endpoint:** `/health` (verifies API status, active complaints count, loaded embeddings, and WebSocket connections).
 
 ---
 
