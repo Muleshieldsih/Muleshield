@@ -82,6 +82,53 @@ _feature_builder = None
 _xgb_predictor = None
 
 
+# City → State authoritative mapping for Indian hubs
+CITY_STATE_MAP: dict[str, str] = {
+    "delhi": "Delhi",
+    "new delhi": "Delhi",
+    "mumbai": "Maharashtra",
+    "bengaluru": "Karnataka",
+    "bangalore": "Karnataka",
+    "hyderabad": "Telangana",
+    "chennai": "Tamil Nadu",
+    "kolkata": "West Bengal",
+    "pune": "Maharashtra",
+    "jaipur": "Rajasthan",
+    "lucknow": "Uttar Pradesh",
+    "kanpur": "Uttar Pradesh",
+    "agra": "Uttar Pradesh",
+    "varanasi": "Uttar Pradesh",
+    "allahabad": "Uttar Pradesh",
+    "prayagraj": "Uttar Pradesh",
+    "bareilly": "Uttar Pradesh",
+    "ghaziabad": "Uttar Pradesh",
+    "noida": "Uttar Pradesh",
+    "gorakhpur": "Uttar Pradesh",
+    "gurgaon": "Haryana",
+    "gurugram": "Haryana",
+    "jamtara": "Jharkhand",
+    "deoghar": "Jharkhand",
+    "patna": "Bihar",
+    "ranchi": "Jharkhand",
+    "ahmedabad": "Gujarat",
+    "surat": "Gujarat",
+    "bhopal": "Madhya Pradesh",
+    "indore": "Madhya Pradesh",
+    "chandigarh": "Punjab",
+    "amritsar": "Punjab",
+    "ludhiana": "Punjab",
+    "guwahati": "Assam",
+    "kohima": "Nagaland",
+    "dimapur": "Nagaland",
+}
+
+
+def normalize_city_state(city: str, state: str) -> str:
+    """Enforce geographically correct state if city is in master directory."""
+    key = str(city or "").strip().lower()
+    return CITY_STATE_MAP.get(key, str(state or "").strip())
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # INITIALIZATION
 # ─────────────────────────────────────────────────────────────────────────────
@@ -455,8 +502,12 @@ def add_complaint(data: dict) -> dict:
     real graph accounts, and return the record.
     """
     ticket_id = f"TKT-{str(uuid.uuid4())[:8].upper()}"
+    city = str(data.get("city", "")).strip()
+    norm_state = normalize_city_state(city, data.get("state", ""))
     record = {
         **data,
+        "city": city,
+        "state": norm_state,
         "ticket_id": ticket_id,
         "complaint_timestamp": datetime.now(timezone.utc).isoformat(),
         "status": "ACTIVE",

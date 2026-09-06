@@ -1,6 +1,6 @@
 import { memo, useMemo, useState } from 'react'
 import { ArrowRight, Banknote, FileText, ShieldCheck, UserPlus, Landmark } from 'lucide-react'
-import { amountFmt, shortAccount } from '../utils/constants'
+import { amountFmt, shortAccount, CITY_STATE_MAP } from '../utils/constants'
 
 /**
  * What happened on this case, in order.
@@ -103,7 +103,7 @@ const CaseTimeline = memo(function CaseTimeline({ complaint, transactions = [], 
         detail: [
           ['Victim account', complaint.victim_account],
           ['Category', complaint.fraud_type],
-          ['Location', `${complaint.city}, ${complaint.state}`],
+          ['Location', `${complaint.city}, ${CITY_STATE_MAP[complaint.city] || complaint.state}`],
           ['Status', complaint.status || 'New'],
         ],
       })

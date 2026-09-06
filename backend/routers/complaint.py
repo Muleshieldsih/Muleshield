@@ -124,6 +124,9 @@ def _decorate(record: dict) -> dict:
     truth for what was reported, and the workflow as a layer over it.
     """
     out = dict(record)
+    city = str(out.get("city", "")).strip()
+    if city:
+        out["state"] = state.normalize_city_state(city, out.get("state", ""))
     out["status"] = state.case_status(record["ticket_id"])
     out["note_count"] = len(state.case_notes.get(record["ticket_id"], []))
     return out

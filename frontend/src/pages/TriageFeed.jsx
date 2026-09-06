@@ -1029,7 +1029,7 @@ export default function TriageFeed({ complaints = [], selected, onSelect, onInge
                 </div>
                 <div className="bg-ink-bg p-2.5 rounded border border-ink-border">
                   <div className="text-zinc-400">Location</div>
-                  <div className="text-sm text-zinc-200 mt-1">{active.city}, {active.state}</div>
+                  <div className="text-sm text-zinc-200 mt-1">{active.city}, {CITY_STATE_MAP[active.city] || active.state}</div>
                 </div>
                 <div className="bg-ink-bg p-2.5 rounded border border-ink-border">
                   <div className="text-zinc-400">Reported</div>
