@@ -305,7 +305,7 @@ export default function TacticalMap() {
                   </div>
                 )}
 
-                <div className="absolute top-3 left-3 flex flex-wrap gap-2 text-[11.5px] z-[1000] max-w-[calc(100%-24px)]">
+                <div className="absolute top-3 left-14 flex flex-wrap gap-2 text-[11.5px] z-[1000] max-w-[calc(100%-70px)]">
                   <span className="px-2.5 py-1 rounded bg-ink-panel border border-ink-border text-zinc-300">
                     ATM directory
                   </span>

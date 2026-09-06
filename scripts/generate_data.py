@@ -1378,7 +1378,12 @@ def main(n_complaints=2500, n_transactions=20000, n_atms=1000, seed=42,
     txn_df["long"] = txn_df["long"].clip(INDIA_LON_MIN, INDIA_LON_MAX)
 
     print("\n[4/6] Generating ATM directory...")
-    atm_df = generate_atm_directory(n_atms, fake)
+    existing_atm_path = DATA_DIR / "atm_directory.csv"
+    if existing_atm_path.exists() and existing_atm_path.stat().st_size > 1000:
+        print("      Loading existing ATM directory (preserving model alignment)...")
+        atm_df = pd.read_csv(existing_atm_path)
+    else:
+        atm_df = generate_atm_directory(n_atms, fake)
     print(f"      {len(atm_df):,} ATMs")
 
     print("\n[5/6] Sampling cashout ATM + delay per terminal (choice model)...")
@@ -1390,13 +1395,6 @@ def main(n_complaints=2500, n_transactions=20000, n_atms=1000, seed=42,
     node_df = generate_node_features(txn_df, registry)
     edges_df = generate_graph_edges(txn_df)
 
-    # Write every CSV or none of them.
-    #
-    # A half-finished write is worse than no write: the pipeline downstream will
-    # happily train on a node_features.csv from one run and a transactions.csv
-    # from another, and nothing will complain. This bit us for real - an editor
-    # held graph_edges.csv open, the write raised PermissionError midway, and the
-    # next training run silently used a stale label file.
     outputs = {
         "victim_complaints.csv": complaints_df,
         "transactions.csv": txn_df,

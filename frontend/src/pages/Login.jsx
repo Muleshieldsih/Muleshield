@@ -88,13 +88,6 @@ function MarkPanel() {
           background: 'radial-gradient(circle, rgba(220, 224, 232, 0.085), transparent 66%)',
         }}
       />
-      {/* Two hairline rings: the glass register, quiet under the struck arms.
-          They belong to this screen rather than to the mark, so they are drawn
-          here and Mark stays the same object it is in the topbar. */}
-      <svg width="300" height="300" viewBox="0 0 300 300" className="absolute" aria-hidden="true">
-        <circle cx="150" cy="150" r="118" fill="none" stroke="#ffffff" strokeOpacity="0.10" strokeWidth="1" />
-        <circle cx="150" cy="150" r="66" fill="none" stroke="#ffffff" strokeOpacity="0.16" strokeWidth="1" />
-      </svg>
       <Mark size={300} className="relative text-white" pip="#ffffff" />
 
       <div className="absolute top-10 left-11"><Wordmark /></div>
