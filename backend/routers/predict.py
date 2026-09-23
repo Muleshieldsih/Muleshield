@@ -1,23 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-MuleShield AI -- Phase 3: Prediction Router
+MuleShield AI -- Prediction Router
 SIH26184 | MHA / I4C
 
 GET /api/v1/predict/cashout/{complaint_id}
-  Forecasts where and when the cash will be withdrawn -- the primary ask of
-  SIH26184:
-    1. Find the terminal mule account
-    2. Build the 80-dim hybrid feature vector (GNN + spatial tabular)
-    3. Rank the reachable ATMs with the conditional-logit choice model
-    4. Return the search ZONE (the deliverable), the ranked candidates inside it
-       (tactical drill-down), and a countdown with a q05-q95 band
-
-Steps 1-3 moved to `backend/forecast.py` when the case dossier became a second
-caller. The alternative was two implementations of one forecast, which would let
-a printed dossier and this endpoint disagree about the top-ranked ATM without any
-test noticing. This handler is now transport: HTTP mapping, the response model,
-and the dashboard broadcast.
+  Forecasts where and when the cash will be withdrawn.
 """
+
 
 import logging
 

@@ -4,17 +4,8 @@ MuleShield AI -- Forward hotspot surface router
 SIH26184 | MHA / I4C
 
 GET /api/v1/hotspots/cells  -- forward cash-out intensity per cell and window
-
-TIER A, and the reason matters. Every other aggregate in this system is
-retrospective: /api/v1/intel/atms says where cash-outs have already happened,
-which is a statistic and is deliberately open. This endpoint says where officers
-are about to be sent in the next two hours, which is operational intelligence and
-is exactly what an offender would most like to read. See the endpoint-policy note
-in backend/auth.py.
-
-All aggregation lives in backend/state.hotspot_surface(); this router is thin,
-following backend/routers/intel.py.
 """
+
 
 import logging
 import sys

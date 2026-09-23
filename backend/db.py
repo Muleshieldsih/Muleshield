@@ -1,22 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-MuleShield AI -- persistence for officer accounts and sessions.
+MuleShield AI -- Persistence for officer accounts and sessions
 SIH26184 | MHA / I4C
-
-This is the project's FIRST persistence layer. Everything else in backend/state.py
-is loaded from CSV at boot and mutated in memory, which is fine for case data that
-is regenerated anyway -- and completely unacceptable for credentials. An account
-that vanishes on restart is not an account.
-
-Deliberately stdlib-only: sqlite3, hashlib, secrets, hmac. Adding passlib/bcrypt
-or an ORM would mean editing the Dockerfile's pip layer, which has never been
-built or tested. PBKDF2-HMAC-SHA256 at OWASP's recommended iteration count is a
-defensible answer to "how are passwords stored" and costs no new dependency.
-
-    from backend import db
-    db.init()                                    # schema + first-run seed
-    user = db.verify_login("officer", "hunter2")  # None when wrong
 """
+
 
 import base64
 import hashlib
@@ -34,55 +21,20 @@ logger = logging.getLogger("muleshield.db")
 
 ROOT = Path(__file__).parent.parent
 
-# Overridable so a test run, the UI smoke sweep and a container can each point at
-# their own store. It defaults to the real one, so nothing that does not set the
-# variable changes behaviour. Before this, `backend/tests/test_phase3.py` and
-# `test_case_workflow.py` wrote officers into the live credential store, and
-# scripts/smoke_ui.py's "isolated" stack did too -- isolated in every respect
-# except the one file that holds password hashes.
 DB_PATH = Path(os.environ.get("MULESHIELD_DB_PATH", str(ROOT / "data" / "muleshield.db")))
 
-# OWASP's current floor for PBKDF2-HMAC-SHA256. Costs roughly 0.2s per login on a
-# laptop, which is the point: it is the attacker's cost that matters.
-# Configurable via PBKDF2_ITERATIONS (e.g. 50_000 for fast demo / dev, 600_000 for prod).
 PBKDF2_ITERATIONS = int(os.environ.get("PBKDF2_ITERATIONS", "600000"))
 SALT_BYTES = 16
-SESSION_HOURS = 12          # a shift, not a fortnight
+SESSION_HOURS = 12
 RESET_TOKEN_MINUTES = 30
 
-# Lockout after repeated failures, to stop an unlimited guessing run against a
-# known username. Gated by LOCKOUT_ENABLED so it can be disabled for demo/testing
-# environments while remaining standard production behavior.
 LOCKOUT_ENABLED = os.environ.get("LOCKOUT_ENABLED", "1").lower() in ("1", "true", "yes")
 MAX_FAILED_LOGINS = int(os.environ.get("MAX_FAILED_LOGINS", os.environ.get("MAX_FAILED_ATTEMPTS", "3")))
 LOCKOUT_MINUTES = int(os.environ.get("LOCKOUT_MINUTES", "15"))
 
-# sqlite3 is synchronous and the endpoints calling it are async. Every query here
-# is a microsecond-scale local read against a table with a handful of rows, so a
-# single connection behind a lock is simpler -- and has fewer failure modes -- than
-# introducing aiosqlite for a workload that never blocks.
 _conn: Optional[sqlite3.Connection] = None
 _lock = threading.RLock()
-"""Serialises EVERY access to the single connection, reads included.
 
-Reentrant, because a locked write path legitimately calls a locked read path --
-insert_alert() finishes by reading the row it just wrote.
-
-RECORDED REVERSAL. Only WRITES used to take this lock; the seventeen read
-functions went straight to conn.execute(). One sqlite3 connection shared across
-threads is not safe to interleave that way, and the background alert tick runs
-in a threadpool alongside HTTP handlers, so it happened constantly under load.
-The symptom was not a clean error: the module lost track of which exception it
-was raising. A UNIQUE-index violation, which insert_alert catches by design to
-suppress a duplicate, arrived as a bare sqlite3.DatabaseError and escaped as a
-500. A stress pass at the problem statement's stated national load (8,000
-complaints/day) produced 43 of them, plus InterfaceError "bad parameter or other
-API misuse" on unrelated reads.
-
-Serialising here rather than moving to a connection pool is deliberate: this
-database holds credentials, sessions and alerts, not the case load, so the
-contention is negligible and one lock is far easier to prove correct than a pool.
-"""
 
 
 SCHEMA = """
@@ -183,9 +135,7 @@ CREATE TABLE IF NOT EXISTS alert_deliveries (
 CREATE INDEX IF NOT EXISTS idx_deliveries_alert ON alert_deliveries(alert_id);
 CREATE INDEX IF NOT EXISTS idx_deliveries_state ON alert_deliveries(state);
 
--- "Send it to whom" -- the question COMPLIANCE_AUDIT.md finding 5.3 says the
--- system could not answer. Scope is by state/district so an alert reaches the
--- force responsible for the ground it covers; blank scope means national.
+-- Alert recipients with state/district scope.
 CREATE TABLE IF NOT EXISTS alert_recipients (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     name           TEXT    NOT NULL,
@@ -198,22 +148,7 @@ CREATE TABLE IF NOT EXISTS alert_recipients (
 );
 CREATE INDEX IF NOT EXISTS idx_recipients_scope ON alert_recipients(scope_state, active);
 
--- Evidence documentation. COMPLIANCE_AUDIT.md finding 4.5: the problem statement
--- names "evidence documentation" as part of deliverable (c) and nothing in the
--- repository could accept, hold or account for a file.
---
--- Three properties make this evidence rather than an attachment:
---
---   1. INTEGRITY. sha256 of the bytes is taken at the moment of collection and
---      re-checked on every read. A file that no longer hashes to what was
---      recorded is served as a failure, not as evidence.
---   2. CHAIN. Each row carries the entry_hash of the previous item on the SAME
---      case, so an artefact cannot be inserted into, removed from, or reordered
---      within a case's history without breaking every link after it. This is
---      what the audit called "tamper-evident" and did not have.
---   3. NO DELETION. Withdrawal is a status with a reason and an actor. Evidence
---      that can be deleted is evidence that can be made to disappear between
---      collection and trial, which defeats the point of holding it.
+-- Case evidence documentation with SHA-256 integrity and chain verification.
 CREATE TABLE IF NOT EXISTS case_evidence (
     id               TEXT    PRIMARY KEY,            -- EVD-000001
     case_id          TEXT    NOT NULL,               -- the 1930 ticket id
@@ -825,14 +760,7 @@ def list_alerts(*, status: str = "", severity: str = "", state: str = "",
 
 
 def acknowledge_alert(alert_id: str, actor: str, disposition: str) -> Optional[dict]:
-    """Close the loop on one alert.
-
-    `disposition` is required by the caller, not optional, and 'False positive'
-    is one of its values. That is the outcome capture COMPLIANCE_AUDIT.md
-    finding 2.5 says the system lacks: without it nothing ever records whether
-    an alert was worth raising, and a framework that cannot tell is a framework
-    that cannot improve.
-    """
+    """Close the loop on one alert with operational disposition."""
     conn = _require()
     with _lock:
         cur = conn.execute(

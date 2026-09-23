@@ -43,23 +43,7 @@ import cityData from '../data/cities.json'
 export const CITIES = cityData.cities
 export const CITY_STATE_MAP = cityData.city_to_state
 
-/** Benchmarked model figures — generated, never typed. */
-// These previously read 98.5% Top-3 / 1.2 s MAE / 0.9996 F1. Those numbers were
-// retracted by the leakage audit (OVERNIGHT_ML_AUDIT.md) and were still being
-// displayed in the console long after every document had been corrected. They
-// survived because they were hand-written here, so nothing tied them to a
-// trained model.
-//
-// Now they are not written here at all. model_stats.json is generated from
-// data/metrics.json, which only the training and evaluation scripts write:
-//
-//   python engine/train_gnn.py            -> detection
-//   python scripts/evaluate_baselines.py  -> detection_baselines
-//   python engine/train_xgb.py            -> location  (+ refreshes this file)
-//   python scripts/export_metrics.py      -> refresh without retraining
-//
-// Raw numbers live in the JSON; this module owns how they are displayed, so
-// there is exactly one place that decides what '87.4%' looks like.
+/** Benchmarked model figures — generated from data/metrics.json */
 import stats from '../data/model_stats.json'
 
 export const MODEL_STATS = {
@@ -73,25 +57,13 @@ export const MODEL_STATS = {
   gnnBaseline: stats.gnnBaseline.toFixed(4),
   gnnBaselineModel: stats.gnnBaselineModel,
 
-  // The operating point the product actually ships: K ranked candidate ATMs.
-  // These sat in model_stats.json unread, so the headline figure appeared
-  // nowhere in the console it describes.
-  //
-  // Deliberately no baseline beside top5Containment. The distance-only baseline
-  // is 0.7217 against our 0.7136 -- we do NOT beat distance-sorting at K=5, and
-  // a "vs" here would either be a false win or a bare loss with no room for the
-  // Bayes-ceiling context that explains it. The claim we make on screen is the
-  // search-space reduction, which is true and is the point of the system. The
-  // full comparison lives in README.md and OVERNIGHT_ML_AUDIT.md.
+  // The operating point the product ships: K ranked candidate ATMs.
   operatingK: stats.operatingK,
   top5Containment: pctFmt(stats.top5Containment),
   top5Reduction: pctFmt(stats.top5SearchReduction),
   atmTotal: stats.atmTotal.toLocaleString('en-IN'),
 
-  // Forward hotspot forecast. The baseline is carried right next to the
-  // headline on purpose: ranking cells by historical cash-out density is,
-  // functionally, what I4C's Pratibimb already does, so the number that means
-  // something is the ratio between the two rather than our PAI on its own.
+  // Forward hotspot forecast
   hotspotCells: stats.hotspotCells.toLocaleString('en-IN'),
   hotspotOperatingK: stats.hotspotOperatingK,
   hotspotHitRate: pctFmt(stats.hotspotHitRateAt5),

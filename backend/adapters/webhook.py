@@ -1,42 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Outbound API transport -- the seam to the systems that already exist.
+MuleShield AI -- Outbound API transport for CFCFRMS and Samanvaya
 SIH26184 | MHA / I4C
-
-WHAT THESE PAYLOADS ARE, STATED PLAINLY
-----------------------------------------
-The two payload builders below are OUR PROPOSED MAPPING onto CFCFRMS and
-Samanvaya. They are NOT the published contracts for those systems, because those
-contracts are not public and we do not have them.
-
-That distinction is written here rather than glossed because COMPLIANCE_AUDIT.md
-finding 6.2 was exactly this: README.md claimed "standardized API schemas ready
-for live integration with NCRP and NPCI Switch" and no such schema existed
-anywhere in the repository. A judge can check a claim like that in thirty
-seconds. The honest version -- "here is the shape we would send, here is the
-field mapping, here is what we would need from you" -- is both true and more
-useful to the people who own the real endpoint.
-
-WHY THESE TWO
--------------
-They are the two rails the problem statement names.
-
-  CFCFRMS  the Citizen Financial Cyber Fraud Reporting and Management System, the
-           fund-blocking rail behind the 1930 helpline. The description asks that
-           the intelligence "help banks and financial institutions through
-           CFCFRMS, enabling faster fund blocking". A forecast that a cash-out is
-           30 minutes away is a reason to hold a beneficiary account NOW.
-
-  Samanvaya  I4C's LEA coordination platform. The description asks for
-           "real-time actionable intelligence sharing across jurisdictions".
-           Samanvaya is where that sharing already happens, so an alert should
-           arrive there rather than in a portal of our own that nobody opens.
-
-Positioning follows from that: this system CONSUMES those rails, it does not
-replace them. MuleHunter.AI already detects mule accounts at 23 banks and
-Pratibimb already maps cybercrime geographically. What is missing, and what this
-sends, is the forward-looking piece -- where the money is about to surface.
 """
+
 
 from __future__ import annotations
 

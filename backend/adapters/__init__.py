@@ -1,34 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-MuleShield AI -- notification transports.
+MuleShield AI -- Notification transport adapters
 SIH26184 | MHA / I4C
-
-REAL INTERFACES, MOCKED TRANSPORT -- AND THE LABEL MATTERS
------------------------------------------------------------
-Every adapter here implements the full contract an operator depends on: it is
-handed a recipient and a message, it reports success or failure, and it returns
-a provider reference the delivery record can be reconciled against later. What
-none of them does is put a byte on a wire.
-
-That is a deliberate choice, not an unfinished one. A live SMS route into India
-needs a paid gateway and DLT template registration; a live CFCFRMS call needs
-credentials nobody outside I4C has. Wiring a real gateway is a config change to
-one module -- swapping the adapter -- and everything upstream of it, the rules,
-the queue, the retry, the delivery record, the acknowledgement, is the real
-thing already.
-
-The console says "simulated" on every channel. An alert that claims to have been
-sent when it was not is worse than no alerting at all, because a force would
-stand down believing it had been warned.
-
-FAILURE INJECTION
------------------
-MULESHIELD_ADAPTER_FAIL_RATE (0.0 by default) makes sends fail deterministically,
-keyed on the delivery so a retry of the SAME delivery behaves consistently. It
-exists because COMPLAINT_AUDIT.md finding 5.5 was that the old simulated SMS
-reported success unconditionally: a control that cannot fail is a control nobody
-has tested. Set it to 1.0 and the retry and dead-letter paths run for real.
 """
+
 
 from __future__ import annotations
 

@@ -77,21 +77,7 @@ def _seed_alert_recipients() -> None:
 
 
 async def _tick() -> None:
-    """The scheduled rule pass -- the thing that makes this proactive.
-
-    COMPLIANCE_AUDIT.md finding 2.1 was that no scheduled or batch analytical job
-    existed anywhere in the system: every computation was triggered synchronously
-    by a human opening a case. A framework that only computes when somebody is
-    already looking is a lookup service. This loop is what fires when nobody is.
-
-    Deliberately an asyncio task rather than APScheduler or Celery: adding either
-    means editing the Dockerfile pip layer, which has never been built or tested,
-    for a job that runs once a minute in a single process.
-
-    SYNC ACROSS A SEAM: the surface build and the rule pass both touch sqlite and
-    the model, so both cross via run_in_threadpool; the broadcast then happens
-    back on the loop. See backend/auth.py:46-59.
-    """
+    """Scheduled background rule evaluation for proactive alert triggers."""
     from starlette.concurrency import run_in_threadpool
     from backend import notify
 
@@ -119,8 +105,6 @@ async def lifespan(app: FastAPI):
     logger.info("  MuleShield AI Backend | SIH26184 | MHA / I4C")
     logger.info("=" * 60)
     state.load_all()
-    # Credentials are the one thing in this system that cannot live in memory:
-    # an account that vanishes on restart is not an account.
     db.init()
     _seed_alert_recipients()
 
@@ -133,8 +117,6 @@ async def lifespan(app: FastAPI):
     logger.info("[STARTUP] Server ready. Swagger UI → http://localhost:8000/docs")
     yield
 
-    # Cancel AND await. Without the await, TestClient teardown hangs on a task
-    # that has been asked to stop but never observed stopping.
     if task is not None:
         task.cancel()
         try:

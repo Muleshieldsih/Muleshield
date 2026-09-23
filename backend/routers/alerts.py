@@ -9,17 +9,8 @@ GET  /api/v1/alerts/recipients    -- who is in scope for what
 GET  /api/v1/alerts/{id}          -- one alert with its delivery attempts
 POST /api/v1/alerts/{id}/ack      -- close the loop, with a required disposition
 POST /api/v1/alerts/evaluate      -- force a rule pass (administrator)
-
-TIER A throughout. An alert names where officers are about to be sent and which
-victims' cases are behind it.
-
-THE SEAM, APPLIED
------------------
-Read-only handlers are plain `def`: Starlette runs them in a threadpool
-automatically, so their sqlite calls never touch the event loop. The two
-handlers that write AND broadcast are `async def` and cross with
-run_in_threadpool. See backend/auth.py:46-59 and backend/notify.py.
 """
+
 
 import logging
 from datetime import datetime, timezone
@@ -86,17 +77,7 @@ def get_alert(alert_id: str, user: dict = Depends(current_user)) -> AlertDetail:
              summary="Acknowledge an alert and record what was decided")
 async def acknowledge(alert_id: str, request: AlertAckRequest,
                       user: dict = Depends(current_user)) -> AlertOut:
-    """Close the loop.
-
-    The disposition is REQUIRED, and "False positive" is a first-class value
-    rather than a hidden one. Nothing in this system previously recorded whether
-    an intervention was worth making (COMPLIANCE_AUDIT.md finding 2.5), which
-    means it could never have improved and I4C could never have measured it.
-
-    SYNC ACROSS A SEAM: notify.acknowledge writes sqlite. Running it inline on
-    the event loop would stall /ws/feed for every client -- including the one
-    about to receive the broadcast two lines below.
-    """
+    """Acknowledge alert and record operational disposition."""
     if request.disposition not in VALID_DISPOSITIONS:
         raise HTTPException(
             status_code=422,

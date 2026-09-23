@@ -1,40 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-MuleShield AI -- alert rules, dispatch and delivery.
+MuleShield AI -- Alert rules, dispatch and multi-channel delivery
 SIH26184 | MHA / I4C
-
-THE CONCURRENCY SEAM
---------------------
-Every function in this module is a plain `def` and none of them imports
-backend.websocket. That is the rule documented at backend/auth.py:46-59: the app
-ships `uvicorn --workers 1`, so a blocking sqlite3 call made on the event loop
-freezes every other request and stalls the /ws/feed sockets with it.
-
-A handler that must both write here and broadcast is `async def` and crosses the
-seam with starlette.concurrency.run_in_threadpool -- which puts the blocking call
-in exactly the threadpool Starlette would have used for a `def` handler, then
-returns to the loop to broadcast. One idiom, applied everywhere, including the
-background tick in main.py.
-
-backend/tests/test_alerts.py asserts no function here is a coroutine.
-
-WHAT A RULE IS FOR
-------------------
-The audit's finding 5.2 was that nothing in this system was a trigger. The
-WebSocket broadcast four event types, and every one of them was the echo of an
-action a user had just taken in the console. An echo is not an alert. A rule is
-the conditional that fires when NOBODY is looking -- which is the entire
-difference between a dashboard and an early-warning system.
-
-THE ANTI-PRATIBIMB FLOOR
-------------------------
-R-HIGH-CONVERGE additionally requires conditional_share >= 0.60. This is the same
-guarantee engine/hotspot.py enforces on the surface, restated as POLICY: a cell
-cannot raise a HIGH-severity alert on historical density alone, no matter how hot
-its history is. I4C already runs Pratibimb, which maps where cybercrime has
-happened. An alert that fires because a place is historically bad tells them
-nothing they do not already have, and it would train officers to ignore us.
 """
+
 
 from __future__ import annotations
 

@@ -1,53 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-MuleShield AI -- Police intelligence dossier
+MuleShield AI -- Police intelligence dossier generator
 SIH26184 | MHA / I4C
-
-Deliverable (c) of the problem statement names three things an investigator must
-be able to reach: *"alerts, intelligence reports, and evidence documentation"*.
-Alerts have an inbox. Evidence has a custody chain and a s.63 certificate. The
-middle one had nothing behind it: `COMPLAINT_AUDIT.md` finding 4.4,
-`REMEDIATION_AUDIT.md` Sec 7 item 1 and `INDEPENDENT_AUDIT.md` Sec 7.1 all record
-the same gap -- an alert carries a headline and a delivery trail, but there is no
-case-level document an officer can put in front of a bank nodal officer or a
-magistrate. This module is that document.
-
-WHAT MAKES THIS A DOSSIER RATHER THAN A DATA DUMP
--------------------------------------------------
-Four properties, and each one is a decision:
-
-  1. **It is generated, never typed.** Every figure is read from the store or
-     computed by the shipped model at the moment of production. It cannot
-     describe a case the system does not hold, and it cannot quote a forecast
-     the model did not make -- which is the same guarantee `evidence.certificate`
-     gives, for the same reason.
-
-  2. **It leads with the search zone, not the ranked list.** `SearchZone`'s own
-     docstring records that the zone is the deliverable and the five candidates
-     are the tactical drill-down. A dossier that opened with "ATM-8D19FE85" would
-     invite an officer to read a ranked candidate as a prediction.
-
-  3. **It carries its own caveats, in the body, not a footnote.** The advisory is
-     lifted verbatim from `adapters/webhook.py` -- the same sentence that goes
-     out on the wire to CFCFRMS. A document that leaves the building must say
-     what it is not, and it must say it in the same words everywhere.
-
-  4. **The money trail comes from the ledger, not the graph.** `TransactionRow`'s
-     docstring warns that graph edges are de-duplicated by src->dst pair. A
-     dossier is what a bank acts on, so it needs every hop with its own IFSC,
-     not a de-duplicated visualisation of them.
-
-WHAT IT DELIBERATELY DOES NOT DO
---------------------------------
-It does not re-implement the forecast (`backend/forecast.py` owns that, and both
-this and the prediction endpoint call it, so a printed dossier and the console
-cannot disagree) and it does not re-implement the evidence certificate
-(`backend/evidence.py` owns that, and the dossier nests it whole).
-
-A case with no evidence artefacts still produces a dossier: the nested
-certificate reports `artefact_count: 0`, which is the honest statement that
-nothing has been collected yet -- not an error, and not a blank section.
 """
+
 
 import logging
 from datetime import datetime, timezone

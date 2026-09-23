@@ -8,27 +8,7 @@ import { useToast } from './Toast'
 import { Panel } from './Shell'
 
 /**
- * Evidence documentation — deliverable (c)'s last clause.
- *
- * The problem statement asks for a *"secure interface for investigators to
- * access alerts, intelligence reports, and evidence documentation"*. The first
- * two shipped; this is the third, and COMPLIANCE_AUDIT.md finding 4.5 recorded
- * that nothing in the repository could accept, hold or account for a file.
- *
- * What is on screen is deliberately not a file list. Three things an officer
- * has to be able to see without asking anybody:
- *
- *   - **the hash**, rendered, so it can be read off and compared against the
- *     copy they were handed;
- *   - **the chain state**, at the top, because a broken chain is the single
- *     most important fact about a case's evidence and must not be something you
- *     find by scrolling;
- *   - **the fact that withdrawal is not deletion** — withdrawn artefacts stay
- *     on the list, struck through, with the reason visible.
- *
- * `useToast()` returns the push FUNCTION, not an object holding one. See
- * components/Toast.jsx, and REMEDIATION_AUDIT.md §4.5 for what destructuring it
- * cost on the alert inbox.
+ * Evidence documentation panel with SHA-256 hash integrity and custody chain verification.
  */
 
 const KINDS = [

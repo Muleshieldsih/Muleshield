@@ -25,17 +25,8 @@ export default function Interception() {
   const [freezeError, setFreezeError] = useState('')
   const [officer, setOfficer] = useState('IO-042')
   const [dispatchStatus, setDispatchStatus] = useState('')
-  // Whether the message above is good news. It was previously always drawn
-  // in the light success banner with a tick -- including the validation
-  // failure for a short phone number, which told the operator the dispatch
-  // had succeeded at the exact moment it had not.
   const [dispatchOk, setDispatchOk] = useState(false)
-  // Freezing an account stops a real person's money moving. A single click
-  // with no confirmation is the wrong affordance for that, however urgent
-  // the case: the one irreversible control on the screen was the only one
-  // that asked nothing before acting.
   const [confirmFreeze, setConfirmFreeze] = useState(false)
-  // Set after a successful freeze, when the case has been moved on with it.
   const [caseStatus, setCaseStatus] = useState('')
   const [statusWarning, setStatusWarning] = useState('')
   const [phoneModal, setPhoneModal] = useState(false)

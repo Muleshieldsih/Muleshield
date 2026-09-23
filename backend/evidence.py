@@ -1,61 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-MuleShield AI -- Evidence documentation
+MuleShield AI -- Electronic evidence documentation & BSA 2023 s.63 certification
 SIH26184 | MHA / I4C
-
-The problem statement names deliverable (c) as a *"secure interface for
-investigators to access alerts, intelligence reports, and evidence
-documentation"*. `COMPLIANCE_AUDIT.md` finding 4.5 recorded that the last of
-those three had no implementation of any kind: no upload path, no store, no
-`python-multipart`, nothing. `REMEDIATION_AUDIT.md` carried it as the one named
-clause with nothing behind it. This module is that clause.
-
-WHAT MAKES THIS EVIDENCE RATHER THAN AN ATTACHMENT
---------------------------------------------------
-A file uploader would have closed the clause on paper and been worthless in a
-courtroom. Four properties are what an artefact needs to survive being produced:
-
-  1. **A hash taken at collection, re-checked on every read.** `sha256` of the
-     bytes is recorded when the artefact arrives and verified before it is ever
-     served. A file that no longer matches is served as a failure, never as
-     evidence -- silently handing back altered bytes is the worst thing this
-     module could do.
-
-  2. **A chain across the case.** Each item carries the previous item's
-     `entry_hash`, so an artefact cannot be inserted into, removed from, or
-     reordered within a case's history without breaking every link after it.
-     See `db.chain_hash` for exactly what that does and does not prove; the
-     honest limits are written there rather than implied by the word
-     "tamper-evident".
-
-  3. **No deletion.** Withdrawal is a status with an actor and a reason.
-     Evidence that can be deleted is evidence that can be made to disappear
-     between collection and trial.
-
-  4. **A certificate.** `certificate()` renders the record an Indian court
-     actually asks for when electronic records are produced -- **BSA 2023 s.63**
-     (which replaced IT Act s.65B in July 2024). It is generated from the store
-     rather than typed, so it cannot describe artefacts the store does not hold.
-
-STORAGE
--------
-Bytes go to disk under `MULESHIELD_EVIDENCE_DIR` (default `data/evidence/`),
-one directory per case, named by artefact id and never by the supplied filename.
-Metadata goes to SQLite. Splitting them is deliberate: the database stays small
-enough to copy, and a filename supplied by a caller never becomes a path.
-
-WHAT A DEPLOYMENT STILL NEEDS
------------------------------
-Stated here so it is not discovered later, and repeated in
-`docs/INTEGRATION_SEAMS.md`:
-
-  * **An external anchor.** The chain proves internal consistency. A party with
-    write access to the whole table could recompute it end to end. Real
-    tamper-evidence needs an anchor outside the operator's control -- a signed
-    daily digest, a notary, an append-only log somebody else holds.
-  * **Encryption at rest**, which belongs to the volume rather than to this
-    module.
-  * **A retention schedule** under DPDP. Nothing here expires anything.
 """
 
 from __future__ import annotations

@@ -44,17 +44,11 @@ async def micro_freeze(
     Response:
         { "status": "FROZEN", "account": "...", "timestamp": "..." }
     """
-    # Who gets the blame for an irreversible action against a person's account.
-    # A signed-in officer's verified identity always beats the officer_id in the
-    # request body; without a token the body still stands, so every existing
-    # caller keeps working exactly as before.
     actor = actor_for(user, request.officer_id, "OFFICER-001")
 
     freeze_ref = f"FRZ-{str(uuid.uuid4())[:8].upper()}"
     ts = datetime.now(timezone.utc).isoformat()
 
-    # The console dispatches a freeze against an account; the issuing bank is
-    # looked up from the account record so the caller never has to supply it.
     bank = request.bank
     if not bank or bank == "UNKNOWN":
         node = state.get_node_feature(request.account_id) or {}

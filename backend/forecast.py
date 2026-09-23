@@ -1,32 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-MuleShield AI -- the one cash-out forecast, computed once.
+MuleShield AI -- Cash-out forecast engine
 SIH26184 | MHA / I4C
-
-WHY THIS MODULE EXISTS
-----------------------
-The forecast used to live inline in `backend/routers/predict.py`. That was fine
-while exactly one caller needed it. The case dossier needs the same forecast, and
-copying sixty lines of feature building into a second file is precisely the defect
-this codebase has already written comments about twice:
-
-    "it would be a SECOND implementation of one quantity ... the two could drift
-     apart without any test noticing -- which is the shape of every leakage defect
-     this project has already had to retract a number for."
-        -- backend/state.py, on posterior_from_scores
-
-A dossier is a document an officer signs and hands to a bank. If it printed a
-different top-ranked ATM than the Interception screen showed five seconds
-earlier, the divergence would be discovered in front of the person we were trying
-to convince. So both paths call `compute()` and there is nothing to diverge.
-
-WHAT STAYED IN THE ROUTER
--------------------------
-The WebSocket broadcast and the Pydantic response construction. This module is
-deliberately sync and returns plain dicts: it is called from an `async` route
-handler (predict) and from a threadpool `def` handler (dossier), and a coroutine
-would be wrong in the second case. See backend/auth.py:65-78 for the rule.
 """
+
 
 import logging
 import sys

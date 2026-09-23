@@ -1,17 +1,6 @@
 import { Panel } from '../components/Shell'
 import stats from '../data/model_stats.json'
 
-/**
- * Model performance.
- *
- * These figures were previously pinned to the sidebar, visible on every screen
- * including while an analyst was reading a single case. They describe how the
- * detection system behaves across a held-out test set — they say nothing about
- * the case on screen, and sitting beside one invited exactly that reading.
- *
- * Everything here is generated from data/metrics.json, which only the training
- * and evaluation scripts write. Nothing on this page is typed by hand.
- */
 
 const pct = (v, dp = 1) => `${(v * 100).toFixed(dp)}%`
 const num = (v) => Number(v).toLocaleString('en-IN', { maximumFractionDigits: 0 })

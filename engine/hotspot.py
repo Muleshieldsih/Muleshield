@@ -1,73 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-MuleShield AI -- forward cash-out intensity surface.
+MuleShield AI -- Forward cash-out intensity surface
 SIH26184 | MHA / I4C
-
-WHAT THIS IS, AND WHAT IT DELIBERATELY IS NOT
----------------------------------------------
-I4C already runs Pratibimb, which maps cybercrime geographically, and Samanvaya,
-which coordinates the LEA response. RBI's Innovation Hub runs MuleHunter.AI,
-which flags accounts that look like mules. A historical density map of where
-cash-outs have previously happened is therefore not a contribution -- it is a
-thing the people judging this built first and run at national scale.
-
-The clause in the problem statement that none of those answer is "in Advance".
-So this module does not rank cells by history. It asks a conditional question:
-
-    given the complaints that are open RIGHT NOW, each with its own posterior
-    over reachable ATMs and its own countdown distribution, where is stolen
-    money going to surface in the next thirty, sixty, hundred-and-twenty minutes?
-
-Every term below is an output of the ALREADY-TRAINED checkpoint. Nothing here is
-fitted, and nothing here needs retraining: OVERNIGHT_ML_AUDIT.md shows the
-ranker sits on the Bayes bound for this generator, so a new model would be a new
-way to lose. This is arithmetic over a frozen model's own outputs.
-
-THE PRIOR IS CAPPED, AND THE CAP IS THE POINT
-----------------------------------------------
-History does enter, through prior_share -- a cell where cash-outs have
-repeatedly happened is genuinely more likely to see the next one. But if that
-term drives the surface, we have rebuilt Pratibimb with extra steps. So it is
-capped at PRIOR_WEIGHT (0.15) of the surface's total conditional mass: it can
-reorder cells, it can never carry them.
-
-That cap is not a comment. It is:
-  - a module constant, returned in every API response;
-  - decomposed per cell into conditional_rupees / prior_rupees / prior_share,
-    so the console can show which half is doing the work;
-  - asserted by tests/test_metrics_ledger.py::test_prior_does_not_dominate;
-  - required by the alerting policy, where a HIGH severity rule additionally
-    demands conditional_share >= 0.60 (see backend/notify.py).
-
-FEEDBACK-LOOP BIAS
-------------------
-Forecasting Nuh sends officers to Nuh, which produces more Nuh detections, which
-raises the forecast for Nuh. This is the standard pathology of predictive
-policing and it deserves a straight answer rather than silence:
-
- 1. Structural, and primary. The bias travels through the historical prior. The
-    prior is capped at 15%. The surface is driven by complaints filed in the
-    last two hours -- which are reports from victims, not the product of where
-    patrols were sent.
- 2. Measured. scripts/evaluate_hotspots.py reports pai_at_5_region_blinded,
-    recomputed with the highest-volume states removed from the prior. If PAI
-    collapses, the prior was doing the work after all.
- 3. Degradation is declared, not hidden. With no open complaints the surface is
-    all prior; the response then carries degraded=True and prior_share=1.0 so
-    the console can say "no live cases -- this is history only" instead of
-    presenting a density map as a forecast.
- 4. Not built, and said so: exposure-corrected training (weighting historical
-    cash-outs by inverse patrol presence) is what a real deployment needs. See
-    docs/INTEGRATION_SEAMS.md.
-
-SCOPE BOUNDARY
---------------
-A cell is a set of CASH-OUT POINTS. Today every point is an ATM, because the
-corpus has no branch entity. Real cash-out also happens over branch counters by
-cheque and through bulk payouts -- Nuh's 2025 figures name 1,400+ ATM IDs and 75
-cheque branches. Adding those is a new point type, not a new model: nothing in
-this file assumes a point is an ATM beyond where the directory is read.
 """
+
 
 from __future__ import annotations
 
@@ -268,19 +204,7 @@ def atm_to_cell(cells: Mapping[str, Mapping[str, Any]]) -> dict[str, str]:
 
 def posterior_from_scores(atm_ids: Sequence[str],
                           raw_scores: Sequence[float]) -> dict[str, float]:
-    """Softmax the ranker's raw candidate scores into a choice distribution.
-
-    This is the SAME transformation MuleXGBPredictor.predict applies to produce
-    the confidence an operator sees -- "the softmax over the candidate set is
-    the model's own choice probability, so the confidences shown to an operator
-    are calibrated by construction" (xgb_model.py).
-
-    It lives here as a named function so the evaluation script and the serving
-    path call one implementation. A metrics/serving skew is then impossible by
-    construction rather than by discipline -- which matters, because a hotspot
-    figure that was measured with a different softmax than the API serves would
-    be exactly the class of defect the leakage audit was written about.
-    """
+    """Softmax the ranker's raw candidate scores into a choice distribution."""
     if len(atm_ids) == 0:
         return {}
     mx = max(raw_scores)
