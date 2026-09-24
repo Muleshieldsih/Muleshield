@@ -15,7 +15,7 @@ flowchart TD
     subgraph S2 ["STAGE 2 — Detection"]
         direction TB
         GNN["GraphSAGE GNN<br/>2 layers · 64-dim · 10,561 params<br/>scores accounts by their neighbourhood"]
-        RISK["Mule probability per account<br/>F1 0.8955 — plus 0.053 over best non-graph"]
+        RISK["Mule probability per account<br/>F1 0.9051 — plus 0.029 over best non-graph"]
         GNN --> RISK
     end
 
@@ -25,8 +25,8 @@ flowchart TD
         DIR["ATM directory<br/>1,000 real locations"]
         CAND["Nearest 25 candidates<br/>by haversine distance"]
         LOGIT["Conditional Logit<br/>softmax over 6 log-features<br/>distance · risk · same-bank · crew priors"]
-        TOP5["Top-5 ranked ATMs<br/>71.4% containment"]
-        ZONE["Search zone<br/>~10 km radius · median 8 ATMs<br/>87.4% containment"]
+        TOP5["Top-5 ranked ATMs<br/>72.6% containment"]
+        ZONE["Search zone<br/>9.7 km radius · median 7 ATMs<br/>87.3% containment"]
         DIR --> CAND --> LOGIT
         LOGIT --> TOP5
         LOGIT --> ZONE
@@ -36,7 +36,7 @@ flowchart TD
     subgraph S4 ["STAGE 4 — Timing"]
         direction TB
         XGB["XGBoost Regressor<br/>plus q05 / q95 quantile models"]
-        CLOCK["Countdown with confidence band<br/>MAE 11.86 min · median 42 min lead"]
+        CLOCK["Countdown with confidence band<br/>MAE 11.88 min · median 40 min lead"]
         XGB --> CLOCK
     end
 

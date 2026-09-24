@@ -141,7 +141,7 @@ app = FastAPI(
     version="3.0.0",
     contact={
         "name": "Team MuleShield AI",
-        "url": "https://github.com/hotshot0104/SIH2026",
+        "url": "https://github.com/Muleshieldsih/Muleshield",
     },
     lifespan=lifespan,
 )

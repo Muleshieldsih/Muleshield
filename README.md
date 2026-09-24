@@ -885,8 +885,8 @@ SIH2026/
 
 ### 1. Clone & Setup Python Backend
 ```bash
-git clone https://github.com/hotshot0104/SIH2026.git
-cd SIH2026
+git clone https://github.com/Muleshieldsih/Muleshield.git
+cd Muleshield
 
 # Virtual Environment
 python -m venv venv

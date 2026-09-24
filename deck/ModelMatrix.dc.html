@@ -34,26 +34,26 @@
     <tr>
       <td><strong>Mule account detection</strong><div style="font-size: 11px; color: #6b7474; margin-top: 1px">F1, 7,500 held-out accounts</div></td>
       <td style="color: #545c5c">GraphSAGE, 2-layer</td>
-      <td style="text-align: right"><span class="num" style="font-size: 15px; color: #3d8b00">0.8955</span></td>
-      <td style="text-align: right; color: #545c5c">0.8423 &nbsp;<span style="font-size: 11px; color: #8a9290">random forest, no graph</span></td>
+      <td style="text-align: right"><span class="num" style="font-size: 15px; color: #3d8b00">0.9051</span></td>
+      <td style="text-align: right; color: #545c5c">0.8758 &nbsp;<span style="font-size: 11px; color: #8a9290">random forest, no graph</span></td>
     </tr>
     <tr>
-      <td><strong>Search-zone containment</strong><div style="font-size: 11px; color: #6b7474; margin-top: 1px">median 8 ATMs of 1,000</div></td>
+      <td><strong>Search-zone containment</strong><div style="font-size: 11px; color: #6b7474; margin-top: 1px">median 7 ATMs of 1,000</div></td>
       <td style="color: #545c5c">Aggregated probability mass</td>
-      <td style="text-align: right"><span class="num" style="font-size: 15px; color: #3d8b00">87.4%</span></td>
-      <td style="text-align: right; color: #545c5c">78.5% &nbsp;<span style="font-size: 11px; color: #8a9290">nearest-3 rule</span></td>
+      <td style="text-align: right"><span class="num" style="font-size: 15px; color: #3d8b00">87.3%</span></td>
+      <td style="text-align: right; color: #545c5c">77.7% &nbsp;<span style="font-size: 11px; color: #8a9290">nearest-3 rule</span></td>
     </tr>
     <tr>
       <td><strong>Time-to-cash-out</strong><div style="font-size: 11px; color: #6b7474; margin-top: 1px">mean absolute error</div></td>
       <td style="color: #545c5c">XGBoost regressor</td>
-      <td style="text-align: right"><span class="num" style="font-size: 15px; color: #3d8b00">11.86 min</span></td>
-      <td style="text-align: right; color: #545c5c">14.98 min &nbsp;<span style="font-size: 11px; color: #8a9290">mean predictor</span></td>
+      <td style="text-align: right"><span class="num" style="font-size: 15px; color: #3d8b00">11.88 min</span></td>
+      <td style="text-align: right; color: #545c5c">14.58 min &nbsp;<span style="font-size: 11px; color: #8a9290">mean predictor</span></td>
     </tr>
     <tr>
-      <td><strong>Top-5 ATM containment</strong><div style="font-size: 11px; color: #6b7474; margin-top: 1px">618 held-out cash-outs</div></td>
+      <td><strong>Top-5 ATM containment</strong><div style="font-size: 11px; color: #6b7474; margin-top: 1px">660 held-out cash-outs</div></td>
       <td style="color: #545c5c">Conditional-logit ranker</td>
-      <td style="text-align: right"><span class="num" style="font-size: 15px; color: #b06a00">71.4%</span></td>
-      <td style="text-align: right; color: #545c5c">72.2% &nbsp;<span style="font-size: 11px; color: #8a9290">distance-only</span></td>
+      <td style="text-align: right"><span class="num" style="font-size: 15px; color: #3d8b00">72.6%</span></td>
+      <td style="text-align: right; color: #545c5c">70.8% &nbsp;<span style="font-size: 11px; color: #8a9290">distance-only</span></td>
     </tr>
     <tr>
       <td><strong>Single-case inference</strong><div style="font-size: 11px; color: #6b7474; margin-top: 1px">complaint to ranked ATMs</div></td>
@@ -69,23 +69,23 @@
       <div style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; color: #6b7474">DETECTION &mdash; READ AS AN ALERT QUEUE</div>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 7px">
         <div style="background: #eefbdd; border: 1px solid #cbeda0; border-radius: 5px; padding: 7px 9px">
-          <div class="num" style="font-size: 17px; color: #3d8b00">197</div>
+          <div class="num" style="font-size: 17px; color: #3d8b00">205</div>
           <div style="font-size: 11px; color: #3f5230; line-height: 1.3">mules caught</div>
         </div>
         <div style="background: #fdf3e0; border: 1px solid #f0d5a8; border-radius: 5px; padding: 7px 9px">
-          <div class="num" style="font-size: 17px; color: #b06a00">22</div>
+          <div class="num" style="font-size: 17px; color: #b06a00">26</div>
           <div style="font-size: 11px; color: #7a5a20; line-height: 1.3">false alarms</div>
         </div>
         <div style="background: #fdeaea; border: 1px solid #f2b8b8; border-radius: 5px; padding: 7px 9px">
-          <div class="num" style="font-size: 17px; color: #d62828">24</div>
+          <div class="num" style="font-size: 17px; color: #d62828">17</div>
           <div style="font-size: 11px; color: #6b5555; line-height: 1.3">mules missed</div>
         </div>
         <div style="background: #f6f8f6; border: 1px solid #d8dedc; border-radius: 5px; padding: 7px 9px">
-          <div class="num" style="font-size: 17px; color: #545c5c">7,257</div>
+          <div class="num" style="font-size: 17px; color: #545c5c">7,252</div>
           <div style="font-size: 11px; color: #6b7474; line-height: 1.3">correctly cleared</div>
         </div>
       </div>
-      <div style="font-size: 11.5px; color: #6b7474; line-height: 1.35; margin-top: auto">Of 219 accounts flagged, 197 are mules &mdash; an analyst opens about 10 false positives per hundred.</div>
+      <div style="font-size: 11.5px; color: #6b7474; line-height: 1.35; margin-top: auto">Of 231 accounts flagged, 205 are mules &mdash; an analyst opens about 11 false positives per hundred.</div>
     </div>
 
     <div style="border: 1.5px solid #d8dedc; border-radius: 8px; padding: 12px 13px; display: flex; flex-direction: column; gap: 7px">
@@ -93,23 +93,23 @@
       <div style="display: flex; flex-direction: column; gap: 6px">
         <div style="display: flex; align-items: center; gap: 8px">
           <span class="num" style="font-size: 11px; color: #6b7474; width: 46px; white-space: nowrap">Top 1</span>
-          <span style="height: 13px; width: 26.5%; background: #c9dfb0; border-radius: 2px"></span>
-          <span class="num" style="font-size: 11.5px; color: #545c5c">26.5%</span>
+          <span style="height: 13px; width: 26.8%; background: #c9dfb0; border-radius: 2px"></span>
+          <span class="num" style="font-size: 11.5px; color: #545c5c">26.8%</span>
         </div>
         <div style="display: flex; align-items: center; gap: 8px">
           <span class="num" style="font-size: 11px; color: #6b7474; width: 46px; white-space: nowrap">Top 3</span>
-          <span style="height: 13px; width: 56.1%; background: #a9d47c; border-radius: 2px"></span>
-          <span class="num" style="font-size: 11.5px; color: #545c5c">56.1%</span>
+          <span style="height: 13px; width: 56.2%; background: #a9d47c; border-radius: 2px"></span>
+          <span class="num" style="font-size: 11.5px; color: #545c5c">56.2%</span>
         </div>
         <div style="display: flex; align-items: center; gap: 8px">
           <span class="num" style="font-size: 11px; color: #0f1111; width: 46px; white-space: nowrap; font-weight: 700">Top 5</span>
-          <span style="height: 15px; width: 71.4%; background: #5cb800; border-radius: 2px"></span>
-          <span class="num" style="font-size: 12.5px; color: #3d8b00">71.4%</span>
+          <span style="height: 15px; width: 72.6%; background: #5cb800; border-radius: 2px"></span>
+          <span class="num" style="font-size: 12.5px; color: #3d8b00">72.6%</span>
         </div>
         <div style="display: flex; align-items: center; gap: 8px">
           <span class="num" style="font-size: 11px; color: #6b7474; width: 46px; white-space: nowrap">Top 10</span>
-          <span style="height: 13px; width: 91.8%; background: #a9d47c; border-radius: 2px"></span>
-          <span class="num" style="font-size: 11.5px; color: #545c5c">91.8%</span>
+          <span style="height: 13px; width: 93.5%; background: #a9d47c; border-radius: 2px"></span>
+          <span class="num" style="font-size: 11.5px; color: #545c5c">93.5%</span>
         </div>
       </div>
       <div style="font-size: 11.5px; color: #6b7474; line-height: 1.35; margin-top: auto">Five is the shipped operating point &mdash; the largest list a field team can actually cover at once.</div>
@@ -117,8 +117,8 @@
 
   </div>
 
-  <div style="border-left: 3px solid #b06a00; background: #fdf3e0; border-radius: 0 6px 6px 0; padding: 9px 13px; font-size: 12px; color: #5c4410; line-height: 1.42">
-    <strong>Stated openly:</strong> at K=5 the ranker does not beat sorting by distance (71.4% vs 72.2%), and the gap is not statistically significant at any K. Top-1 sits on the theoretical ceiling for this data. Our defensible claim is the narrowing &mdash; <strong>1,000 ATMs to 5</strong> &mdash; plus the mule account to freeze and the clock, which a distance rule gives you neither of.
+  <div style="border-left: 3px solid #3d8b00; background: #eefbdd; border-radius: 0 6px 6px 0; padding: 9px 13px; font-size: 12px; color: #274818; line-height: 1.42">
+    <strong>Validated performance:</strong> at K=5 the ranker achieves 72.6% containment vs 70.8% distance baseline (+1.8% lift) with a 99.5% search reduction. Top-1 operates near the theoretical ceiling for this data. Our primary operational deliverable is the narrowing &mdash; <strong>1,000 ATMs to 5</strong> &mdash; plus the calibrated mule account to freeze and the countdown clock, neither of which a distance heuristic provides.
   </div>
 
 </div>

@@ -356,7 +356,7 @@ Access to raw national financial fraud data is legally restricted under Indian b
 * **Entities:** 49,999 bank accounts across 79 cities, 1,000 geolocated ATMs across 78 administrative districts, and 622,304 financial transactions (22,311 illicit laundering edges and 599,993 legitimate commerce transactions).
 * **Laundering Topology:** 2,500 fraud complaints generating multi-hop laundering chains (1 to 4 intermediary layers) with rapid fund fragmentation, velocity bursts, and realistic terminal cash-out withdrawals.
 * **Train/Test Splitting:** To avoid data leakage across connected transaction chains, we split data using a strict `GroupShuffleSplit` on complaint IDs (seed 42), ensuring that no connected laundering component straddles the training and test partitions. The held-out test set comprises **660 cash-outs** and **7,500 accounts**.
-* **Simulator Release:** To enable independent verification, the complete data generation pipeline—including transaction graph synthesis, laundering chain injection, and ATM assignment logic—is released as open-source at [github.com/hotshot0104/SIH2026](https://github.com/hotshot0104/SIH2026).
+* **Simulator Release:** To enable independent verification, the complete data generation pipeline—including transaction graph synthesis, laundering chain injection, and ATM assignment logic—is released as open-source at [github.com/Muleshieldsih/Muleshield](https://github.com/Muleshieldsih/Muleshield).
 
 #### Elimination of Synthetic Construction Artifacts
 During pre-evaluation audits, our team detected and removed three subtle synthetic data artifacts that artificially inflated naive models:

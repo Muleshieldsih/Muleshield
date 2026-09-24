@@ -393,7 +393,7 @@ def main() -> None:
            "A Spatio-Temporal Graph Framework' (IEEE Manuscript, 2026).", size=10)
     bullet(tf, "Code & System Audit ", "\u2014 291 tests, 5.2 ms inference, ISO 8583/20022 "
            "specs, BSA 2023 \u00a763 audit.", size=10, space_before=2)
-    links(tf, "https://github.com/hotshot0104/SIH2026",
+    links(tf, "https://github.com/Muleshieldsih/Muleshield",
           "https://dev.to/sameer0104/muleshield-ai-intercepting-cybercrime-cash-outs-before-the-trail-goes-cold-232g", size=9)
     para(tf, space_after=0)   # see links(): a terminal link loses its PDF rect
     # No "Tooling" line here: it listed the same stack as slide 3's Technologies
