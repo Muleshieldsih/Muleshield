@@ -62,7 +62,7 @@ To combat financial fraud, national authorities and financial regulators have de
 \textbf{CFCFRMS / 1930 Helpline} (I4C/MHA) \cite{i4creport} & National LEA Helpline & Account Freeze Only & Reactive Bank Ledger & No (Trail ends at ATM) & No & No \\
 \textbf{I4C Suspect Registry / Samanvaya} & National Repository (32L mules) & Blacklist Onboarding & No & No & No & No \\
 \textbf{Pratibimb} (I4C/MHA) & National Police Dashboard & No & No & Retrospective Heatmap Only & No & Static Historical Density \\
-\textbf{Academic GNN AML} (DELATOR \cite{assumpção2022}, Elliptic \cite{weber2019}) & Research Literature & \textbf{Yes} (Node/Edge Classification) & Graph Classification & No (Purely Account-Centric) & No & No \\
+\textbf{Academic GNN AML} (DELATOR \cite{assumpção2022}, Elliptic \cite{weber2019}, Camouflage \cite{dou2020}) & Research Literature & \textbf{Yes} (Node/Edge Classification) & Graph Classification & No (Purely Account-Centric) & No & No \\
 \midrule
 \textbf{MuleShield AI (This Work)} & \textbf{Prototype Framework} & \textbf{Yes} (\textbf{F1 0.9051}, GraphSAGE) & \textbf{Yes} (Deterministic BFS) & \textbf{Yes} (\textbf{87.3\% Zone}) & \textbf{Yes} (\textbf{40.2 min Lead}) & \textbf{Yes} (\textbf{PAI 32.67}, 6.0$\times$ Lift) \\
 \bottomrule
@@ -74,7 +74,7 @@ To combat financial fraud, national authorities and financial regulators have de
     \item \textbf{MuleHunter.AI} (RBI Innovation Hub, Dec 2024): Deployed across Canara Bank, Punjab National Bank, Bank of Baroda, and 20+ other institutions. Identifies mule \textit{accounts} using 19 behavioral patterns with up to 95\% precision. \textbf{Gap:} It operates exclusively on digital account records and says nothing about \textit{where} or \textit{when} physical cash withdrawal will occur.
     \item \textbf{CFCFRMS / 1930 Helpline} (I4C / MHA): Saved over Rs.~11,158 crore across 32.8 lakh complaints. \textbf{Gap:} It is limited to freezing funds still within banking rails. Once paper currency leaves an ATM, the digital trail vanishes.
     \item \textbf{Pratibimb} (I4C): Provides geographic crime density mapping. \textbf{Gap:} It is strictly \textit{retrospective} (mapping where crimes happened in the past). It does not forecast where stolen money will surface in the next 30 to 120 minutes.
-    \item \textbf{Academic GNN-AML Literature} (Elliptic, DELATOR): Focuses exclusively on node or edge classification for transaction laundering. Spatial-temporal cash-out interdiction is completely unaddressed.
+    \item \textbf{Academic GNN-AML Literature} (Elliptic \cite{weber2019}, DELATOR \cite{assumpção2022}, Camouflage GNN \cite{dou2020}, Banking GCN \cite{wang2019}): Focuses exclusively on node or edge classification for transaction laundering. Spatial-temporal cash-out interdiction is completely unaddressed.
 \end{enumerate}
 
 \textbf{The Operational Void:} Once money enters the terminal account and a syndicate runner approaches an ATM, banking rails are out of the fight. The only viable intervention is physical---a patrol car, an ATM lockout, or officer dispatch within a 20-to-60-minute window. \textbf{No existing system tells law enforcement which machine to target.} MuleShield AI is designed specifically to fill this operational void.
@@ -91,17 +91,16 @@ A node $v^* \in \mathcal{G}_{\mathcal{C}}$ is designated as a \textbf{terminal c
 \sum_{(u, v^*) \in \mathcal{E}_{\mathcal{G}_{\mathcal{C}}}} \mathcal{W}(u, v^*) &\ge \theta_{\text{min}} \cdot A_{\text{stolen}}
 \end{align}
 where $\theta_{\text{min}} \in (0, 1]$ represents the fund retention ratio after accounting for transit layering cuts.
-
 \subsection{Discrete Choice Over Candidate Terminals (Nested Logit Formulation)}
 Let $\mathcal{A} = \{a_1, \dots, a_M\}$ denote the universe of physical cash dispensing terminals (ATMs), with geolocations $\ell_j = (\text{lat}_j, \text{lon}_j)$, bank affiliation $B_j$, and historical risk score $\rho_j$. For terminal account $v^*$ with geolocation $\ell_{v^*}$ and bank $B_{v^*}$, let $\mathcal{A}(v^*) \subset \mathcal{A}$ be the reachable candidate set ($J = 25$ nearest machines).
 
-Under Random Utility Maximization (RUM), the latent utility $U_{ij}$ for candidate $j \in \mathcal{A}(v^*)$ decomposes into systematic utility $V_{ij}$ and stochastic disturbance $\epsilon_{ij}$:
+Under Random Utility Maximization (RUM) \cite{mcfadden1974, train2009}, the latent utility $U_{ij}$ for candidate $j \in \mathcal{A}(v^*)$ decomposes into systematic utility $V_{ij}$ and stochastic disturbance $\epsilon_{ij}$:
 \begin{equation}
 U_{ij} = V_{ij} + \epsilon_{ij}
 \end{equation}
 In standard Conditional Multinomial Logit, $\epsilon_{ij} \overset{\text{iid}}{\sim} \text{Gumbel}(0, 1)$, imposing the \textbf{Independence of Irrelevant Alternatives (IIA)}: $P(a_j \mid v^*) / P(a_k \mid v^*)$ remains invariant to other alternatives in $\mathcal{A}(v^*)$. In retail banking, this assumption fails when candidate ATMs reside in dense spatial clusters (e.g., co-located kiosks in an off-site e-lobby or commercial market), inducing cross-alternative unobserved error correlations.
 
-To relax IIA, we formulate a \textbf{Nested Logit (NL)} specification. The candidate set $\mathcal{A}(v^*)$ is partitioned into $M$ disjoint spatial nests $\mathcal{B}_1, \dots, \mathcal{B}_M$ based on spatial proximity and terminal typology (on-premise branch kiosks, commercial transit hubs, and standalone White-Label ATMs). Utility decomposes as $U_{imj} = W_{im} + Y_{ij} + \epsilon_{imj}$, where $(\epsilon_{im1}, \dots, \epsilon_{imJ_m})$ follows a Generalized Extreme Value (GEV) distribution with dissimilarity parameter $\lambda_m \in (0, 1]$. The choice probability factorizes as:
+To relax IIA, we formulate a \textbf{Nested Logit (NL)} specification \cite{train2009}. Grounded in rational target choice models \cite{bernasco2005} and awareness space topology \cite{brantingham1993}, candidate alternatives are partitioned into $M$ disjoint spatial nests $\mathcal{B}_1, \dots, \mathcal{B}_M$ based on spatial proximity and terminal typology (on-premise branch kiosks, commercial transit hubs, and standalone White-Label ATMs). Utility decomposes as $U_{imj} = W_{im} + Y_{ij} + \epsilon_{imj}$, where $(\epsilon_{im1}, \dots, \epsilon_{imJ_m})$ follows a Generalized Extreme Value (GEV) distribution with dissimilarity parameter $\lambda_m \in (0, 1]$. The choice probability factorizes as:
 \begin{equation}
 P(a_j \mid v^*) = P(\mathcal{B}_m \mid v^*) \cdot P(a_j \mid \mathcal{B}_m, v^*)
 \end{equation}
@@ -118,7 +117,7 @@ Y_{ij} &= \beta_1 \left(-\frac{d(\ell_{v^*}, \ell_j)}{d_0}\right) + \beta_2 \log
 Within each nest $\mathcal{B}_m$, the correlation between unobserved disturbances is $\text{Corr}(\epsilon_{imj}, \epsilon_{imk}) = 1 - \lambda_m^2$, absorbing correlated local unobservables and strictly resolving IIA substitution bias.
 
 \subsection{Elapsed-Time Renormalized Survival Process}
-Let $T \in \mathbb{R}^+$ be continuous latency (minutes) between initial victim debit and physical cash dispensing. At assessment timestamp $t_{\text{as\_of}}$, elapsed duration $t_{\text{elapsed}} = t_{\text{as\_of}} - t_{\text{fraud}}$ has transpired without recorded withdrawal. 
+Let $T \in \mathbb{R}^+$ be continuous latency (minutes) between initial victim debit and physical cash dispensing \cite{cox1972, aalen2008}. At assessment timestamp $t_{\text{as\_of}}$, elapsed duration $t_{\text{elapsed}} = t_{\text{as\_of}} - t_{\text{fraud}}$ has transpired without recorded withdrawal. 
 
 \textbf{Dual-Regime Hazard Formulation:} A pure lognormal distribution exhibits non-monotonic hazard decay ($\lim_{t \to \infty} \lambda(t) = 0$), leaving models under-confident during deliberate syndicate delay parking ($>4$ to 24 hours). To ensure robust coverage across all operational horizons, we deploy a \textbf{Dual-Regime Survival Kernel}:
 \begin{equation}
@@ -127,7 +126,7 @@ S_{\text{comp}}(t \mid \mathbf{x}) &= \pi(\mathbf{x}) S_{\text{lognormal}}(t \mi
 &\quad + (1 - \pi(\mathbf{x})) S_{\text{Weibull}}(t \mid \lambda_w, k_w)
 \end{split}
 \end{equation}
-where $\pi(\mathbf{x}) \in [0, 1]$ represents the probability of an immediate liquidation burst ($t \le 180$\,min) parameterized via XGBoost quantile predictions: $\mu = \ln(\hat{m})$ and $\sigma = (\ln(\hat{q}_{95}) - \ln(\hat{q}_{05})) / (2 \cdot 1.64485)$. Delayed cash-outs transition smoothly into the heavy-tailed Weibull survival kernel ($k_w \ge 1.0$) with non-vanishing hazard rate $\lambda_w > 0$. Under condition $T > t_{\text{elapsed}}$, forward interval survival is evaluated as:
+where $\pi(\mathbf{x}) \in [0, 1]$ represents the probability of an immediate liquidation burst ($t \le 180$\,min) parameterized via XGBoost quantile predictions \cite{chen2016}: $\mu = \ln(\hat{m})$ and $\sigma = (\ln(\hat{q}_{95}) - \ln(\hat{q}_{05})) / (2 \cdot 1.64485)$. Delayed cash-outs transition smoothly into the heavy-tailed Weibull survival kernel ($k_w \ge 1.0$) with non-vanishing hazard rate $\lambda_w > 0$. Under condition $T > t_{\text{elapsed}}$, forward interval survival is evaluated as:
 \begin{align}
 &P(T \in [t_{\text{elapsed}} + t_0, t_{\text{elapsed}} + t_1] \mid T > t_{\text{elapsed}}) \nonumber \\
 &= \frac{S_{\text{comp}}(t_{\text{elapsed}} + t_0 \mid \mathbf{x}) - S_{\text{comp}}(t_{\text{elapsed}} + t_1 \mid \mathbf{x})}{S_{\text{comp}}(t_{\text{elapsed}} \mid \mathbf{x})}
@@ -143,15 +142,15 @@ Unlike black-box machine learning approaches, tracing the fund dispersal chain f
 In streaming deployments, BFS interfaces with the central clearing switch feed (e.g., NPCI's IMPS/UPI central switch). If an intermediary bank suffers reporting latency, BFS implements an optimistic partial-traversal mode, evaluating cash-out likelihood on the most downstream visible account and re-ranking dynamically as subsequent hop receipts stream in.
 
 \subsection{Inductive GraphSAGE Structural Embeddings}
-To encode organizational mule ring structures, we deploy a 2-layer GraphSAGE architecture with mean neighborhood aggregation:
+To encode organizational mule ring structures, we deploy a 2-layer GraphSAGE architecture \cite{hamilton2017} with mean neighborhood aggregation:
 \begin{align}
 h_{\mathcal{N}(v)}^{(k)} &= \text{MEAN}\left(\{h_u^{(k-1)}, \forall u \in \mathcal{N}(v)\}\right) \\
 h_v^{(k)} &= \text{ReLU}\left( W^{(k)} \cdot \left[ h_v^{(k-1)} \,\|\, h_{\mathcal{N}(v)}^{(k)} \right] \right)
 \end{align}
-Using $k=2$ layers and hidden dimensionality $d=64$, the network contains only \textbf{10,561 parameters}. Two hops precisely capture the functional topology of money laundering rings: Layer 1 captures immediate counterparty splitters, while Layer 2 captures syndicate consolidation hubs.
+Using $k=2$ layers and hidden dimensionality $d=64$, the network contains only \textbf{10,561 parameters}, trained via the Adam optimizer \cite{kingma2015} with mini-batch neighborhood sampling. Two hops precisely capture the functional topology of money laundering rings: Layer 1 captures immediate counterparty splitters, while Layer 2 captures syndicate consolidation hubs.
 
 \subsection{Continuous Forward Hotspot Surface}
-To assist district and state-level patrol routing, the framework aggregates all concurrent open cases into 226 spatial cells clustered via greedy leader assignment ($R_{\text{cell}} = 12.0$\,km). To mathematically prevent self-reinforcing predictive policing feedback loops, the decayed historical prior is strictly constrained to $\le 15\%$ of total conditional capital mass:
+To assist district and state-level patrol routing, the framework aggregates all concurrent open cases into 226 spatial cells clustered via greedy leader assignment ($R_{\text{cell}} = 12.0$\,km). To mathematically prevent self-reinforcing predictive policing feedback loops \cite{ensign2018}, the decayed historical prior is strictly constrained to $\le 15\%$ of total conditional capital mass:
 \begin{equation}
 S_{\text{total}}(c, w) = S_{\text{cond}}(c, w) + 0.15 \cdot \tilde{S}_{\text{prior}}(c) \sum_{c'} S_{\text{cond}}(c', w)
 \end{equation}
@@ -159,7 +158,7 @@ S_{\text{total}}(c, w) = S_{\text{cond}}(c, w) + 0.15 \cdot \tilde{S}_{\text{pri
 \subsection{Telecommunications Switch Micro-Interlocking \& Timing Budget}
 To transition from passive prediction to proactive interdiction without requiring terminal hardware replacements, MuleShield AI interfaces directly with the National Financial Switch (NFS) and Core Banking System (CBS) payment switches via financial transaction protocols:
 
-\textbf{Switch SLA Timing Budget:} In production ATM networks governed by the National Payments Corporation of India (NPCI), the end-to-end round-trip time (RTT) budget is bounded between 1,200\,ms and 1,800\,ms, with strict hard timeouts at 2,000\,ms. MuleShield AI executes entirely within a dedicated sub-millisecond pipeline:
+\textbf{Switch SLA Timing Budget:} In production ATM networks governed by the National Payments Corporation of India (NPCI) \cite{npci2023}, the end-to-end round-trip time (RTT) budget is bounded between 1,200\,ms and 1,800\,ms, with strict hard timeouts at 2,000\,ms. MuleShield AI executes entirely within a dedicated sub-millisecond pipeline:
 \begin{itemize}
     \item Complaint Ingestion \& Graph Sub-Graph Extraction: 2.0\,ms
     \item GraphSAGE Structural Node Embedding (ONNX runtime): 3.2\,ms
@@ -168,9 +167,9 @@ To transition from passive prediction to proactive interdiction without requirin
     \item \textbf{Total Computational Overhead: 7.5\,ms} ($<0.38\%$ of the 2,000\,ms switch timeout budget).
 \end{itemize}
 
-\textbf{ISO 8583 Field 39 Deceptive Mitigation:} During terminal authorization (MTI \texttt{0200}), the engine injects into Field 39 (Action Code) of the response packet (MTI \texttt{0210}). If terminal choice probability exceeds critical threshold $\tau_{\text{crit}}$ and countdown $T \le 0$, the system returns Action Code \texttt{51} (\textit{Insufficient Funds}) or \texttt{05} (\textit{Do Not Honor}). This deceptive mitigation suppresses the physical cash dispenser without sounding a terminal alarm, leading the runner to assume a transient network glitch and keeping them on-site for tactical police interdiction.
+\textbf{ISO 8583 Field 39 Deceptive Mitigation \cite{iso8583}:} During terminal authorization (MTI \texttt{0200}), the engine injects into Field 39 (Action Code) of the response packet (MTI \texttt{0210}). If terminal choice probability exceeds critical threshold $\tau_{\text{crit}}$ and countdown $T \le 0$, the system returns Action Code \texttt{51} (\textit{Insufficient Funds}) or \texttt{05} (\textit{Do Not Honor}). This deceptive mitigation suppresses the physical cash dispenser without sounding a terminal alarm, leading the runner to assume a transient network glitch and keeping them on-site for tactical police interdiction.
 
-\textbf{ISO 20022 Financial Messaging:} High-speed inter-bank messaging via \texttt{pacs.008.001.08} (Direct Credit Transfer) is intercepted via automated generation of \texttt{camt.056.001.08} (Payment Cancellation Request) prior to net settlement cut-offs, placing an immediate lien on downstream mule liquidity.
+\textbf{ISO 20022 Financial Messaging \cite{iso20022}:} High-speed inter-bank messaging via \texttt{pacs.008.001.08} (Direct Credit Transfer) is intercepted via automated generation of \texttt{camt.056.001.08} (Payment Cancellation Request) prior to net settlement cut-offs, placing an immediate lien on downstream mule liquidity.
 
 \subsection{Adversarial Evasion Modes \& Hardening Framework}
 To withstand deliberate counter-strategies deployed by organized laundering syndicates, MuleShield AI integrates defensive hardening across three primary evasion vectors:
@@ -178,7 +177,7 @@ To withstand deliberate counter-strategies deployed by organized laundering synd
     \item \textbf{Spatial Jittering \& Zero-Affinity Off-Grid Terminals:} Syndicates instruct runners to bypass nearest-neighbor ATMs and utilize low-density, rural, or third-party White-Label ATMs (WLAs) exhibiting zero historical crew affinity. 
     \textit{Defense:} We augment the systematic utility with an Adversarial Inverse Distance Weighting and calculate graph structural entropy $\mathcal{H}(v^*) = -\sum_{e \in \mathcal{E}(v^*)} p_e \log p_e$. When topological entropy indicates professional multi-layered syndicates ($\mathcal{H} > \tau_{\text{ent}}$), the candidate search radius dynamically expands from $R_{\text{base}} = 10$\,km to $R_{\text{adv}} = 25$\,km.
     \item \textbf{Multi-Terminal Split-Flow Dispersal (Smurfing Runs):} Stolen capital reaching terminal nodes is split via parallel UPI transfers to $K$ secondary runners who execute concurrent withdrawals under threshold limits across divergent machines.
-    \textit{Defense:} The sub-graph traversal instantiates a dynamic multi-commodity flow tracker. When terminal out-degree $\delta^+(v^*) > 1$ within 60 seconds, joint survival is modeled via a coupled \textbf{Multivariate Clayton Copula}:
+    \textit{Defense:} The sub-graph traversal instantiates a dynamic multi-commodity flow tracker. When terminal out-degree $\delta^+(v^*) > 1$ within 60 seconds, joint survival is modeled via a coupled \textbf{Multivariate Clayton Copula} \cite{nelsen2006}:
     \begin{equation}
     \begin{split}
     &S_{\text{joint}}(t_1, \dots, t_K) = \\
@@ -191,7 +190,7 @@ To withstand deliberate counter-strategies deployed by organized laundering synd
 \end{enumerate}
 
 \subsection{Judicial Admissibility Engine (BSA 2023 Section 63)}
-To guarantee legal admissibility under Section 63 of the Bharatiya Sakshya Adhiniyam, 2023 (replacing Section 65B of the Indian Evidence Act), every ingested payload, model inference record, and officer action is bound to a cryptographic SHA-256 state-linked ledger:
+To guarantee legal admissibility under Section 63 of the Bharatiya Sakshya Adhiniyam, 2023 \cite{bsa2023} (replacing Section 65B of the Indian Evidence Act), every ingested payload, model inference record, and officer action is bound to a cryptographic SHA-256 state-linked ledger:
 \begin{equation}
 H_k = \text{SHA-256}\left( \text{Payload}_k \,\|\, H_{k-1} \,\|\, t_k \,\|\, \text{Actor}_k \right)
 \end{equation}
@@ -320,7 +319,7 @@ Nearest-3 ATM Centroid & 77.73\% & 5.68\,km & $p = 3.52 \times 10^{-14}$ \\
 \end{table}
 
 \subsection{Forward Hotspot Surface vs. National Baselines}
-Table~\ref{tab:hotspot} compares the Forward Cash-Out Surface against national baselines over 226 spatial cells. MuleShield AI achieves a Prediction Accuracy Index (\textbf{PAI@5}) of \textbf{32.67} and a hit rate of \textbf{0.9530}, covering \textbf{96.37\% of at-risk capital}---a \textbf{6.0$\times$ improvement} over retrospective density mapping (Pratibimb).
+Table~\ref{tab:hotspot} compares the Forward Cash-Out Surface against national baselines over 226 spatial cells. MuleShield AI achieves a Prediction Accuracy Index (\textbf{PAI@5}) \cite{chainey2008, adepeju2016} of \textbf{32.67} and a hit rate of \textbf{0.9530}, covering \textbf{96.37\% of at-risk capital}---a \textbf{6.0$\times$ improvement} over retrospective density mapping (Pratibimb).
 
 \begin{table}[htbp]
 \caption{Forward Hotspot Surface Performance (Top-5 Cells)}
@@ -378,6 +377,14 @@ The ISO 8583 Field 39 deceptive denial mechanism (Section III-D) carries heighte
 \end{enumerate}
 This triple-gate policy ensures that ATM-level interdiction is never fully automated and always subject to human oversight.
 
+\section{Related Work}
+
+\subsection{Graph Neural Networks in Financial Anomaly Detection}
+Graph-based anti-money laundering (AML) detection has received substantial academic interest. Early foundational surveys formalized graph topology analysis for fraud and anomaly discovery \cite{akoglu2015}. With the emergence of geometric deep learning, Weber et al.~\cite{weber2019} established the benchmark Elliptic Bitcoin dataset, demonstrating that Graph Convolutional Networks (GCN) significantly outperform tree ensembles in illicit entity identification. Subsequent architectures such as DELATOR \cite{assumpção2022} and semi-supervised banking user classification \cite{wang2019} expanded GNNs to multi-relational transaction settings. To counter evasion tactics where money launderers intentionally disguise their transaction subgraphs among benign entities, camouflage-resistant GNNs \cite{dou2020} and streaming sub-graph anomaly detectors \cite{eswaran2018} have been formulated. However, existing AML literature focuses almost exclusively on \textit{digital account classification}. To our knowledge, no prior academic framework bridges the graph transaction domain with physical-terminal spatial forecasting.
+
+\subsection{Spatio-Temporal Crime Forecasting \& Offender Choice}
+Spatial crime forecasting originated with kernel density estimation (KDE) and spatial point patterns \cite{chainey2008, adepeju2016}. Self-exciting point processes (Hawkes processes) \cite{mohler2011} capture temporal contagion effects in retaliatory violence and repeat property offenses. In criminological mobility, offender spatial destination choice has been formalized through discrete choice models under Random Utility Maximization \cite{mcfadden1974, train2009}, establishing that offenders navigate familiar awareness spaces \cite{brantingham1993, bernasco2005} while minimizing travel friction. Geographic profiling frameworks \cite{rossmo2000, canter1993} infer serial offender anchor points from incident distributions. In predictive policing, unconstrained historical feedback has been proven to induce runaway sampling loops \cite{ensign2018}, motivating our strictly bounded prior design. While modern spatio-temporal neural networks model macro-level urban crime rates as stationary spatial processes, they cannot condition predictions on a live, directed multi-hop transaction chain streaming in real time.
+
 \section{Limitations}
 We identify the following limitations that qualify the interpretation of our results:
 \begin{enumerate}
@@ -392,18 +399,33 @@ We identify the following limitations that qualify the interpretation of our res
 MuleShield AI addresses the critical physical exit vulnerability in cyber-fraud laundering. By integrating deterministic graph traversal, inductive GraphSAGE embeddings, Nested Logit discrete choice modeling (relaxing IIA), dual-regime survival kernels, adversarial evasion hardening, and a bounded-prior forward surface, the framework achieves 87.3\% physical search zone containment on synthetic benchmarks and delivers a 6.0$\times$ efficiency gain over retrospective density maps within a 7.5\,ms switch processing latency profile. Supported by ISO 8583 Field 39 deceptive interlocks (under governance constraints), ISO 20022 messaging, and a BSA 2023 Section 63 evidentiary ledger, it provides a prototype framework for proactive cybercrime intervention. Deployment-stage validation with real-world banking data and live NPCI integration remains essential future work.
 
 \begin{thebibliography}{00}
-\bibitem{hamilton2017} W. Hamilton, Z. Ying, and J. Leskovec, ``Inductive representation learning on large graphs,'' in \textit{Proc. NeurIPS}, 2017, pp. 1024--1034.
+\bibitem{hamilton2017} W. Hamilton, Z. Ying, and J. Leskovec, ``Inductive representation learning on large graphs,'' in \textit{Proc. Adv. Neural Inf. Process. Syst. (NeurIPS)}, vol. 30, 2017, pp. 1024--1034.
 \bibitem{mcfadden1974} D. McFadden, ``Conditional logit analysis of qualitative choice behavior,'' in \textit{Frontiers in Econometrics}, P. Zarembka, Ed. New York: Academic Press, 1974, pp. 105--142.
-\bibitem{chen2016} T. Chen and C. Guestrin, ``XGBoost: A scalable tree boosting system,'' in \textit{Proc. ACM SIGKDD}, 2016, pp. 785--794.
-\bibitem{weber2019} M. Weber et al., ``Anti-money laundering in bitcoin: Experimenting with graph convolutional networks for financial forensics,'' \textit{arXiv:1908.02591}, 2019.
-\bibitem{assumpção2022} G. Assumpção, P. Rates, and A. H. F. Laender, ``DELATOR: Money laundering detection via multi-task learning on large transaction graphs,'' \textit{Expert Systems with Applications}, vol. 213, p. 119200, 2023.
-\bibitem{kingma2015} D. P. Kingma and J. Ba, ``Adam: A method for stochastic optimization,'' in \textit{Proc. ICLR}, 2015.
-\bibitem{cox1972} D. R. Cox, ``Regression models and life-tables,'' \textit{J. Royal Statistical Society Series B}, vol. 34, no. 2, pp. 187--220, 1972.
-\bibitem{chainey2008} S. Chainey, S. Reid, and N. Stuart, ``When is a hotspot a hotspot? The operational utility of spatial crime analysis methods,'' \textit{Security Journal}, vol. 21, no. 1, pp. 4--28, 2008.
+\bibitem{train2009} K. E. Train, \textit{Discrete Choice Methods with Simulation}, 2nd~ed. Cambridge, U.K.: Cambridge University Press, 2009.
+\bibitem{bernasco2005} W. Bernasco and P. Nieuwbeerta, ``How do residential burglars select target areas? A new approach to the analysis of criminal location choice,'' \textit{British J. Criminol.}, vol. 45, no. 3, pp. 296--315, 2005.
+\bibitem{brantingham1993} P. L. Brantingham and P. J. Brantingham, ``Nodes, paths and edges: Considerations on the complexity of crime and the physical environment,'' \textit{J. Environ. Psychol.}, vol. 13, no. 1, pp. 3--28, 1993.
+\bibitem{chen2016} T. Chen and C. Guestrin, ``XGBoost: A scalable tree boosting system,'' in \textit{Proc. 22nd ACM SIGKDD Int. Conf. Knowl. Discov. Data Min.}, 2016, pp. 785--794.
+\bibitem{weber2019} M. Weber et al., ``Anti-money laundering in bitcoin: Experimenting with graph convolutional networks for financial forensics,'' \textit{arXiv preprint arXiv:1908.02591}, 2019.
+\bibitem{assumpção2022} G. Assumpção, P. Rates, and A. H. F. Laender, ``DELATOR: Money laundering detection via multi-task learning on large transaction graphs,'' \textit{Expert Syst. Appl.}, vol. 213, p. 119200, 2023.
+\bibitem{akoglu2015} L. Akoglu, H. Tong, and D. Koutra, ``Graph based anomaly detection and analysis: A survey,'' \textit{ACM Trans. Knowl. Discov. Data}, vol. 10, no. 1, pp. 1--48, 2015.
+\bibitem{dou2020} Y. Dou, Z. Liu, L. Sun, Y. Deng, H. Peng, and P. S. Yu, ``Enhancing graph neural network-based fraud detectors against camouflaged fraudsters,'' in \textit{Proc. 29th ACM Int. Conf. Inf. Knowl. Manage. (CIKM)}, 2020, pp. 315--324.
+\bibitem{wang2019} D. Wang et al., ``Semi-supervised user identification in web banking networks via graph convolutional networks,'' in \textit{Proc. IEEE Int. Conf. Data Mining (ICDM)}, 2019, pp. 588--597.
+\bibitem{eswaran2018} D. Eswaran, C. Faloutsos, S. Guha, and N. Mishra, ``SpotLight: Detecting anomalies in streaming graphs,'' in \textit{Proc. 24th ACM SIGKDD Int. Conf. Knowl. Discov. Data Min.}, 2018, pp. 1378--1386.
+\bibitem{kingma2015} D. P. Kingma and J. Ba, ``Adam: A method for stochastic optimization,'' in \textit{Proc. Int. Conf. Learn. Represent. (ICLR)}, 2015.
+\bibitem{cox1972} D. R. Cox, ``Regression models and life-tables,'' \textit{J. R. Stat. Soc. Ser. B (Methodological)}, vol. 34, no. 2, pp. 187--220, 1972.
+\bibitem{aalen2008} O. O. Aalen, O. Borgan, and H. K. Gjessing, \textit{Survival and Event History Analysis: A Process Point of View}. New York: Springer, 2008.
+\bibitem{nelsen2006} R. B. Nelsen, \textit{An Introduction to Copulas}, 2nd~ed. New York: Springer, 2006.
+\bibitem{mohler2011} G. O. Mohler, M. B. Short, P. J. Brantingham, F. P. Schoenberg, and G. E. Tita, ``Self-exciting point process modeling of crime,'' \textit{J. Amer. Stat. Assoc.}, vol. 106, no. 493, pp. 100--108, 2011.
+\bibitem{chainey2008} S. Chainey, S. Reid, and N. Stuart, ``When is a hotspot a hotspot? The operational utility of spatial crime analysis methods,'' \textit{Security J.}, vol. 21, no. 1, pp. 4--28, 2008.
+\bibitem{adepeju2016} M. Adepeju, S. Rosser, and T. Cheng, ``Novel determinants for measuring the spatio-temporal accuracy of prospective crime hot-spotting techniques,'' \textit{Crime Sci.}, vol. 5, no. 1, p. 11, 2016.
+\bibitem{ensign2018} D. Ensign, S. A. Friedler, S. Neville, C. Scheidegger, and S. Venkatasubramanian, ``Runaway feedback loops in predictive policing,'' in \textit{Proc. Conf. Fairness, Account., Transp. (FAT*)}, 2018, pp. 160--171.
 \bibitem{rossmo2000} D. K. Rossmo, \textit{Geographic Profiling}. Boca Raton, FL: CRC Press, 2000.
-\bibitem{canter1993} D. Canter and P. Larkin, ``The environmental range of serial rapists,'' \textit{J. Environmental Psychology}, vol. 13, no. 1, pp. 63--69, 1993.
+\bibitem{canter1993} D. Canter and P. Larkin, ``The environmental range of serial rapists,'' \textit{J. Environ. Psychol.}, vol. 13, no. 1, pp. 63--69, 1993.
+\bibitem{iso8583} International Organization for Standardization, \textit{Financial Transaction Card Originated Messages---Interchange Message Specifications}, ISO Standard 8583:2003, Geneva, Switzerland, 2003.
+\bibitem{iso20022} International Organization for Standardization, \textit{Financial Services---Universal Financial Industry Message Scheme}, ISO Standard 20022:2019, Geneva, Switzerland, 2019.
+\bibitem{npci2023} National Payments Corporation of India (NPCI), \textit{National Financial Switch (NFS) Technical \& Operating Specifications}, Mumbai, India, 2023.
 \bibitem{i4creport} Indian Cybercrime Coordination Centre (I4C), \textit{NCRP Annual Statistical Digest}, Ministry of Home Affairs, New Delhi, India, 2024.
-\bibitem{mulehunter} Reserve Bank Innovation Hub (RBIH), \textit{MuleHunter.AI: AI-Powered Collaborative Mule Account Detection}, Reserve Bank of India, Mumbai, 2024.
+\bibitem{mulehunter} Reserve Bank Innovation Hub (RBIH), \textit{MuleHunter.AI: AI-Powered Collaborative Mule Account Detection in Indian Banking}, Reserve Bank of India, Mumbai, 2024.
 \bibitem{bsa2023} Government of India, \textit{Bharatiya Sakshya Adhiniyam, 2023}, Act No. 47 of 2023, Section 63 (Electronic Records Admissibility), Ministry of Law and Justice, New Delhi, 2023.
 \end{thebibliography}
 
