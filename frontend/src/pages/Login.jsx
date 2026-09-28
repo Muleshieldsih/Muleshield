@@ -157,8 +157,40 @@ function Title({ children, sub }) {
       <h1 className="login-title mb-[9px]" style={{ fontSize: 'clamp(38px, 5.2vw, 62px)' }}>
         {children}
       </h1>
-      <div className="text-[11.5px] text-[#717176] tracking-[0.01em] mb-11">{sub}</div>
+      <div className="text-[11.5px] text-[#717176] tracking-[0.01em] mb-6">{sub}</div>
     </>
+  )
+}
+
+function DemoCredentialsBox({ onAutoFill }) {
+  return (
+    <div className="mb-7 p-3.5 rounded-[10px] border border-emerald-500/25 bg-emerald-500/[0.07] backdrop-blur-sm transition-all duration-200">
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2">
+          <KeyRound size={13} className="text-emerald-400 shrink-0" />
+          <span className="text-[11px] font-medium tracking-wide uppercase text-emerald-400">
+            SIH Evaluator / Jury Access
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={onAutoFill}
+          className="text-[10px] font-medium tracking-wide uppercase px-2 py-0.5 rounded border border-emerald-400/40 bg-emerald-400/10 hover:bg-emerald-400/20 text-emerald-300 transition-colors cursor-pointer"
+        >
+          Auto-fill
+        </button>
+      </div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-zinc-300">
+        <div>
+          <span className="text-[#88888e]">Officer ID:</span>{' '}
+          <code className="font-mono text-white bg-black/40 px-1.5 py-0.5 rounded border border-white/10">officer</code>
+        </div>
+        <div>
+          <span className="text-[#88888e]">Password:</span>{' '}
+          <code className="font-mono text-white bg-black/40 px-1.5 py-0.5 rounded border border-white/10">password123</code>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -228,6 +260,12 @@ function SignIn({ onLogin, expired, onForgot }) {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
+  const handleAutoFill = () => {
+    setUsername('officer')
+    setPassword('password123')
+    setError('')
+  }
+
   async function submit(e) {
     e.preventDefault()
     setError('')
@@ -244,6 +282,8 @@ function SignIn({ onLogin, expired, onForgot }) {
   return (
     <form onSubmit={submit}>
       <Title sub="Cash-out interception console · 1930 helpline">Sign in</Title>
+
+      <DemoCredentialsBox onAutoFill={handleAutoFill} />
 
       {(error || expired) && (
         <div className="mb-7">
